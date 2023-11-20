@@ -1,0 +1,405 @@
+openapi: 3.0.0
+info:
+  title: Seat Selection API
+  description: API for booking seats and managing orders, with support for multiple seat bookings per order. Utilizes UUIDs for unique identification.
+  version: 1.0.0
+
+paths:
+
+  /venues:
+    get:
+      summary: List all venues
+      operationId: getAllVenues
+      description: Retrieve a list of all venues.
+      responses:
+        200:
+          description: A list of venues
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Venue'
+
+  /venues/{venueId}:
+    get:
+      summary: Get specific venue
+      operationId: getVenue
+      description: Retrieve details of a specific venue by its UUID.
+      parameters:
+        - name: venueId
+          in: path
+          required: true
+          description: Unique ID of the venue
+          schema:
+            type: string
+            format: uuid
+      responses:
+        200:
+          description: Details of a specific venue
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Venue'
+        404:
+          description: Venue not found
+
+  /venues/{venueId}/areas:
+    get:
+      summary: List areas in a venue
+      operationId: getAllAreasInVenue
+      description: Retrieve a list of areas within a specific venue.
+      parameters:
+        - name: venueId
+          in: path
+          required: true
+          description: Unique ID of the venue
+          schema:
+            type: string
+            format: uuid
+      responses:
+        200:
+          description: A list of areas within the venue
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Area'
+
+  /venues/{venueId}/areas-layout:
+    get:
+      summary: Get areas layout in SVG format
+      operationId: getVenueAreasLayout
+      description: Retrieve details of a specific venue by its UUID.
+      parameters:
+        - name: venueId
+          in: path
+          required: true
+          description: Unique ID of the venue
+          schema:
+            type: string
+            format: uuid
+      responses:
+        200:
+          description: The areas layout in SVG format
+          content:
+            image/svg+xml:
+              schema:
+                type: string
+                format: binary
+        404:
+          description: Venue not found
+
+  /venues/{venueId}/areas/{areaId}:
+    get:
+      summary: Get a specific area in a venue
+      operationId: getAreaInVenue
+      description: Retrieve details of a specific area within a venue.
+      parameters:
+        - name: venueId
+          in: path
+          required: true
+          description: Unique ID of the venue
+          schema:
+            type: string
+            format: uuid
+        - name: areaId
+          in: path
+          required: true
+          description: Unique ID of the area
+          schema:
+            type: string
+            format: uuid
+      responses:
+        200:
+          description: Details of a specific area
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Area'
+        404:
+          description: Area not found
+
+  /venues/{venueId}/areas/{areaId}/seats:
+    get:
+      summary: List seats in an area of a venue
+      operationId: getAllSeatsInAreaOfVenue
+      description: Retrieve a list of seats within a specific area of a specific venue.
+      parameters:
+        - name: venueId
+          in: path
+          required: true
+          description: Unique ID of the venue
+          schema:
+            type: string
+            format: uuid
+        - name: areaId
+          in: path
+          required: true
+          description: Unique ID of the area
+          schema:
+            type: string
+            format: uuid
+      responses:
+        200:
+          description: A list of seats within the area
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Seat'
+        404:
+          description: Area or Venue not found
+
+  /seats:
+    get:
+      summary: Get all seats or filter by venue and area
+      operationId: getAllSeats
+      description: Retrieve a list of all seats with their current status. Optionally, filter seats by area using the `areaId` query parameter.
+      parameters:
+        - name: venueId
+          in: query
+          schema:
+            type: string
+            format: uuid
+          required: true
+          description: Required UUID of the venue to filter seats by.
+        - name: areaId
+          in: query
+          schema:
+            type: string
+            format: uuid
+          required: false
+          description: Optional UUID of the area to filter seats by.
+
+      responses:
+        '200':
+          description: A list of seats
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Seat'
+
+  /seats/{seatId}:
+    get:
+      summary: Get a specific seat
+      operationId: getSeat
+      description: Retrieve details of a specific seat by its UUID.
+      parameters:
+        - name: seatId
+          in: path
+          required: true
+          description: Unique UUID of the seat
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Details of a specific seat
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Seat'
+        '404':
+          description: Seat not found
+
+  /orders:
+    get:
+      summary: Get a list of orders
+      operationId: getAllOrders
+      description: Retrieve a list of orders within an optional time range. Filter orders by creation timestamp using query parameters.
+      parameters:
+        - name: startTime
+          in: query
+          schema:
+            type: string
+            format: date-time
+          required: false
+          description: Optional start timestamp for filtering orders.
+        - name: endTime
+          in: query
+          schema:
+            type: string
+            format: date-time
+          required: false
+          description: Optional end timestamp for filtering orders.
+      responses:
+        '200':
+          description: A list of orders
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Order'
+
+    post:
+      summary: Create an order
+      operationId: createOrder
+      description: Create a new order with multiple seat selections. Returns the created order with payment details.
+      requestBody:
+        description: Order creation request
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Order'
+      responses:
+        '201':
+          description: Order created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+        '400':
+          description: Bad request
+
+  /orders/{orderId}:
+    get:
+      summary: Get a specific order
+      operationId: getOrder
+      description: Retrieve details of a specific order by its UUID.
+      parameters:
+        - name: orderId
+          in: path
+          required: true
+          description: Unique UUID of the order
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Details of a specific order
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+        '404':
+          description: Order not found
+
+    delete:
+      summary: Cancel an order
+      operationId: cancelOrder
+      description: Cancel a specific order by marking it as unpaid. Can only cancel orders that are not paid.
+      parameters:
+        - name: orderId
+          in: path
+          required: true
+          description: Unique UUID of the order to cancel
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Order canceled successfully
+        '404':
+          description: Order not found or already paid
+        '500':
+          description: Internal server error
+
+  /orders/archived/{orderId}:
+    get:
+      summary: Retrieve a specific archived order
+      operationId: getArchivedOrder
+      description: Gets the details of a specific archived order by its UUID.
+      parameters:
+        - name: orderId
+          in: path
+          required: true
+          description: Unique UUID of the archived order
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Details of the archived order
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+        '404':
+          description: Archived order not found
+
+
+components:
+  schemas:
+    Venue:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        metadata:
+          type: object
+          additionalProperties: true
+
+    Area:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        venueId:
+          type: string
+          format: uuid
+        name:
+          type: string
+        metadata:
+          type: object
+          additionalProperties: true
+
+    Seat:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        venueId:
+          type: string
+          format: uuid
+          description: Unique ID of the venue to which this seat belongs
+        areaId:
+          type: string
+          format: uuid
+          description: Unique ID of the area to which this seat belongs
+        name:
+          type: string
+        row:
+          type: integer
+        column:
+          type: integer
+        available:
+          type: boolean
+        metadata:
+          type: object
+          additionalProperties: true
+
+    Order:
+      type: object
+      required:
+        - seats
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique identifier of the order (UUID).
+        seats:
+          type: array
+          items:
+            type: string
+            format: uuid
+          description: An array of seat UUIDs booked in the order. (Required)
+        paid:
+          type: boolean
+          description: Indicates whether the order is paid (true) or unpaid (false).
+        timestamp:
+          type: string
+          format: date-time
+          description: Timestamp indicating when the order was created.
+

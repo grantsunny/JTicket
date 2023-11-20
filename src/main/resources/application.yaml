@@ -1,0 +1,10 @@
+spring:
+  datasource:
+#    url: jdbc:derby:memory:stoneticket;create=true
+    url: jdbc:derby:stoneticket;create=true
+    driverClassName: org.apache.derby.jdbc.EmbeddedDriver
+  sql:
+    init:
+      mode: embedded
+      schema-locations: classpath:database.sql
+      continue-on-error: true
