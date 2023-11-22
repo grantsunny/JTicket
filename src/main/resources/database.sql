@@ -27,3 +27,24 @@ CREATE TABLE TKT.Seat (
                       metadata CLOB,
                       FOREIGN KEY (areaId) REFERENCES TKT.Area(id)
 );
+
+CREATE TABLE TKT.Event (
+    id VARCHAR(36) PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    venueId VARCHAR(36),
+    startTime TIMESTAMP,
+    endTime TIMESTAMP,
+    metadata CLOB,  
+    FOREIGN KEY (venueId) REFERENCES TKT.Venue(id)
+);
+
+CREATE TABLE TKT.Order (
+    id VARCHAR(36) PRIMARY KEY,
+    eventId VARCHAR(36) NOT NULL,
+    orderTime TIMESTAMP,
+    metadata CLOB,
+    FOREIGN KEY (eventId) REFERENCES TKT.Event(id)
+);
+
+
+
