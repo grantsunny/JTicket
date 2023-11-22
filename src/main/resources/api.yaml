@@ -109,6 +109,29 @@ paths:
                 $ref: '#/components/schemas/Venue'
         '404':
           description: Event or venue not found
+
+  /events/{eventId}/orders:
+    get:
+      summary: Get all the orders of a given event
+      operationId: getEventOrders
+      parameters:
+        - name: eventId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: A list of orders
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Order'
+        '404':
+          description: Event not found
           
   /venues:
     get:
@@ -512,12 +535,17 @@ components:
     Order:
       type: object
       required:
+        - eventId
         - seats
       properties:
         id:
           type: string
           format: uuid
           description: Unique identifier of the order (UUID).
+        eventId:
+          type: string
+          format: uuid
+          description: Unique ID of the event booked in the order. (Required)          
         seats:
           type: array
           items:
