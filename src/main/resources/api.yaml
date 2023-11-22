@@ -5,7 +5,111 @@ info:
   version: 1.0.0
 
 paths:
+  /events:
+    get:
+      summary: Get a list of all events
+      operationId: listEvents
+      responses:
+        '200':
+          description: A list of events
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Event'
+    post:
+      summary: Create a new event
+      operationId: createEvent
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Event'
+      responses:
+        '201':
+          description: Event created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Event'
+        '400':
+          description: Invalid input
+        '409':
+          description: Venue is already booked for the selected time or venue not found
 
+  /events/{eventId}:
+    get:
+      summary: Get a specific event by UUID
+      operationId: getEventById
+      parameters:
+        - name: eventId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Event details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Event'
+        '404':
+          description: Event not found
+    patch:
+      summary: Associate a venue with an event
+      operationId: patchEventVenue
+      parameters:
+        - name: eventId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                venueId:
+                  type: string
+                  format: uuid
+      responses:
+        '200':
+          description: Venue associated with event successfully
+        '400':
+          description: Invalid input
+        '404':
+          description: Event not found
+        '409':
+          description: Venue is already booked for the selected time or venue not found
+
+  /events/{eventId}/venue:
+    get:
+      summary: Get the venue details for a specific event
+      operationId: getEventVenue
+      parameters:
+        - name: eventId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Venue details for the event
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Venue'
+        '404':
+          description: Event or venue not found
+          
   /venues:
     get:
       summary: List all venues
@@ -327,6 +431,31 @@ paths:
 
 components:
   schemas:
+    Event:
+      type: object
+      required:
+        - name
+        - startTime
+        - endTime      
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        venueId:
+          type: string
+          format: uuid
+        startTime:
+          type: string
+          format: date-time
+        endTime:
+          type: string
+          format: date-time
+        metadata:
+          type: object
+          additionalProperties: true  # Allows any set of properties
+  
     Venue:
       type: object
       properties:
