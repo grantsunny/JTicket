@@ -7,4 +7,9 @@ spring:
     init:
       mode: embedded
       schema-locations: classpath:database.sql
-      continue-on-error: true
+      continue-on-error: false
+  web:
+    resources:
+      static-locations: classpath:/static/
+  jersey:
+    application-path: /api/
