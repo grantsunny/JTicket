@@ -195,10 +195,10 @@ paths:
                 items:
                   $ref: '#/components/schemas/Area'
 
-  /venues/{venueId}/areas-layout:
+  /venues/{venueId}/svg:
     get:
       summary: Get areas layout in SVG format
-      operationId: getVenueAreasLayout
+      operationId: getVenueSvgLayout
       description: Retrieve details of a specific venue by its UUID.
       parameters:
         - name: venueId

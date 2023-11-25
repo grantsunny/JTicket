@@ -3,30 +3,32 @@ SET SCHEMA TKT;
 
 -- Create the Venue table
 CREATE TABLE TKT.Venues (
-                       id VARCHAR(36) PRIMARY KEY,
-                       name VARCHAR(255) NOT NULL,
-                       metadata CLOB
+                    id VARCHAR(36) PRIMARY KEY,
+                    name VARCHAR(255) NOT NULL,
+                    metadata CLOB,
+                    UNIQUE (name)
 );
 
 -- Create the Area table
 CREATE TABLE TKT.Areas (
-                      id VARCHAR(36) PRIMARY KEY,
-                      venueId VARCHAR(36) NOT NULL,
-                      name VARCHAR(255) NOT NULL,
-                      metadata CLOB,
-                      FOREIGN KEY (venueId) REFERENCES TKT.Venues(id)
+                    id VARCHAR(36) PRIMARY KEY,
+                    venueId VARCHAR(36) NOT NULL,
+                    name VARCHAR(255) NOT NULL,
+                    metadata CLOB,
+                    FOREIGN KEY (venueId) REFERENCES TKT.Venues(id),
+                    UNIQUE (venueId, name)
 );
 
 -- Create the Seat table
 CREATE TABLE TKT.Seats (
-                      id VARCHAR(36) PRIMARY KEY,
-                      areaId VARCHAR(36) NOT NULL,
-                      name VARCHAR(255) NOT NULL,
-                      row INT,
-                      col INT,
-                      available BOOLEAN,
-                      metadata CLOB,
-                      FOREIGN KEY (areaId) REFERENCES TKT.Areas(id)
+                    id VARCHAR(36) PRIMARY KEY,
+                    areaId VARCHAR(36) NOT NULL,
+                    row INT,
+                    col INT,
+                    available BOOLEAN,
+                    metadata CLOB,
+                    FOREIGN KEY (areaId) REFERENCES TKT.Areas(id),
+                    UNIQUE (areaId, row, col)
 );
 
 CREATE TABLE TKT.Events (
@@ -36,8 +38,26 @@ CREATE TABLE TKT.Events (
                     startTime TIMESTAMP,
                     endTime TIMESTAMP,
                     metadata CLOB,
-                    FOREIGN KEY (venueId) REFERENCES TKT.Venues(id)
+                    FOREIGN KEY (venueId) REFERENCES TKT.Venues(id),
+                    UNIQUE(name)
 );
+
+CREATE PROCEDURE TKT.RaiseException(IN error VARCHAR(100))
+    LANGUAGE JAVA
+    PARAMETER STYLE JAVA
+    NO SQL
+    EXTERNAL NAME 'com.stonematrix.ticket.persist.SpExceptionRaiser.error'
+;
+
+CREATE TRIGGER TKT.PreventEventTimeOverLap
+    NO CASCADE BEFORE INSERT ON TKT.Events
+REFERENCING NEW ROW AS newRow
+FOR EACH ROW MODE DB2SQL
+WHEN ((SELECT COUNT(*) FROM TKT.Events
+        WHERE venueId = newRow.venueId
+        AND NOT (startTime >= newRow.endTime OR endTime <= newRow.startTime)) > 0)
+CALL RaiseException('Event time overlapping encountered')
+;
 
 CREATE TABLE TKT.Orders (
                     id VARCHAR(36) PRIMARY KEY,
@@ -71,7 +91,7 @@ SELECT
               AND TKT.Orders.eventId = TKT.Events.Id
               AND TKT.Orders.paid = TRUE
         )
-            THEN TRUE
+        THEN TRUE
         ELSE FALSE
         END AS booked
 FROM
@@ -88,7 +108,7 @@ CREATE TABLE TKT.Prices (
                     FOREIGN KEY (eventId) REFERENCES TKT.Events(id)
 );
 
-CREATE TABLE TKT.PricesAssignments (
+CREATE TABLE TKT.PricesDistribution (
                     id VARCHAR(36) PRIMARY KEY,
                     priceId VARCHAR(36) NOT NULL,
                     seatId VARCHAR(36),
@@ -118,12 +138,12 @@ FROM
         INNER JOIN TKT.Venues ON TKT.Venues.id = TKT.Areas.venueId
         LEFT OUTER JOIN TKT.Events ON TKT.Events.venueId = TKT.Venues.id
 
-        LEFT JOIN TKT.PricesAssignments paSeat ON TKT.Seats.id = paSeat.seatId
-        LEFT JOIN TKT.Prices seatPrice ON paSeat.priceId = seatPrice.Id AND seatPrice.eventId = TKT.Events.id
+        LEFT JOIN TKT.PricesDistribution pdSeat ON TKT.Seats.id = pdSeat.seatId
+        LEFT JOIN TKT.Prices seatPrice ON pdSeat.priceId = seatPrice.Id AND seatPrice.eventId = TKT.Events.id
 
-        LEFT JOIN TKT.PricesAssignments paArea ON TKT.Areas.id = paArea.areaId
-        LEFT JOIN TKT.Prices areaPrice ON paArea.priceId = areaPrice.id AND areaPrice.eventId = TKT.Events.id
+        LEFT JOIN TKT.PricesDistribution pdArea ON TKT.Areas.id = pdArea.areaId
+        LEFT JOIN TKT.Prices areaPrice ON pdArea.priceId = areaPrice.id AND areaPrice.eventId = TKT.Events.id
 
-        LEFT JOIN TKT.PricesAssignments paVenue ON TKT.Venues.id = paVenue.venueId
-        LEFT JOIN TKT.Prices venuePrice ON paVenue.priceId = venuePrice.id AND venuePrice.eventId = TKT.Events.id
+        LEFT JOIN TKT.PricesDistribution pdVenue ON TKT.Venues.id = pdVenue.venueId
+        LEFT JOIN TKT.Prices venuePrice ON pdVenue.priceId = venuePrice.id AND venuePrice.eventId = TKT.Events.id
 ;

@@ -43,7 +43,8 @@ public class VenuesApiResource implements VenuesApi {
     }
 
     @Override
-    public File getVenueAreasLayout(UUID venueId) {
+    public File getVenueSvgLayout(UUID venueId) {
         return null;
     }
+
 }
