@@ -6,6 +6,7 @@ CREATE TABLE TKT.Venues (
                     id VARCHAR(36) PRIMARY KEY,
                     name VARCHAR(255) NOT NULL,
                     metadata CLOB,
+                    svg CLOB,
                     UNIQUE (name)
 );
 
@@ -53,9 +54,10 @@ CREATE TRIGGER TKT.PreventEventTimeOverLap
     NO CASCADE BEFORE INSERT ON TKT.Events
 REFERENCING NEW ROW AS newRow
 FOR EACH ROW MODE DB2SQL
-WHEN ((SELECT COUNT(*) FROM TKT.Events
+WHEN (EXISTS (
+        SELECT 1 FROM TKT.Events
         WHERE venueId = newRow.venueId
-        AND NOT (startTime >= newRow.endTime OR endTime <= newRow.startTime)) > 0)
+        AND NOT (startTime >= newRow.endTime OR endTime <= newRow.startTime)))
 CALL RaiseException('Event time overlapping encountered')
 ;
 
@@ -76,29 +78,6 @@ CREATE TABLE TKT.OrderSeats (
                     FOREIGN KEY (orderId) REFERENCES TKT.Orders(id),
                     FOREIGN KEY (seatId) REFERENCES TKT.Seats(id)
 );
-
-CREATE VIEW TKT.SeatsBooked AS
-SELECT
-    TKT.Seats.*,
-    TKT.Events.id AS eventId,
-    CASE
-        WHEN EXISTS (
-            SELECT 1
-            FROM TKT.OrderSeats
-                     INNER JOIN TKT.Orders ON
-                    TKT.Orders.id = TKT.OrderSeats.orderId
-            WHERE TKT.OrderSeats.seatId = TKT.Seats.Id
-              AND TKT.Orders.eventId = TKT.Events.Id
-              AND TKT.Orders.paid = TRUE
-        )
-        THEN TRUE
-        ELSE FALSE
-        END AS booked
-FROM
-    TKT.Seats
-        INNER JOIN TKT.Areas ON TKT.Seats.areaId = TKT.Areas.id
-        LEFT OUTER JOIN TKT.Events ON TKT.Events.venueId = TKT.Areas.venueId
-;
 
 CREATE TABLE TKT.Prices (
                     id VARCHAR(36) PRIMARY KEY,
@@ -123,20 +102,38 @@ CREATE TABLE TKT.PricesDistribution (
                     UNIQUE(priceId, venueId)
 );
 
-CREATE VIEW TKT.SeatPrices AS
+CREATE VIEW TKT.SeatDetails AS
+    SELECT TKT.Seats.id, areaId, TKT.Areas.venueId, row, col, available, TKT.Seats.metadata
+    FROM TKT.Seats
+    INNER JOIN TKT.Areas ON TKT.Areas.id = TKT.Seats.areaId
+;
+
+CREATE VIEW TKT.SeatAdvanced AS
 SELECT
-    TKT.Seats.*,
+    TKT.Seats.id, TKT.Seats.areaId, TKT.Areas.venueId, row, col, available, TKT.Seats.metadata,
     TKT.Events.id AS eventId,
     COALESCE(
             seatPrice.price,
             areaPrice.price,
             venuePrice.price
-    ) AS price
+    ) AS price,
+    CASE WHEN EXISTS (
+        SELECT 1
+        FROM TKT.OrderSeats
+                INNER JOIN TKT.Orders ON
+                TKT.Orders.id = TKT.OrderSeats.orderId
+        WHERE TKT.OrderSeats.seatId = TKT.Seats.Id
+          AND TKT.Orders.eventId = TKT.Events.Id
+          AND TKT.Orders.paid = TRUE
+    )
+    THEN TRUE
+    ELSE FALSE
+    END AS booked
 FROM
     TKT.Seats
         INNER JOIN TKT.Areas ON TKT.Areas.Id = TKT.Seats.areaId
         INNER JOIN TKT.Venues ON TKT.Venues.id = TKT.Areas.venueId
-        LEFT OUTER JOIN TKT.Events ON TKT.Events.venueId = TKT.Venues.id
+        LEFT JOIN TKT.Events ON TKT.Events.venueId = TKT.Venues.id
 
         LEFT JOIN TKT.PricesDistribution pdSeat ON TKT.Seats.id = pdSeat.seatId
         LEFT JOIN TKT.Prices seatPrice ON pdSeat.priceId = seatPrice.Id AND seatPrice.eventId = TKT.Events.id

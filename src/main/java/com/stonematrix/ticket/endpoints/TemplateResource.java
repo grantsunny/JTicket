@@ -1,13 +1,14 @@
 package com.stonematrix.ticket.endpoints;
 
 import com.stonematrix.ticket.api.VenuesApi;
+import com.stonematrix.ticket.api.model.Area;
+import com.stonematrix.ticket.api.model.Seat;
 import com.stonematrix.ticket.api.model.Venue;
+import com.stonematrix.ticket.excel.ExcelTemplateHelper;
 import com.stonematrix.ticket.persist.JdbcHelper;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.*;
-import org.apache.poi.ss.usermodel.Cell;
-import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
@@ -17,15 +18,18 @@ import org.glassfish.jersey.media.multipart.FormDataContentDisposition;
 import java.io.IOException;
 import java.io.InputStream;
 import java.sql.SQLException;
-import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 
 @Path("/template")
 public class TemplateResource {
 
     @Inject
     private JdbcHelper jdbc;
+
+    @Inject
+    private ExcelTemplateHelper templateHelper;
 
     @Context
     private UriInfo uriInfo;
@@ -61,46 +65,44 @@ public class TemplateResource {
         return Response.created(uriBuilder.build()).build();
     }
 
+
     private Venue processSpreadsheetAndCreateVenue(InputStream inputStream) {
-        // Implement the logic to process the spreadsheet and create a venue
-        // Return the created Venue object
 
         try (Workbook workbook = new XSSFWorkbook(inputStream)) {
             Sheet venueSheet = workbook.getSheet("venue");
-            String venueName = null;
-            Map<String, Object> venueMetadata = new HashMap<>();
+            if (venueSheet == null)
+                throw new BadRequestException("Specified sheet 'venue' not found in the uploaded template");
 
-            // Extracting the venue name from the first row
-            Row firstRow = venueSheet.getRow(0);
-            if (firstRow != null) {
-                Cell nameCell = firstRow.getCell(1); // Assuming the name is in the second column
-                venueName = nameCell.getStringCellValue();
+            Sheet venueLayoutSheet = workbook.getSheet(ExcelTemplateHelper.SHEET_VENUE_LAYOUT);
+            if (venueLayoutSheet == null)
+                throw new BadRequestException("Specified sheet '" +  ExcelTemplateHelper.SHEET_VENUE_LAYOUT + "' not found in the uploaded template");
+
+            Venue venue = templateHelper.parseVenue(venueSheet);
+            Map<String, Area> areas = templateHelper.parseAreas(workbook, venue.getId());
+            String svg = templateHelper.parseVenueSvg(venueLayoutSheet, areas);
+
+            jdbc.saveVenue(venue, svg);
+            jdbc.saveAreas(new LinkedList<>(areas.values()));
+
+            for (String areaIndex: areas.keySet()) {
+                Area area = areas.get(areaIndex);
+
+                List<Seat> seats = templateHelper.parseSeats(workbook, areaIndex, area);
+                jdbc.saveSeats(seats);
             }
 
-            // Extracting metadata from the subsequent rows
-            for (Row row : venueSheet) {
-                if (row.getRowNum() == 0) continue; // Skip the first row
-
-                Cell keyCell = row.getCell(0);
-                Cell valueCell = row.getCell(1);
-
-                if (keyCell != null && valueCell != null) {
-                    String key = keyCell.getStringCellValue();
-                    String value = valueCell.getStringCellValue();
-                    venueMetadata.put(key, value);
-                }
-            }
-
-            Venue venue = new Venue()
-                    .id(UUID.randomUUID())
-                    .name(venueName)
-                    .metadata(venueMetadata);
-
-            jdbc.saveVenue(venue);
             return venue;
-
-        } catch (IOException | SQLException e) {
+        } catch (IOException e) {
             throw new BadRequestException(e.getMessage());
+        } catch (SQLException e) {
+            switch (e.getSQLState()) {
+                case "23000":
+                case "23505":
+                throw new ClientErrorException("Conflict occurred", Response.Status.CONFLICT);
+            default:
+                throw new BadRequestException(e.getMessage());
+            }
         }
+
     }
 }
