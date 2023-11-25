@@ -63,7 +63,7 @@ public class ExcelTemplateHelper {
 
     public String parseVenueSvg(Sheet sheet, Map<String, Area> areas) {
         StringBuilder svgContent = new StringBuilder();
-        svgContent.append("<svg width=\"100%\" height=\"100%\" xmlns=\"http://www.w3.org/2000/svg\">\n");
+        svgContent.append("<svg preserveAspectRatio=\"xMidYMid meet\" style=\"display: block; max-width: 100%; height: auto; margin: auto;\" xmlns=\"http://www.w3.org/2000/svg\">\n");
 
         int cellWidth = 20;
         int cellHeight = 20;

@@ -1,0 +1,89 @@
+body {
+    font-family: Arial, sans-serif;
+    text-align: center;
+    background-color: #f4f4f4;
+    color: #333;
+    margin: 0;
+    padding: 0;
+}
+
+h1 {
+    color: #0066cc;
+}
+
+form {
+    margin-top: 20px;
+}
+
+button {
+    background-color: #0066cc;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    text-transform: uppercase;
+    margin-top: 10px;
+    cursor: pointer;
+}
+
+button:hover {
+    background-color: #0056b3;
+}
+
+.content-container {
+    display: flex;
+    justify-content: center;
+    padding: 20px;
+}
+
+.radio-container {
+    flex: 1;
+    padding-right: 20px; /* Space between radio buttons and SVG */
+}
+
+.svg-container {
+    flex: 2;
+    text-align: center;
+}
+
+.tooltip {
+    position: absolute;
+    background-color: #fff;
+    border: 1px solid #000;
+    padding: 5px;
+    z-index: 10;
+    pointer-events: none; /* This ensures the tooltip doesn't interfere with other mouse events */
+}
+
+#seatsContainer td, .svg-container svg rect {
+    cursor: pointer; /* Change cursor to a hand pointer */
+}
+
+.seats-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.seats-table td {
+    border: 1px solid #333;
+    padding: 8px;
+    text-align: center;
+    min-width: 50px;
+}
+
+.available-seat {
+    background-color: #c8e6c9;
+}
+
+.unavailable-seat {
+    background-color: #ffcdd2;
+}
+
+.seats-table td[data-selected="true"] {
+    border: 3px solid red;
+}
+
+.seats-table td[data-selected="false"] {
+    border: 1px solid #333;
+}
+
+
