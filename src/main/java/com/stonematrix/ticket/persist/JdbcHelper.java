@@ -2,6 +2,7 @@ package com.stonematrix.ticket.persist;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.stonematrix.ticket.api.model.Area;
+import com.stonematrix.ticket.api.model.Event;
 import com.stonematrix.ticket.api.model.Seat;
 import com.stonematrix.ticket.api.model.Venue;
 import org.springframework.stereotype.Component;
@@ -10,11 +11,9 @@ import jakarta.inject.Inject;
 import javax.sql.DataSource;
 import java.io.*;
 import java.nio.charset.StandardCharsets;
-import java.sql.ResultSet;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.SQLException;
+import java.sql.*;
 import java.util.*;
+import java.util.Date;
 
 @Component
 public class JdbcHelper {
@@ -49,6 +48,39 @@ public class JdbcHelper {
             }
             return venues;
         }
+    }
+
+    public Venue loadVenueByEvent(UUID eventId) throws SQLException {
+
+        String sql = "SELECT venueId, TKT.Venues.name, TKT.Venues.metadata " +
+                "FROM TKT.Events " +
+                "INNER JOIN TKT.Venues ON venueId = TKT.Venues.id " +
+                "AND TKT.Events.id = ?";
+
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            pstmt.setString(1, eventId.toString());
+            try (ResultSet rs = pstmt.executeQuery()) {
+                if (rs.next()) {
+                    String venueId = rs.getString("venueId");
+                    String name = rs.getString("name");
+                    Map<String, Object> metadata;
+                    try {
+                        metadata = new ObjectMapper().readValue(
+                                rs.getString("metadata"),
+                                Map.class);
+                    } catch (JsonProcessingException ex) {
+                        metadata = new HashMap<>();
+                    }
+
+                    return new Venue().id(UUID.fromString(venueId))
+                            .name(name)
+                            .metadata(metadata);
+                }
+            }
+        }
+        return null;
     }
 
     public Venue loadVenue(UUID venueId) throws SQLException {
@@ -379,5 +411,129 @@ public class JdbcHelper {
             }
         }
         return null;
+    }
+
+    public void saveEvent(Event event) throws SQLException {
+
+        String sql = "INSERT INTO TKT.Events (id, name, venueId, startTime, endTime, metadata) " +
+                "VALUES (?, ?, ?, ?, ?, ?)";
+
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            pstmt.setString(1, event.getId().toString());
+            pstmt.setString(2, event.getName());
+
+            UUID venueId;
+            if ((venueId = event.getVenueId()) != null)
+                pstmt.setString(3, venueId.toString());
+            else
+                pstmt.setNull(3, Types.VARCHAR);
+
+            pstmt.setTimestamp(4, new Timestamp(event.getStartTime().getTime()));
+            pstmt.setTimestamp(5, new Timestamp(event.getEndTime().getTime()));
+
+            String metadataJson;
+            try {
+                metadataJson = new ObjectMapper().writeValueAsString(event.getMetadata());
+            } catch (JsonProcessingException e) {
+                metadataJson = "{}";
+            }
+            pstmt.setString(6, metadataJson);
+            pstmt.executeUpdate();
+        }
+    }
+
+    public Event loadEvent(UUID eventId) throws SQLException {
+        String sql = "SELECT venueId, name, startTime, endTime, metadata FROM TKT.Events WHERE id = ?";
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            if (eventId == null)
+                throw new SQLException("Specified UUID eventId is unexpected null");
+
+            pstmt.setString(1, eventId.toString());
+            try (ResultSet rs = pstmt.executeQuery()) {
+                if (rs.next()) {
+                    String venueId = rs.getString("venueId");
+                    String name = rs.getString("name");
+
+                    Date startTime = rs.getTimestamp("startTime");
+                    Date endTime = rs.getTimestamp("endTime");
+
+                    Map<String, Object> metadata;
+                    try {
+                        metadata = new ObjectMapper().readValue(
+                                rs.getString("metadata"),
+                                Map.class);
+                    } catch (JsonProcessingException ex) {
+                        metadata = new HashMap<>();
+                    }
+
+                    return new Event()
+                            .id(eventId)
+                            .venueId(UUID.fromString(venueId))
+                            .name(name)
+                            .startTime(startTime)
+                            .endTime(endTime)
+                            .metadata(metadata);
+                }
+            }
+        }
+        return null;
+    }
+
+    public List<Event> loadAllEvents() throws SQLException {
+
+        List<Event> events = new LinkedList<>();
+        String sql = "SELECT id, venueId, name, startTime, endTime, metadata FROM TKT.Events";
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            try (ResultSet rs = pstmt.executeQuery()) {
+                while (rs.next()) {
+                    String id= rs.getString("id");
+                    String venueId = rs.getString("venueId");
+                    String name = rs.getString("name");
+
+                    Date startTime = rs.getTimestamp("startTime");
+                    Date endTime = rs.getTimestamp("endTime");
+
+                    Map<String, Object> metadata;
+                    try {
+                        metadata = new ObjectMapper().readValue(
+                                rs.getString("metadata"),
+                                Map.class);
+                    } catch (JsonProcessingException ex) {
+                        metadata = new HashMap<>();
+                    }
+
+                    events.add(new Event()
+                            .id(UUID.fromString(id))
+                            .venueId(UUID.fromString(venueId))
+                            .name(name)
+                            .startTime(startTime)
+                            .endTime(endTime)
+                            .metadata(metadata));
+                }
+            }
+        }
+        return events;
+    }
+
+
+    public void updateVenueOfEvent(UUID eventId, UUID venueId) throws SQLException {
+
+        String sql = "UPDATE TKT.Events SET venueId = ? WHERE id = ?";
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            pstmt.setString(1, venueId.toString());
+            pstmt.setString(2, eventId.toString());
+            pstmt.executeUpdate();
+
+            if (pstmt.getUpdateCount() < 1)
+                throw new SQLException("Not successfully modified", "304");
+        }
     }
 }

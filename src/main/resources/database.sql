@@ -36,8 +36,8 @@ CREATE TABLE TKT.Events (
                     id VARCHAR(36) PRIMARY KEY,
                     name VARCHAR(255) NOT NULL,
                     venueId VARCHAR(36),
-                    startTime TIMESTAMP,
-                    endTime TIMESTAMP,
+                    startTime TIMESTAMP NOT NULL,
+                    endTime TIMESTAMP NOT NULL,
                     metadata CLOB,
                     FOREIGN KEY (venueId) REFERENCES TKT.Venues(id),
                     UNIQUE(name)

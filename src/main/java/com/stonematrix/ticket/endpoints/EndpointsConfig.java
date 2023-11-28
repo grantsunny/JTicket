@@ -7,10 +7,11 @@ import org.springframework.stereotype.Component;
 public class EndpointsConfig extends ResourceConfig {
     public EndpointsConfig() {
         registerClasses(
+                DateObjectMapperProvider.class,
                 TemplateResource.class,
+                EventsApiResource.class,
                 VenuesApiResource.class,
                 SeatsApiResource.class,
                 OrdersApiResource.class);
-
     }
 }

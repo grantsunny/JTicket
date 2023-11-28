@@ -30,10 +30,11 @@ paths:
       responses:
         '201':
           description: Event created successfully
-          content:
-            application/json:
+          headers:
+            Location:
+              description: Location of the created resource
               schema:
-                $ref: '#/components/schemas/Event'
+                type: string
         '400':
           description: Invalid input
         '409':
@@ -81,7 +82,7 @@ paths:
                   type: string
                   format: uuid
       responses:
-        '200':
+        '204':
           description: Venue associated with event successfully
         '400':
           description: Invalid input
@@ -93,7 +94,7 @@ paths:
   /events/{eventId}/venue:
     get:
       summary: Get the venue details for a specific event
-      operationId: getEventVenue
+      operationId: getVenueOfEvent
       parameters:
         - name: eventId
           in: path

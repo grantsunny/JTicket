@@ -1,18 +1,14 @@
 package com.stonematrix.ticket.endpoints;
 
 import com.stonematrix.ticket.api.VenuesApi;
-import com.stonematrix.ticket.api.model.Area;
-import com.stonematrix.ticket.api.model.Seat;
-import com.stonematrix.ticket.api.model.Venue;
 import com.stonematrix.ticket.persist.JdbcHelper;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.InternalServerErrorException;
+import jakarta.ws.rs.core.Response;
 
-import java.io.File;
 import java.io.IOException;
 import java.sql.SQLException;
-import java.util.List;
 import java.util.UUID;
 
 public class VenuesApiResource implements VenuesApi {
@@ -21,58 +17,57 @@ public class VenuesApiResource implements VenuesApi {
     private JdbcHelper jdbc;
 
     @Override
-    public List<Area> getAllAreasInVenue(UUID venueId) {
+    public Response getAllAreasInVenue(UUID venueId) {
         try {
-            return jdbc.loadAreas(venueId.toString());
+            return Response.ok(jdbc.loadAreas(venueId.toString())).build();
         } catch (SQLException e) {
             throw new BadRequestException(e.getMessage());
         }
     }
 
     @Override
-    public List<Seat> getAllSeatsInAreaOfVenue(UUID venueId, UUID areaId) {
+    public Response getAllSeatsInAreaOfVenue(UUID venueId, UUID areaId) {
 
         try {
-            return jdbc.loadSeats(venueId, areaId);
+            return Response.ok(jdbc.loadSeats(venueId, areaId)).build();
         } catch (SQLException e) {
             throw new InternalServerErrorException(e.getMessage());
         }
     }
 
     @Override
-    public List<Venue> getAllVenues() {
+    public Response getAllVenues() {
         try {
-            return jdbc.loadAllVenues();
+            return Response.ok(jdbc.loadAllVenues()).build();
         } catch (SQLException e) {
             throw new InternalServerErrorException(e.getMessage());
         }
     }
 
     @Override
-    public Venue getVenue(UUID venueId) {
+    public Response getVenue(UUID venueId) {
        try {
-            return jdbc.loadVenue(venueId);
+            return Response.ok(jdbc.loadVenue(venueId)).build();
         } catch (SQLException e) {
             throw new BadRequestException(e.getMessage());
         }
     }
 
     @Override
-    public Area getAreaInVenue(UUID venueId, UUID areaId) {
+    public Response getAreaInVenue(UUID venueId, UUID areaId) {
         try {
-            return jdbc.loadArea(areaId.toString());
+            return Response.ok(jdbc.loadArea(areaId.toString())).build();
         } catch (IOException | SQLException e) {
             throw new BadRequestException(e.getMessage());
         }
     }
 
     @Override
-    public File getVenueSvgLayout(UUID venueId) {
+    public Response getVenueSvgLayout(UUID venueId) {
         try {
-            return jdbc.loadVenueSvg(venueId);
+            return Response.ok(jdbc.loadVenueSvg(venueId)).build();
         } catch (SQLException e) {
             throw new BadRequestException(e.getMessage());
         }
     }
-
 }

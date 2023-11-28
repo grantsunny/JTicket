@@ -116,6 +116,8 @@
                                 <useJakartaEe>true</useJakartaEe>
                                 <apiPackage>com.stonematrix.ticket.api</apiPackage>
                                 <modelPackage>com.stonematrix.ticket.api.model</modelPackage>
+                                <returnResponse>true</returnResponse>
+                                <hideGenerationTimestamp>true</hideGenerationTimestamp>
                                 <interfaceOnly>true</interfaceOnly>
                                 <generatePom>false</generatePom>
                                 <useSwaggerAnnotations>false</useSwaggerAnnotations>
