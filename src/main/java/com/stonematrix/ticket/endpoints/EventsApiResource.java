@@ -26,17 +26,53 @@ public class EventsApiResource implements EventsApi {
 
 
     @Override
-    public Response createEvent(Event event) {
-
-        event = event.id(UUID.randomUUID());
+    public Response listTicketPricesOfEvent(UUID eventId) {
         try {
-            jdbc.saveEvent(event);
-            UriBuilder uriBuilder =
-                    uriInfo.getBaseUriBuilder().
-                            path(EventsApi.class).
-                            path(String.valueOf(event.getId()));
+            List<Price> prices = jdbc.loadPrices(eventId);
+            if ((prices == null) || (prices.isEmpty()))
+                return Response.status(Response.Status.NOT_FOUND).build();
+            else
+                return Response.ok(prices).build();
+        } catch (SQLException e) {
+            throw new BadRequestException(e);
+        }
+    }
 
-            return Response.created(uriBuilder.build()).build();
+    @Override
+    public Response getSeatLevelPricingOfEvent(UUID eventId, UUID seatId) {
+        try {
+            Price price = jdbc.loadSeatLevelPricingOfEvent(eventId, seatId);
+            if (price == null)
+                return Response.status(Response.Status.NOT_FOUND).build();
+            else
+                return Response.ok(price).build();
+        } catch (SQLException e) {
+            throw new BadRequestException(e);
+        }
+    }
+
+    @Override
+    public Response getTicketPriceOfEvent(UUID eventId, UUID priceId) {
+        try {
+            Price price = jdbc.loadTicketPriceOfEvent(eventId, priceId);
+            if (price == null)
+                return Response.status(Response.Status.NOT_FOUND).build();
+            else
+                return Response.ok(price).build();
+        } catch (SQLException e) {
+            throw new BadRequestException(e);
+        }
+    }
+
+
+    @Override
+    public Response getSeatInEvent(UUID eventId, UUID seatId) {
+        try {
+            Seat seat = jdbc.loadSeatInEvent(eventId, seatId);
+            if (seat == null)
+                return Response.status(Response.Status.NOT_FOUND).build();
+            else
+                return Response.ok(seat).build();
         } catch (SQLException e) {
             throw new BadRequestException(e);
         }
@@ -44,17 +80,39 @@ public class EventsApiResource implements EventsApi {
 
     @Override
     public Response deleteTicketPriceOfEvent(UUID eventId, UUID priceId) {
-        return null;
+        try {
+            jdbc.deleteTicketPriceOfEvent(eventId, priceId);
+            return Response.status(Response.Status.NO_CONTENT).build();
+
+        } catch (SQLException e) {
+            throw new BadRequestException(e);
+        }
     }
 
     @Override
     public Response getAllAreasInEvent(UUID eventId) {
-        return null;
+        try {
+            List<Area> areas = jdbc.loadAreasInEvent(eventId);
+            if ((areas == null) || (areas.isEmpty()))
+                return Response.status(Response.Status.NOT_FOUND).build();
+            else
+                return Response.ok(areas).build();
+        } catch (SQLException e) {
+            throw new BadRequestException(e);
+        }
     }
 
     @Override
     public Response getAllSeatsInAreaOfEvent(UUID eventId, UUID areaId) {
-        return null;
+        try {
+            List<Seat> seats = jdbc.loadSeatsInAreaOfEvent(eventId, areaId);
+            if ((seats == null) || (seats.isEmpty()))
+                return Response.status(Response.Status.NOT_FOUND).build();
+            else
+                return Response.ok(seats).build();
+        } catch (SQLException e) {
+            throw new BadRequestException(e);
+        }
     }
 
     @Override
@@ -72,68 +130,11 @@ public class EventsApiResource implements EventsApi {
         return null;
     }
 
-
     @Override
-    public Response getEventById(UUID eventId) {
-        try {
-            Event event = jdbc.loadEvent(eventId);
-            if (event == null)
-                return Response.status(Response.Status.NOT_FOUND).build();
-            else
-                return Response.ok(event).build();
-        } catch (SQLException e) {
-            throw new BadRequestException(e);
-        }
-    }
-
-    @Override
-    public Response getEventOrders(UUID eventId) {
+    public Response creatTicketPriceOfEvent(UUID eventId, Price price) {
         return null;
     }
 
-    @Override
-    public Response getSeatInEvent(UUID eventId, UUID seatId) {
-        return null;
-    }
-
-    @Override
-    public Response getSeatLevelPricingOfEvent(UUID eventId, UUID seatId) {
-        return null;
-    }
-
-    @Override
-    public Response getTicketPriceOfEvent(UUID eventId, UUID priceId) {
-        return null;
-    }
-
-    @Override
-    public Response listEvents() {
-        try {
-            List<Event> events = jdbc.loadAllEvents();
-            return Response.ok(events).build();
-        } catch (SQLException e) {
-            throw new BadRequestException(e);
-        }
-    }
-
-    @Override
-    public Response listTicketPricesOfEvent(UUID eventId) {
-        return null;
-    }
-
-
-    @Override
-    public Response getVenueOfEvent(UUID eventId) {
-        try {
-            Venue venue = jdbc.loadVenueByEvent(eventId);
-            if (venue == null)
-                return Response.status(Response.Status.NOT_FOUND).build();
-            else
-                return Response.ok(venue).build();
-        } catch (SQLException e) {
-            throw new BadRequestException(e);
-        }
-    }
 
     @Override
     public Response assignDefaultPricingOfEvent(UUID eventId, LinkPrice linkPrice) {
@@ -148,6 +149,67 @@ public class EventsApiResource implements EventsApi {
     @Override
     public Response assignVenueLevelPricingOfEvent(UUID eventId, UUID areaId, LinkPrice linkPrice) {
         return null;
+    }
+
+
+    @Override
+    public Response getEventOrders(UUID eventId) {
+        return null;
+    }
+
+    @Override
+    public Response createEvent(Event event) {
+
+        event = event.id(UUID.randomUUID());
+        try {
+            jdbc.saveEvent(event);
+            UriBuilder uriBuilder =
+                    uriInfo.getBaseUriBuilder().
+                            path(EventsApi.class).
+                            path(String.valueOf(event.getId()));
+
+            return Response.created(uriBuilder.build()).build();
+        } catch (SQLException e) {
+            throw new BadRequestException(e);
+        }
+    }
+
+    @Override
+    public Response getEventById(UUID eventId) {
+        try {
+            Event event = jdbc.loadEvent(eventId);
+            if (event == null)
+                return Response.status(Response.Status.NOT_FOUND).build();
+            else
+                return Response.ok(event).build();
+        } catch (SQLException e) {
+            throw new BadRequestException(e);
+        }
+    }
+
+
+    @Override
+    public Response listEvents() {
+        try {
+            List<Event> events = jdbc.loadAllEvents();
+            return Response.ok(events).build();
+        } catch (SQLException e) {
+            throw new BadRequestException(e);
+        }
+    }
+
+
+    @Override
+    public Response getVenueOfEvent(UUID eventId) {
+        try {
+            Venue venue = jdbc.loadVenueByEvent(eventId);
+            if (venue == null)
+                return Response.status(Response.Status.NOT_FOUND).build();
+            else
+                return Response.ok(venue).build();
+        } catch (SQLException e) {
+            throw new BadRequestException(e);
+        }
     }
 
     @Override
@@ -167,10 +229,5 @@ public class EventsApiResource implements EventsApi {
                     throw new BadRequestException(e);
             }
         }
-    }
-
-    @Override
-    public Response creatTicketPriceOfEvent(UUID eventId, Price price) {
-        return null;
     }
 }

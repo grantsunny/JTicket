@@ -944,6 +944,12 @@ components:
 
     Seat:
       type: object
+      required:
+        - areaId
+        - name
+        - row
+        - column
+        - available
       properties:
         id:
           type: string
@@ -964,6 +970,10 @@ components:
           type: integer
         available:
           type: boolean
+        booked:
+          type: boolean
+        price:
+          type: integer
         metadata:
           type: object
           additionalProperties: true

@@ -1,15 +1,13 @@
 package com.stonematrix.ticket.persist;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.stonematrix.ticket.api.model.Area;
-import com.stonematrix.ticket.api.model.Event;
-import com.stonematrix.ticket.api.model.Seat;
-import com.stonematrix.ticket.api.model.Venue;
+import com.stonematrix.ticket.api.model.*;
 import org.springframework.stereotype.Component;
 
 import jakarta.inject.Inject;
 import javax.sql.DataSource;
 import java.io.*;
+import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.sql.*;
 import java.util.*;
@@ -20,6 +18,18 @@ public class JdbcHelper {
 
     @Inject
     private DataSource dataSource;
+
+    private Map<String, Object> parseMetadata(String rawMetadata) {
+        Map<String, Object> metadata;
+        try {
+            metadata = new ObjectMapper().readValue(
+                    rawMetadata,
+                    Map.class);
+        } catch (JsonProcessingException ex) {
+            metadata = new HashMap<>();
+        }
+        return metadata;
+    }
 
     public List<Venue> loadAllVenues() throws SQLException {
 
@@ -535,5 +545,197 @@ public class JdbcHelper {
             if (pstmt.getUpdateCount() < 1)
                 throw new SQLException("Not successfully modified", "304");
         }
+    }
+
+    public List<Price> loadPrices(UUID eventId) throws SQLException {
+        String sql = "SELECT id, name, price FROM TKT.Prices Where eventId = ?";
+
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            pstmt.setString(1, eventId.toString());
+            try (ResultSet rs = pstmt.executeQuery()) {
+                List<Price> prices = new LinkedList<>();
+                while (rs.next()) {
+                    String id = rs.getString("id");
+                    String name = rs.getString("name");
+                    BigDecimal price = rs.getBigDecimal("price");
+
+                    prices.add(new Price().id(UUID.fromString(id))
+                            .name(name)
+                            .eventId(eventId)
+                            .price((price == null) ? null : price.multiply(BigDecimal.valueOf(100L)).intValue()));
+                }
+                return prices;
+            }
+        }
+    }
+
+    public Price loadSeatLevelPricingOfEvent(UUID eventId, UUID seatId) throws SQLException {
+        String sql =
+                "SELECT TKT.Prices.id, name, price FROM TKT.PricesDistribution " +
+                "INNER JOIN TKT.Prices ON TKT.Prices.id = TKT.PricesDistribution.priceId " +
+                "AND eventId = ? " +
+                "AND seatId = ?";
+
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            pstmt.setString(1, eventId.toString());
+            pstmt.setString(2, seatId.toString());
+
+            try (ResultSet rs = pstmt.executeQuery()) {
+                if (rs.next()) {
+                    String id = rs.getString("id");
+                    String name = rs.getString("name");
+                    BigDecimal price = rs.getBigDecimal("price");
+
+                    return new Price().id(UUID.fromString(id))
+                            .name(name)
+                            .eventId(eventId)
+                            .price((price == null) ? null : price.multiply(BigDecimal.valueOf(100L)).intValue());
+                }
+                return null;
+            }
+        }
+    }
+
+    public Price loadTicketPriceOfEvent(UUID eventId, UUID priceId) throws SQLException {
+        String sql =
+                "SELECT name, price FROM TKT.Prices WHERE id = ? AND eventId = ?";
+
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            pstmt.setString(1, priceId.toString());
+            pstmt.setString(2, eventId.toString());
+
+            try (ResultSet rs = pstmt.executeQuery()) {
+                if (rs.next()) {
+                    String id = priceId.toString();
+                    String name = rs.getString("name");
+                    BigDecimal price = rs.getBigDecimal("price");
+
+                    return new Price().id(UUID.fromString(id))
+                            .eventId(eventId)
+                            .name(name)
+                            .price((price == null) ? null : price.multiply(BigDecimal.valueOf(100L)).intValue());
+                }
+                return null;
+            }
+        }
+    }
+
+    public Seat loadSeatInEvent(UUID eventId, UUID seatId) throws SQLException {
+        String sql =
+                "SELECT row, col, available, metadata, price, booked FROM " +
+                        "TKT.SeatAdvanced WHERE id = ? AND eventId = ?";
+
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            pstmt.setString(1, seatId.toString());
+            pstmt.setString(2, eventId.toString());
+
+            try (ResultSet rs = pstmt.executeQuery()) {
+                if (rs.next()) {
+
+                    int row = rs.getInt("row");
+                    int col = rs.getInt("col");
+                    boolean available = rs.getBoolean("available");
+                    boolean booked = rs.getBoolean("booked");
+                    BigDecimal price = rs.getBigDecimal("price");
+                    String metadata = rs.getString("metadata");
+
+                    return new Seat().id(seatId)
+                            .row(row)
+                            .column(col)
+                            .available(available)
+                            .booked(booked)
+                            .price((price == null) ? null : price.multiply(BigDecimal.valueOf(100L)).intValue())
+                            .metadata(parseMetadata(metadata));
+                }
+                return null;
+            }
+        }
+    }
+
+    public void deleteTicketPriceOfEvent(UUID eventId, UUID priceId) throws SQLException {
+        String sql = "DELETE FROM TKT.Prices WHERE id = ? AND eventId = ?";
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            pstmt.setString(1, priceId.toString());
+            pstmt.setString(2, eventId.toString());
+            pstmt.executeUpdate();
+
+            if (pstmt.getUpdateCount() < 1)
+                throw new SQLException("Not successfully deleted", "304");
+        }
+    }
+
+    public List<Area> loadAreasInEvent(UUID eventId) throws SQLException {
+        String sql = "SELECT id, venueId, name, metadata FROM TKT.Areas " +
+                "INNER JOIN TKT.Venues ON TKT.Areas.venueId = TKT.Venues.id " +
+                "INNER JOIN TKT.Events ON TKT.Events.venueId = TKT.Venues.id " +
+                "AND TKT.Events.id = ?";
+
+        List<Area> areas = new LinkedList<>();
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            pstmt.setString(1, eventId.toString());
+            try (ResultSet rs = pstmt.executeQuery()) {
+                while (rs.next()) {
+                    String id = rs.getString("id");
+                    String name = rs.getString("name");
+                    String venueId = rs.getString("venueId");
+
+                    Map<String, Object> metadata = parseMetadata(rs.getString("metadata"));
+                    areas.add(new Area().id(UUID.fromString(id))
+                            .name(name)
+                            .venueId(UUID.fromString(venueId))
+                            .metadata(metadata));
+                }
+            }
+        }
+        return areas;
+    }
+
+    public List<Seat> loadSeatsInAreaOfEvent(UUID eventId, UUID areaId) throws SQLException {
+
+        String sql =
+                "SELECT id, row, col, venueId, available, metadata, price, booked FROM " +
+                "TKT.SeatAdvanced WHERE eventId = ? AND areaId = ?";
+
+        List<Seat> seats = new LinkedList<>();
+
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            pstmt.setString(1, eventId.toString());
+            pstmt.setString(2, areaId.toString());
+
+            try (ResultSet rs = pstmt.executeQuery()) {
+                while (rs.next()) {
+                    String id = rs.getString("id");
+                    int row = rs.getInt("row");
+                    int col = rs.getInt("col");
+                    boolean available = rs.getBoolean("available");
+                    boolean booked = rs.getBoolean("booked");
+                    BigDecimal price = rs.getBigDecimal("price");
+                    String metadata = rs.getString("metadata");
+
+                    seats.add(new Seat().id(UUID.fromString(id))
+                            .row(row)
+                            .column(col)
+                            .available(available)
+                            .booked(booked)
+                            .price((price == null) ? null : price.multiply(BigDecimal.valueOf(100L)).intValue())
+                            .metadata(parseMetadata(metadata)));
+                }
+            }
+        }
+        return seats;
     }
 }
