@@ -62,7 +62,7 @@ paths:
           description: Event not found
     patch:
       summary: Link a venue with an event
-      operationId: linkEventVenue
+      operationId: assignVenueToEvent
       parameters:
         - name: eventId
           in: path
@@ -76,9 +76,9 @@ paths:
           application/json:
             schema:
               type: object
-              title: linkEvent
+              title: linkVenue
               properties:
-                venueId:
+                id:
                   type: string
                   format: uuid
       responses:
@@ -90,6 +90,105 @@ paths:
           description: Event not found
         '409':
           description: Venue is already booked for the selected time or venue not found
+
+  /events/{eventId}/prices:
+    get:
+      summary: Get a list of prices available under given event
+      operationId: listTicketPricesOfEvent
+      parameters:
+        - name: eventId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: A list of prices
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Price'
+    post:
+      summary: create a new price for a given event
+      operationId: creatTicketPriceOfEvent
+      parameters:
+        - name: eventId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Price'
+      responses:
+        '201':
+          description: Price created successfully
+          headers:
+            Location:
+              description: Location of the created resource
+              schema:
+                type: string
+        '400':
+          description: Invalid input
+        '409':
+          description: Duplicated price (Name) found
+
+  /events/{eventId}/prices/{priceId}:
+    get:
+      parameters:
+        - name: eventId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: priceId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      summary: Get one given ticket prices of a specific event
+      operationId: getTicketPriceOfEvent
+      responses:
+        '200':
+          description: Price details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Price'
+        '404':
+          description: Price not found
+    delete:
+      parameters:
+        - name: eventId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: priceId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      summary: Remove one given ticket price of a specific event
+      operationId: deleteTicketPriceOfEvent
+      responses:
+        '204':
+          description: Price deleted successfully
+        '409':
+          description: Delete failed due to constraints
+        '404':
+          description: Price not found
 
   /events/{eventId}/venue:
     get:
@@ -111,6 +210,294 @@ paths:
                 $ref: '#/components/schemas/Venue'
         '404':
           description: Event or venue not found
+
+  /events/{eventId}/pricing:
+    get:
+      summary: Get the default price of the event
+      operationId: getDefaultPricingOfEvent
+      parameters:
+        - name: eventId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Venue level price for the event
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Price'
+        '404':
+          description: There is no venue level price for this event, or venue is not assigned.
+    patch:
+      summary: Assign a venue level price to the event.
+      operationId: assignDefaultPricingOfEvent
+      parameters:
+        - name: eventId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              title: linkPrice
+              properties:
+                id:
+                  type: string
+                  format: uuid
+      responses:
+        '204':
+          description: Assigned the price successfully
+        '400':
+          description: Invalid input
+        '404':
+          description: Event not found, or not associated with venue
+
+  /events/{eventId}/areas:
+    get:
+      summary: List areas in a event
+      operationId: getAllAreasInEvent
+      description: Retrieve a list of areas of the venue, within a specific event.
+      parameters:
+        - name: eventId
+          in: path
+          required: true
+          description: Unique ID of the event
+          schema:
+            type: string
+            format: uuid
+      responses:
+        200:
+          description: A list of areas
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Area'
+        404:
+          description: Event not found, or not mapped with any venue yet
+
+  /events/{eventId}/areas/{areaId}:
+    get:
+      summary: Get a specific area in a venue mapped with an event.
+      operationId: getAreaInEvent
+      description: Retrieve details of a specific area within a venue.
+      parameters:
+        - name: eventId
+          in: path
+          required: true
+          description: Unique ID of the event
+          schema:
+            type: string
+            format: uuid
+        - name: areaId
+          in: path
+          required: true
+          description: Unique ID of the area
+          schema:
+            type: string
+            format: uuid
+      responses:
+        200:
+          description: Details of a specific area
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Area'
+        404:
+          description: Area not found
+
+  /events/{eventId}/areas/{areaId}/pricing:
+    get:
+      summary: Get the area level price of the event
+      operationId: getAreaLevelPricingOfEvent
+      parameters:
+        - name: eventId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: areaId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Venue level price for the event
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Price'
+        '404':
+          description: There is no venue level price for this event, or venue is not assigned.
+    patch:
+      summary: Assign a venue level price to the event.
+      operationId: assignVenueLevelPricingOfEvent
+      parameters:
+        - name: eventId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: areaId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              title: linkPrice
+              properties:
+                id:
+                  type: string
+                  format: uuid
+      responses:
+        '204':
+          description: Assigned the price successfully
+        '400':
+          description: Invalid input
+        '404':
+          description: Event not found, or not associated with venue
+
+  /events/{eventId}/areas/{areaId}/seats:
+    get:
+      summary: List seats in an area of a venue (seatAdvanced)
+      operationId: getAllSeatsInAreaOfEvent
+      description: Retrieve a list of seats within a specific area of a specific event.
+      parameters:
+        - name: eventId
+          in: path
+          required: true
+          description: Unique ID of the event
+          schema:
+            type: string
+            format: uuid
+        - name: areaId
+          in: path
+          required: true
+          description: Unique ID of the area
+          schema:
+            type: string
+            format: uuid
+      responses:
+        200:
+          description: A list of seats within the area
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Seat'
+        404:
+          description: Area or Venue not found
+
+  /events/{eventId}/seats/{seatId}:
+    get:
+      summary: Get a specific seat with details (Advanced) under given event
+      operationId: getSeatInEvent
+      description: Retrieve details of a specific seat by its UUID.
+      parameters:
+        - name: eventId
+          in: path
+          required: true
+          description: Unique UUID of the event
+          schema:
+            type: string
+            format: uuid
+        - name: seatId
+          in: path
+          required: true
+          description: Unique UUID of the seat
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Details of a specific seat
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Seat'
+        '404':
+          description: Seat not found
+
+  /events/{eventId}/seats/{seatId}/pricing:
+    get:
+      summary: Get the seat level price of the event
+      operationId: getSeatLevelPricingOfEvent
+      parameters:
+        - name: eventId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: seatId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Seat level price for the event
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Price'
+        '404':
+          description: There is no venue level price for this event, or venue is not assigned.
+    patch:
+      summary: Assign a venue level price to the event.
+      operationId: assignSeatLevelPricingOfEvent
+      parameters:
+        - name: eventId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: seatId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              title: linkPrice
+              properties:
+                id:
+                  type: string
+                  format: uuid
+      responses:
+        '204':
+          description: Assigned the price successfully
+        '400':
+          description: Invalid input
+        '404':
+          description: Event not found, or not associated with venue
 
   /events/{eventId}/orders:
     get:
@@ -509,7 +896,25 @@ components:
         metadata:
           type: object
           additionalProperties: true  # Allows any set of properties
-  
+
+    Price:
+      type: object
+      required:
+        - name
+        - eventId
+        - price
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        eventId:
+          type: string
+          format: uuid
+        price:
+          type: integer
+
     Venue:
       type: object
       properties:

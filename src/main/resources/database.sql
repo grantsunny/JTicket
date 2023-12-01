@@ -84,7 +84,8 @@ CREATE TABLE TKT.Prices (
                     eventId VARCHAR(36) NOT NULL,
                     name VARCHAR(255),
                     price DECIMAL(10, 2),
-                    FOREIGN KEY (eventId) REFERENCES TKT.Events(id)
+                    FOREIGN KEY (eventId) REFERENCES TKT.Events(id),
+                    UNIQUE(eventId, name)
 );
 
 CREATE TABLE TKT.PricesDistribution (
@@ -135,12 +136,12 @@ FROM
         INNER JOIN TKT.Venues ON TKT.Venues.id = TKT.Areas.venueId
         LEFT JOIN TKT.Events ON TKT.Events.venueId = TKT.Venues.id
 
-        LEFT JOIN TKT.PricesDistribution pdSeat ON TKT.Seats.id = pdSeat.seatId
-        LEFT JOIN TKT.Prices seatPrice ON pdSeat.priceId = seatPrice.Id AND seatPrice.eventId = TKT.Events.id
+        LEFT JOIN TKT.PricesDistribution pdVenue ON TKT.Venues.id = pdVenue.venueId
+        LEFT JOIN TKT.Prices venuePrice ON pdVenue.priceId = venuePrice.id AND venuePrice.eventId = TKT.Events.id
 
         LEFT JOIN TKT.PricesDistribution pdArea ON TKT.Areas.id = pdArea.areaId
         LEFT JOIN TKT.Prices areaPrice ON pdArea.priceId = areaPrice.id AND areaPrice.eventId = TKT.Events.id
 
-        LEFT JOIN TKT.PricesDistribution pdVenue ON TKT.Venues.id = pdVenue.venueId
-        LEFT JOIN TKT.Prices venuePrice ON pdVenue.priceId = venuePrice.id AND venuePrice.eventId = TKT.Events.id
+        LEFT JOIN TKT.PricesDistribution pdSeat ON TKT.Seats.id = pdSeat.seatId
+        LEFT JOIN TKT.Prices seatPrice ON pdSeat.priceId = seatPrice.Id AND seatPrice.eventId = TKT.Events.id
 ;

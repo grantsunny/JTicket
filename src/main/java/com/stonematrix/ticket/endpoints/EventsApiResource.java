@@ -1,9 +1,7 @@
 package com.stonematrix.ticket.endpoints;
 
 import com.stonematrix.ticket.api.EventsApi;
-import com.stonematrix.ticket.api.model.Event;
-import com.stonematrix.ticket.api.model.LinkEvent;
-import com.stonematrix.ticket.api.model.Venue;
+import com.stonematrix.ticket.api.model.*;
 import com.stonematrix.ticket.persist.JdbcHelper;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.BadRequestException;
@@ -25,6 +23,8 @@ public class EventsApiResource implements EventsApi {
     @Inject
     private JdbcHelper jdbc;
 
+
+
     @Override
     public Response createEvent(Event event) {
 
@@ -43,6 +43,37 @@ public class EventsApiResource implements EventsApi {
     }
 
     @Override
+    public Response deleteTicketPriceOfEvent(UUID eventId, UUID priceId) {
+        return null;
+    }
+
+    @Override
+    public Response getAllAreasInEvent(UUID eventId) {
+        return null;
+    }
+
+    @Override
+    public Response getAllSeatsInAreaOfEvent(UUID eventId, UUID areaId) {
+        return null;
+    }
+
+    @Override
+    public Response getAreaInEvent(UUID eventId, UUID areaId) {
+        return null;
+    }
+
+    @Override
+    public Response getAreaLevelPricingOfEvent(UUID eventId, UUID areaId) {
+        return null;
+    }
+
+    @Override
+    public Response getDefaultPricingOfEvent(UUID eventId) {
+        return null;
+    }
+
+
+    @Override
     public Response getEventById(UUID eventId) {
         try {
             Event event = jdbc.loadEvent(eventId);
@@ -56,6 +87,26 @@ public class EventsApiResource implements EventsApi {
     }
 
     @Override
+    public Response getEventOrders(UUID eventId) {
+        return null;
+    }
+
+    @Override
+    public Response getSeatInEvent(UUID eventId, UUID seatId) {
+        return null;
+    }
+
+    @Override
+    public Response getSeatLevelPricingOfEvent(UUID eventId, UUID seatId) {
+        return null;
+    }
+
+    @Override
+    public Response getTicketPriceOfEvent(UUID eventId, UUID priceId) {
+        return null;
+    }
+
+    @Override
     public Response listEvents() {
         try {
             List<Event> events = jdbc.loadAllEvents();
@@ -64,6 +115,12 @@ public class EventsApiResource implements EventsApi {
             throw new BadRequestException(e);
         }
     }
+
+    @Override
+    public Response listTicketPricesOfEvent(UUID eventId) {
+        return null;
+    }
+
 
     @Override
     public Response getVenueOfEvent(UUID eventId) {
@@ -79,8 +136,23 @@ public class EventsApiResource implements EventsApi {
     }
 
     @Override
-    public Response linkEventVenue(UUID eventId, LinkEvent linkEvent) {
-        UUID venueId = linkEvent.getVenueId();
+    public Response assignDefaultPricingOfEvent(UUID eventId, LinkPrice linkPrice) {
+        return null;
+    }
+
+    @Override
+    public Response assignSeatLevelPricingOfEvent(UUID eventId, UUID seatId, LinkPrice linkPrice) {
+        return null;
+    }
+
+    @Override
+    public Response assignVenueLevelPricingOfEvent(UUID eventId, UUID areaId, LinkPrice linkPrice) {
+        return null;
+    }
+
+    @Override
+    public Response assignVenueToEvent(UUID eventId, LinkVenue linkVenue) {
+        UUID venueId = linkVenue.getId();
         try {
             jdbc.updateVenueOfEvent(eventId, venueId);
             return Response.noContent().build();
@@ -98,8 +170,7 @@ public class EventsApiResource implements EventsApi {
     }
 
     @Override
-    public Response getEventOrders(UUID eventId) {
+    public Response creatTicketPriceOfEvent(UUID eventId, Price price) {
         return null;
     }
-
 }
