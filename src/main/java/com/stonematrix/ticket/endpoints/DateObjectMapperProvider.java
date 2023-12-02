@@ -32,6 +32,7 @@ public class DateObjectMapperProvider implements ContextResolver<ObjectMapper> {
         this.objectMapper = objectMapper;
 
         SimpleModule module = new SimpleModule();
+
         module.addDeserializer(Date.class,
                 new JsonDeserializer<>() {
                     @Override

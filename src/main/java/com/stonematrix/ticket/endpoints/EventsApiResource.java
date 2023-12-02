@@ -51,18 +51,6 @@ public class EventsApiResource implements EventsApi {
         }
     }
 
-    @Override
-    public Response getTicketPriceOfEvent(UUID eventId, UUID priceId) {
-        try {
-            Price price = jdbc.loadTicketPriceOfEvent(eventId, priceId);
-            if (price == null)
-                return Response.status(Response.Status.NOT_FOUND).build();
-            else
-                return Response.ok(price).build();
-        } catch (SQLException e) {
-            throw new BadRequestException(e);
-        }
-    }
 
 
     @Override
@@ -78,21 +66,12 @@ public class EventsApiResource implements EventsApi {
         }
     }
 
-    @Override
-    public Response deleteTicketPriceOfEvent(UUID eventId, UUID priceId) {
-        try {
-            jdbc.deleteTicketPriceOfEvent(eventId, priceId);
-            return Response.status(Response.Status.NO_CONTENT).build();
 
-        } catch (SQLException e) {
-            throw new BadRequestException(e);
-        }
-    }
 
     @Override
     public Response getAllAreasInEvent(UUID eventId) {
         try {
-            List<Area> areas = jdbc.loadAreasInEvent(eventId);
+            List<Area> areas = jdbc.loadAllAreasInEvent(eventId);
             if ((areas == null) || (areas.isEmpty()))
                 return Response.status(Response.Status.NOT_FOUND).build();
             else
@@ -117,38 +96,161 @@ public class EventsApiResource implements EventsApi {
 
     @Override
     public Response getAreaInEvent(UUID eventId, UUID areaId) {
-        return null;
+        try {
+            Area area = jdbc.loadAreaInEvent(eventId, areaId);
+            if (area == null)
+                return Response.status(Response.Status.NOT_FOUND).build();
+            else
+                return Response.ok(area).build();
+        } catch (SQLException e) {
+            throw new BadRequestException(e);
+        }
     }
+
+
 
     @Override
     public Response getAreaLevelPricingOfEvent(UUID eventId, UUID areaId) {
-        return null;
+        try {
+            Price price = jdbc.loadAreaLevelPricingOfEvent(eventId, areaId);
+            if (price == null)
+                return Response.status(Response.Status.NOT_FOUND).build();
+            else
+                return Response.ok(price).build();
+        } catch (SQLException e) {
+            throw new BadRequestException(e);
+        }
     }
 
     @Override
     public Response getDefaultPricingOfEvent(UUID eventId) {
-        return null;
+        try {
+            Price price = jdbc.loadDefaultPricingOfEvent(eventId);
+            if (price == null)
+                return Response.status(Response.Status.NOT_FOUND).build();
+            else
+                return Response.ok(price).build();
+        } catch (SQLException e) {
+            throw new BadRequestException(e);
+        }
     }
 
     @Override
-    public Response creatTicketPriceOfEvent(UUID eventId, Price price) {
-        return null;
+    public Response createTicketPriceOfEvent(UUID eventId, Price price) {
+        try {
+            price = price.id(UUID.randomUUID());
+            jdbc.saveTicketPriceOfEvent(eventId, price);
+
+            return Response.created(
+                    uriInfo.getRequestUriBuilder()
+                            .path(price.getId().toString())
+                            .build())
+                    .build();
+
+        } catch (SQLException e) {
+            switch (e.getSQLState()) {
+                case "304":
+                    return Response.notModified().build();
+                case "23000":
+                case "23505":
+                    throw new ClientErrorException("Conflict occurred", Response.Status.CONFLICT);
+                default:
+                    throw new BadRequestException(e);
+            }
+        }
     }
 
+    @Override
+    public Response getTicketPriceOfEvent(UUID eventId, UUID priceId) {
+        try {
+            Price price = jdbc.loadPriceOfEventById(eventId, priceId);
+            if (price == null)
+                return Response.status(Response.Status.NOT_FOUND).build();
+            else
+                return Response.ok(price).build();
+        } catch (SQLException e) {
+            throw new BadRequestException(e);
+        }
+    }
+
+    @Override
+    public Response deleteTicketPriceOfEvent(UUID eventId, UUID priceId) {
+        try {
+            jdbc.deleteTicketPriceOfEvent(eventId, priceId);
+            return Response.status(Response.Status.NO_CONTENT).build();
+
+        } catch (SQLException e) {
+            switch (e.getSQLState()) {
+                case "304":
+                    return Response.notModified().build();
+                case "23000":
+                case "23505":
+                    throw new ClientErrorException("Conflict occurred", Response.Status.CONFLICT);
+                default:
+                    throw new BadRequestException(e);
+            }
+        }
+    }
 
     @Override
     public Response assignDefaultPricingOfEvent(UUID eventId, LinkPrice linkPrice) {
-        return null;
+
+        UUID priceId = linkPrice.getId();
+        try {
+            jdbc.saveDefaultPricingOfEvent(eventId, priceId);
+            return Response.status(Response.Status.NO_CONTENT).build();
+
+        } catch (SQLException e) {
+            switch (e.getSQLState()) {
+                case "304":
+                    return Response.notModified().build();
+                case "23000":
+                case "23505":
+                    throw new ClientErrorException("Conflict occurred", Response.Status.CONFLICT);
+                default:
+                    throw new BadRequestException(e);
+            }
+        }
     }
 
     @Override
     public Response assignSeatLevelPricingOfEvent(UUID eventId, UUID seatId, LinkPrice linkPrice) {
-        return null;
+        UUID priceId = linkPrice.getId();
+        try {
+            jdbc.saveSeatLevelPricingOfEvent(eventId, seatId, priceId);
+            return Response.status(Response.Status.NO_CONTENT).build();
+
+        } catch (SQLException e) {
+            switch (e.getSQLState()) {
+                case "304":
+                    return Response.notModified().build();
+                case "23000":
+                case "23505":
+                    throw new ClientErrorException("Conflict occurred", Response.Status.CONFLICT);
+                default:
+                    throw new BadRequestException(e);
+            }
+        }
     }
 
     @Override
-    public Response assignVenueLevelPricingOfEvent(UUID eventId, UUID areaId, LinkPrice linkPrice) {
-        return null;
+    public Response assignAreaLevelPricingOfEvent(UUID eventId, UUID areaId, LinkPrice linkPrice) {
+        UUID priceId = linkPrice.getId();
+        try {
+            jdbc.saveAreaLevelPricingOfEvent(eventId, areaId, priceId);
+            return Response.status(Response.Status.NO_CONTENT).build();
+
+        } catch (SQLException e) {
+            switch (e.getSQLState()) {
+                case "304":
+                    return Response.notModified().build();
+                case "23000":
+                case "23505":
+                    throw new ClientErrorException("Conflict occurred", Response.Status.CONFLICT);
+                default:
+                    throw new BadRequestException(e);
+            }
+        }
     }
 
 
@@ -164,8 +266,7 @@ public class EventsApiResource implements EventsApi {
         try {
             jdbc.saveEvent(event);
             UriBuilder uriBuilder =
-                    uriInfo.getBaseUriBuilder().
-                            path(EventsApi.class).
+                    uriInfo.getRequestUriBuilder().
                             path(String.valueOf(event.getId()));
 
             return Response.created(uriBuilder.build()).build();

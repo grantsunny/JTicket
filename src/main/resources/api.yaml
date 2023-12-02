@@ -113,7 +113,7 @@ paths:
                   $ref: '#/components/schemas/Price'
     post:
       summary: create a new price for a given event
-      operationId: creatTicketPriceOfEvent
+      operationId: createTicketPriceOfEvent
       parameters:
         - name: eventId
           in: path
@@ -342,8 +342,8 @@ paths:
         '404':
           description: There is no venue level price for this event, or venue is not assigned.
     patch:
-      summary: Assign a venue level price to the event.
-      operationId: assignVenueLevelPricingOfEvent
+      summary: Assign a area level price to the event.
+      operationId: assignAreaLevelPricingOfEvent
       parameters:
         - name: eventId
           in: path
