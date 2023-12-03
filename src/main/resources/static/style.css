@@ -11,6 +11,15 @@ h1 {
     color: #0066cc;
 }
 
+ul {
+    list-style: none;
+}
+
+li {
+    display: inline-block;
+    margin-right: 10px; /* add spacing between items */
+}
+
 form {
     margin-top: 20px;
 }
@@ -30,18 +39,21 @@ button:hover {
 }
 
 .content-container {
-    display: flex;
-    justify-content: center;
+    /* If you want to center the content or add specific width */
+    max-width: 800px; /* Adjust as needed */
+    margin: auto;
     padding: 20px;
 }
 
-.radio-container {
-    flex: 1;
-    padding-right: 20px; /* Space between radio buttons and SVG */
+.venue-dropdown-list-container {
+    /* Styling for the dropdown container */
+    margin-bottom: 20px; /* Add some space below the dropdown */
 }
 
 .svg-container {
-    flex: 2;
+    display: flex;
+    justify-content: center;
+    align-items: center;
     text-align: center;
 }
 

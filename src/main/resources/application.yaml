@@ -1,9 +1,12 @@
 spring:
   servlet:
-    multipart:
-      enabled: true
-      max-file-size: 1MB
-      max-request-size: 2MB
+    multipart: #making sure Jersey handle the multipart without conflicting with spring-boot
+      enabled: false
+  web:
+    resources:
+      static-locations: classpath:/static/
+  jersey:
+    application-path: /api/
   datasource:
     url: jdbc:derby:stoneticket;create=true
     #    url: jdbc:derby:memory:stoneticket;create=true
@@ -19,8 +22,5 @@ spring:
       mode: embedded
       schema-locations: classpath:database.sql
       continue-on-error: true
-  web:
-    resources:
-      static-locations: classpath:/static/
-  jersey:
-    application-path: /api/
+
+

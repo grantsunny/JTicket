@@ -5,38 +5,65 @@ document.addEventListener('DOMContentLoaded', function() {
     fetchVenues();
 });
 
+function uploadTemplate(form) {
+    const formData = new FormData(form);
+
+    fetch('/api/template', {
+        method: 'POST',
+        body: formData
+    })
+        .then(response => {
+            if (response.ok) {
+                alert('Upload successful!');
+                window.location.href = '/'; // Redirect to the main page
+            } else {
+                throw new Error(`Server returned status code ${response.status}`);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Something unexpected happened. Please try again.');
+        });
+}
+
 function fetchVenues() {
     // Replace with your actual API endpoint
+    const dropdownContainer = document.querySelector('.venue-dropdown-list-container');
+    dropdownContainer.innerHTML = ''; // Clear previous content
+
+    // Create an initially empty dropdown menu
+    let dropdown = document.createElement('select');
+    dropdown.name = 'venue';
+
+    // Default option
+    let defaultOption = document.createElement('option');
+    defaultOption.textContent = '--- choose one venue ---';
+    defaultOption.value = '';
+    dropdown.appendChild(defaultOption);
+
+    // Event listener for venue selection
+    dropdown.addEventListener('change', function() {
+        const selectedVenueId = this.value;
+        if (selectedVenueId) {
+            fetchAreaNames(selectedVenueId).then(() => {
+                attachEventListeners(selectedVenueId);
+            });
+            previewVenue(selectedVenueId);
+        }
+    });
+
+    // Append the empty dropdown to the container
+    dropdownContainer.appendChild(dropdown);
+
+    // Fetch venues and populate the dropdown
     fetch('/api/venues')
         .then(response => response.json())
         .then(data => {
-            const radioContainer = document.querySelector('.radio-container');
-            radioContainer.innerHTML = ''; // Clear previous radio buttons
             data.forEach(venue => {
-                // Create radio button for each venue
-                let radioButton = document.createElement('input');
-                radioButton.type = 'radio';
-                radioButton.id = venue.id;
-                radioButton.name = 'venue';
-                radioButton.value = venue.id;
-
-                // Fetch areas and preview venue when a venue is selected
-                radioButton.addEventListener('change', function() {
-                    fetchAreaNames(venue.id).then(() => {
-                        // Attach hover events for the new SVG
-                        attachEventListeners();
-                    });
-                    previewVenue(venue.id);
-                });
-
-                // Create label for each radio button
-                let label = document.createElement('label');
-                label.htmlFor = venue.id;
-                label.textContent = venue.name;
-
-                // Append radio button and label to the radio container
-                radioContainer.appendChild(radioButton);
-                radioContainer.appendChild(label);
+                let option = document.createElement('option');
+                option.value = venue.id;
+                option.textContent = venue.name;
+                dropdown.appendChild(option);
             });
         });
 }
@@ -53,7 +80,7 @@ function fetchAreaNames(venueId) {
         });
 }
 
-function attachEventListeners() {
+function attachEventListeners(venueId) {
     // Event delegation for mouseover on SVG rect elements
     document.querySelector('.svg-container').addEventListener('mouseover', function(event) {
         if (event.target.tagName === 'rect' && event.target.getAttribute('areaid')) {
@@ -73,14 +100,13 @@ function attachEventListeners() {
     document.querySelector('.svg-container').addEventListener('click', function(event) {
         if (event.target.tagName === 'rect' && event.target.getAttribute('areaid')) {
             const areaId = event.target.getAttribute('areaid');
-            fetchSeatsForArea(areaId);
+            fetchSeatsForArea(venueId, areaId);
         }
     });
 }
 
 
-function fetchSeatsForArea(areaId) {
-    const venueId = document.querySelector('input[name="venue"]:checked').value;
+function fetchSeatsForArea(venueId, areaId) {
     fetch(`http://localhost:8080/api/venues/${venueId}/areas/${areaId}/seats`)
         .then(response => response.json())
         .then(seats => {
@@ -131,7 +157,7 @@ function displaySeats(seats) {
     // Create and append the button
     const orderSeatsButton = document.createElement('button');
     orderSeatsButton.id = 'orderSeatsButton';
-    orderSeatsButton.textContent = 'Place Order';
+    orderSeatsButton.textContent = 'View Seat Details';
     orderSeatsButton.disabled = true; // Initially disabled
     orderSeatsButton.addEventListener('click', handleOrderButtonClick);
     seatsContainer.appendChild(orderSeatsButton);

@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Welcome to StoneTicket!</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<h1>Welcome to StoneTicket!</h1>
+
+<ul>
+    <li><a href="/venue.html">Venue Management </a></li>
+    <li><a href="/event.html">Event Management </a></li>
+</ul>
+
+<p></p>
+<form id="templateUploadForm" action="/api/template" method="post" enctype="multipart/form-data">
+    Upload venue template:  <input type="file" name="file"/>
+    <button type="button" onclick="uploadTemplate(this.form)">Upload</button>
+    <button type="button" onclick="location.href='/api/template'">Template</button>
+</form>
+
+<p></p>
+
+<div class="content-container">
+    <div class="venue-dropdown-list-container">
+        <!-- Radio buttons will be generated here -->
+    </div>
+    <div class="svg-container" id="venuePreview">
+        <!-- SVG will be inserted here -->
+    </div>
+    <p>
+    <div id="seatsContainer"></div>
+</div>
+
+<script src="script.js"></script> <!-- Link to your JavaScript file -->
+
+</body>
+</html>
