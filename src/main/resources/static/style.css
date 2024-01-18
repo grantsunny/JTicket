@@ -98,4 +98,42 @@ button:hover {
     border: 1px solid #333;
 }
 
+.center {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+}
 
+.center-form-table {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    margin-top: 20px; /* Add margin to separate the form and table */
+}
+
+.center {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+}
+
+/* CSS styles for the form */
+#eventForm {
+    text-align: left; /* Align form elements to the left */
+}
+
+/* CSS styles for form element labels */
+#eventForm label {
+    text-align: left; /* Align labels to the left */
+}
+
+#eventForm button {
+    margin-left: auto; /* Push the button to the right */
+}
+
+#eventList {
+    text-align: left; /* Align form elements to the left */
+}

@@ -14,7 +14,51 @@
     <li><a href="/event.html">Event Management </a></li>
 </ul>
 
-<script src="script.js"></script> <!-- Link to your JavaScript file -->
+<div class="center">
+    <form id="eventForm" onsubmit="submitFormData(event)">
+        <label for="eventName">Event Name:</label>
+        <input type="text" id="eventName" required>
+        <br>
+
+        <label for="venueId">Venue:</label>
+        <select id="venueId" required>
+            <option value="">Select Venue</option>
+        </select>
+        <br>
+
+        <label for="startTime">Start Time:</label>
+        <input type="datetime-local" id="startTime" required>
+        <br>
+
+        <label for="endTime">End Time:</label>
+        <input type="datetime-local" id="endTime" required>
+        <br>
+
+        <button id="addEventButton" type="button" onclick="submitFormData()">Add Event</button>
+    </form>
+
+    <!-- List of Existing Events -->
+    <div>
+        <h2>List of Events</h2>
+        <table>
+            <thead>
+            <tr>
+                <th>Name</th>
+                <th>Location</th>
+                <th>Start Time</th>
+                <th>End Time</th>
+                <th>Action</th>
+            </tr>
+            </thead>
+            <tbody id="eventList">
+            <!-- Existing events will be added here dynamically -->
+            </tbody>
+        </table>
+    </div>
+</div>
+
+
+<script src="event.js"></script> <!-- Link to your JavaScript file -->
 
 </body>
 </html>

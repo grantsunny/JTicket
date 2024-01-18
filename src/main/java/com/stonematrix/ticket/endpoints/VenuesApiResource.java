@@ -4,7 +4,6 @@ import com.stonematrix.ticket.api.VenuesApi;
 import com.stonematrix.ticket.persist.JdbcHelper;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.BadRequestException;
-import jakarta.ws.rs.InternalServerErrorException;
 import jakarta.ws.rs.core.Response;
 
 import java.io.IOException;
@@ -31,7 +30,7 @@ public class VenuesApiResource implements VenuesApi {
         try {
             return Response.ok(jdbc.loadSeats(venueId, areaId)).build();
         } catch (SQLException e) {
-            throw new InternalServerErrorException(e.getMessage());
+            throw new BadRequestException(e.getMessage());
         }
     }
 
@@ -40,7 +39,7 @@ public class VenuesApiResource implements VenuesApi {
         try {
             return Response.ok(jdbc.loadAllVenues()).build();
         } catch (SQLException e) {
-            throw new InternalServerErrorException(e.getMessage());
+            throw new BadRequestException(e.getMessage());
         }
     }
 

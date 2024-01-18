@@ -195,7 +195,7 @@ public class EventsApiResource implements EventsApi {
     @Override
     public Response assignDefaultPricingOfEvent(UUID eventId, LinkPrice linkPrice) {
 
-        UUID priceId = linkPrice.getId();
+        UUID priceId = linkPrice.getPriceId();
         try {
             jdbc.saveDefaultPricingOfEvent(eventId, priceId);
             return Response.status(Response.Status.NO_CONTENT).build();
@@ -215,7 +215,7 @@ public class EventsApiResource implements EventsApi {
 
     @Override
     public Response assignSeatLevelPricingOfEvent(UUID eventId, UUID seatId, LinkPrice linkPrice) {
-        UUID priceId = linkPrice.getId();
+        UUID priceId = linkPrice.getPriceId();
         try {
             jdbc.saveSeatLevelPricingOfEvent(eventId, seatId, priceId);
             return Response.status(Response.Status.NO_CONTENT).build();
@@ -235,7 +235,7 @@ public class EventsApiResource implements EventsApi {
 
     @Override
     public Response assignAreaLevelPricingOfEvent(UUID eventId, UUID areaId, LinkPrice linkPrice) {
-        UUID priceId = linkPrice.getId();
+        UUID priceId = linkPrice.getPriceId();
         try {
             jdbc.saveAreaLevelPricingOfEvent(eventId, areaId, priceId);
             return Response.status(Response.Status.NO_CONTENT).build();
@@ -315,7 +315,7 @@ public class EventsApiResource implements EventsApi {
 
     @Override
     public Response assignVenueToEvent(UUID eventId, LinkVenue linkVenue) {
-        UUID venueId = linkVenue.getId();
+        UUID venueId = linkVenue.getVenueId();
         try {
             jdbc.updateVenueOfEvent(eventId, venueId);
             return Response.noContent().build();

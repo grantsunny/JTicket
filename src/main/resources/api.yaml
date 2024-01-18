@@ -78,7 +78,7 @@ paths:
               type: object
               title: linkVenue
               properties:
-                id:
+                venueId:
                   type: string
                   format: uuid
       responses:
@@ -249,7 +249,7 @@ paths:
               type: object
               title: linkPrice
               properties:
-                id:
+                priceId:
                   type: string
                   format: uuid
       responses:
@@ -365,7 +365,7 @@ paths:
               type: object
               title: linkPrice
               properties:
-                id:
+                priceId:
                   type: string
                   format: uuid
       responses:
@@ -488,7 +488,7 @@ paths:
               type: object
               title: linkPrice
               properties:
-                id:
+                priceId:
                   type: string
                   format: uuid
       responses:
@@ -816,7 +816,7 @@ paths:
               type: object
               title: payment
               properties:
-                amountDue:
+                priceToPay:
                   type: integer
       responses:
         '200':
@@ -998,7 +998,7 @@ components:
             type: string
             format: uuid
           description: An array of seat UUIDs booked in the order. (Required)
-        amountDue:
+        priceToPay:
           type: integer
           description: The total amount of the order to pay. (in *cents*)
         paid:
