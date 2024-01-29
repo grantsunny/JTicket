@@ -5,6 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Welcome to StoneTicket!</title>
     <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" type="text/css" href="modal-style.css">
+    <link href="jsoneditor.min.css" rel="stylesheet" type="text/css">
+
 </head>
 <body>
 <h1>Welcome to StoneTicket!</h1>
@@ -16,25 +19,31 @@
 
 <div class="center">
     <form id="eventForm" onsubmit="submitFormData(event)">
-        <label for="eventName">Event Name:</label>
-        <input type="text" id="eventName" required>
-        <br>
+        <table>
+            <tr>
+            <td><label for="eventName">Event Name:</label></td>
+            <td><input type="text" id="eventName" required></td>
+            </tr>
+            <tr>
+            <td><label for="venueId">Venue:</label></td>
+            <td><select id="venueId" required>
+                <option value="">Select Venue</option>
+            </select></td>
+            </tr>
+            <tr>
+                <td><label for="startTime">Start Time:</label></td>
+                <td><input type="datetime-local" id="startTime" required></td>
+            </tr>
+            <tr>
+                <td><label for="endTime">End Time:</label></td>
+                <td><input type="datetime-local" id="endTime" required></td>
+            </tr>
+            <tr>
+                <td></td>
+                <td align="right"><button id="addEventButton" type="button" onclick="submitFormData()">Add Event</button></td>
 
-        <label for="venueId">Venue:</label>
-        <select id="venueId" required>
-            <option value="">Select Venue</option>
-        </select>
-        <br>
-
-        <label for="startTime">Start Time:</label>
-        <input type="datetime-local" id="startTime" required>
-        <br>
-
-        <label for="endTime">End Time:</label>
-        <input type="datetime-local" id="endTime" required>
-        <br>
-
-        <button id="addEventButton" type="button" onclick="submitFormData()">Add Event</button>
+            </tr>
+        </table>
     </form>
 
     <!-- List of Existing Events -->
@@ -55,10 +64,41 @@
             </tbody>
         </table>
     </div>
+
+    <div id="modalChangeEventVenue" class="modal">
+        <div class="modal-content" style="max-width: 400px;">
+            <span class="close" onclick="this.parentElement.parentElement.style.display='none'">&times;</span>
+            <p id="modalChangeEventVenueTitle">Change Venue for Event</p>
+            <div id="modalVenueOptions" style="text-align: left;"></div> <!-- Modal Venue dropdown -->
+            <button onclick="submitEventVenue(
+                this.parentElement.parentElement.dataset.eventId,
+                this.parentElement.querySelector('input[name=\'venue\']:checked').value,
+                this.parentElement.parentElement)">Submit</button>
+        </div>
+    </div>
+
+    <div id="modalSetupEventMetadata" class="modal">
+        <div class="modal-content" style="max-width: 400px;">
+            <span class="close" onclick="this.parentElement.parentElement.style.display='none'">&times;</span>
+            <p id="modalSetupEventMetadataTitle">Event Metadata Management</p>
+
+            <div id="jsonEditor" style="width: 400px; height: 400px;"></div>
+
+            <button onclick="submitEventMetadata(
+                this.parentElement.querySelector('#jsonEditor').editor.get(),
+                this.parentElement.parentElement,
+                false)">Save</button>
+            <button onclick="submitEventMetadata(
+                this.parentElement.querySelector('#jsonEditor').editor.get(),
+                this.parentElement.parentElement,
+                true)">Save & Close</button>
+        </div>
+    </div>
 </div>
 
 
 <script src="event.js"></script> <!-- Link to your JavaScript file -->
+<script src="jsoneditor.min.js"></script>
 
 </body>
 </html>

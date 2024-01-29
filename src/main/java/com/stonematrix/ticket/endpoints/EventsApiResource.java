@@ -38,6 +38,8 @@ public class EventsApiResource implements EventsApi {
         }
     }
 
+
+
     @Override
     public Response getSeatLevelPricingOfEvent(UUID eventId, UUID seatId) {
         try {
@@ -318,6 +320,24 @@ public class EventsApiResource implements EventsApi {
         UUID venueId = linkVenue.getVenueId();
         try {
             jdbc.updateVenueOfEvent(eventId, venueId);
+            return Response.noContent().build();
+        } catch (SQLException e) {
+            switch (e.getSQLState()) {
+                case "304":
+                    return Response.notModified().build();
+                case "23000":
+                case "23505":
+                    throw new ClientErrorException("Conflict occurred", Response.Status.CONFLICT);
+                default:
+                    throw new BadRequestException(e);
+            }
+        }
+    }
+
+    @Override
+    public Response updateEvent(UUID eventId, Event event) {
+        try {
+            jdbc.updateEvent(eventId, event);
             return Response.noContent().build();
         } catch (SQLException e) {
             switch (e.getSQLState()) {

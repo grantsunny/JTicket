@@ -90,6 +90,31 @@ paths:
           description: Event not found
         '409':
           description: Venue is already booked for the selected time or venue not found
+    put:
+      summary: update event
+      operationId: updateEvent
+      parameters:
+        - name: eventId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Event'
+      responses:
+        '204':
+          description: event updated successfully
+        '400':
+          description: Invalid input
+        '404':
+          description: Event not found
+        '409':
+          description: Venue is already booked for the selected time or venue not found
 
   /events/{eventId}/prices:
     get:

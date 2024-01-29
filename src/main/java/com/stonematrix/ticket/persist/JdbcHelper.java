@@ -547,6 +547,46 @@ public class JdbcHelper {
         }
     }
 
+    public void updateEvent(UUID eventId, Event event) throws SQLException {
+        //id, venueId, name, startTime, endTime, metadata
+        String sql = "UPDATE TKT.Events SET " +
+                "venueId = ?, " +
+                "name = ?, " +
+                "startTime = ?, " +
+                "endTime = ?, " +
+                "metadata = ? " +
+                "WHERE id = ?";
+
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+
+
+            UUID venueId;
+            if ((venueId = event.getVenueId()) != null)
+                pstmt.setString(1, venueId.toString());
+            else
+                pstmt.setNull(1, Types.VARCHAR);
+
+            pstmt.setString(2, event.getName());
+            pstmt.setTimestamp(3, new Timestamp(event.getStartTime().getTime()));
+            pstmt.setTimestamp(4, new Timestamp(event.getEndTime().getTime()));
+
+            String metadataJson;
+            try {
+                metadataJson = new ObjectMapper().writeValueAsString(event.getMetadata());
+            } catch (JsonProcessingException e) {
+                metadataJson = "{}";
+            }
+            pstmt.setString(5, metadataJson);
+            pstmt.setString(6, eventId.toString());
+            pstmt.executeUpdate();
+
+            if (pstmt.getUpdateCount() < 1)
+                throw new SQLException("Not successfully modified", "304");
+        }
+    }
+
     public List<Price> loadPrices(UUID eventId) throws SQLException {
         String sql = "SELECT id, name, price FROM TKT.Prices Where eventId = ?";
 
@@ -941,4 +981,5 @@ public class JdbcHelper {
                 throw new SQLException("Not successfully saved", "304");
         }
     }
+
 }
