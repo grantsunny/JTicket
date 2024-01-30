@@ -4,6 +4,10 @@ info:
   description: API for booking seats and managing orders, with support for multiple seat bookings per order. Utilizes UUIDs for unique identification.
   version: 1.0.0
 
+servers:
+  - url: http://localhost:8080/api/
+    description: localhost
+
 paths:
   /events:
     get:
@@ -235,6 +239,30 @@ paths:
                 $ref: '#/components/schemas/Venue'
         '404':
           description: Event or venue not found
+
+  /events/{eventId}/venue/svg:
+    get:
+      summary: Get areas layout in SVG format
+      operationId: getEventVenueSvgLayout
+      description: Retrieve details of a specific venue by event's UUID.
+      parameters:
+        - name: eventId
+          in: path
+          required: true
+          description: Unique ID of the event
+          schema:
+            type: string
+            format: uuid
+      responses:
+        200:
+          description: The areas layout in SVG format
+          content:
+            image/svg+xml:
+              schema:
+                type: string
+                format: binary
+        404:
+          description: event or venue not found
 
   /events/{eventId}/pricing:
     get:

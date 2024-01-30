@@ -316,6 +316,15 @@ public class EventsApiResource implements EventsApi {
     }
 
     @Override
+    public Response getEventVenueSvgLayout(UUID eventId) {
+        try {
+            return Response.ok(jdbc.loadEventVenueSvg(eventId)).build();
+        } catch (SQLException e) {
+            throw new BadRequestException(e.getMessage());
+        }
+    }
+
+    @Override
     public Response assignVenueToEvent(UUID eventId, LinkVenue linkVenue) {
         UUID venueId = linkVenue.getVenueId();
         try {

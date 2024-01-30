@@ -1,5 +1,17 @@
 // Function to fetch existing events from the API
 // Function to fetch existing events from the API
+import {cleanUpContainer, enforceNumericInput, drawEventVenueEx, drawSeats} from "./common.js";
+
+window.stoneticket = {
+    setupEventMetadata,
+    setupEventPricing,
+    enforceNumericInput,
+    submitNewPricingForm,
+    changeEventVenue,
+    updateEventVenue,
+    deleteEvent
+}
+
 function fetchEvents() {
     // Define the API endpoint URL for getting events
     const apiUrl = '/api/events'; // Replace with the actual endpoint URL
@@ -24,12 +36,12 @@ function fetchEvents() {
                 const row = document.createElement("tr");
                 row.innerHTML = `
                     <td>${event.name}</td>
-                    <td><a href="#" onclick="changeEventVenue('${event.name}','${event.id}', '${event.venueId}')">${venueName || 'Unknown Venue'}</td> <!-- Display venue name or 'Unknown Venue' if not found -->
+                    <td><a href="#" onclick="stoneticket.changeEventVenue('${event.name}','${event.id}', '${event.venueId}')">${venueName || 'Unknown Venue'}</td> <!-- Display venue name or 'Unknown Venue' if not found -->
                     <td>${event.startTime}</td>
                     <td>${event.endTime}</td>
-                    <td><button onclick="deleteEvent('${event.id}')">Delete</button></td>
-                    <td><button onclick="setupEventPricing('${event.id}')">Pricing</button></td>
-                    <td><button onclick="setupEventMetadata('${event.id}')">Metadata</button></td>
+                    <td><button onclick="stoneticket.deleteEvent('${event.id}')">Delete</button></td>
+                    <td><button onclick="stoneticket.setupEventPricing('${event.name}','${event.id}')">Pricing</button></td>
+                    <td><button onclick="stoneticket.setupEventMetadata('${event.id}')">Metadata</button></td>
                 `;
                 eventList.appendChild(row);
             });
@@ -39,16 +51,127 @@ function fetchEvents() {
         });
 }
 
-function setupEventPricing(eventId) {
-    alert('not implemented');
+function submitNewPricingForm(eventId, newPricingForm) {
+    const apiUrl = `/api/events/${eventId}/prices`;
+    const priceName = newPricingForm.querySelector("#newPriceName").value;
+    const price = newPricingForm.querySelector("#newPrice").value;
+
+    fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(
+            {
+                "eventId": eventId,
+                "name": priceName,
+                "price": price * 100
+            }
+        )
+    })
+        .then(response => {
+            if (response.ok) {
+                reloadEventPricing(eventId, newPricingForm.parentElement.parentElement.querySelector("#modalEventPricingList"));
+                newPricingForm.querySelector("#newPriceName").value = "";
+                newPricingForm.querySelector("#newPrice").value = "";
+            } else {
+                console.error('Server returned ' + response.status);
+            }
+        })
+        .catch(error => {
+            console.error('Error creating event price:', error);
+            // Error handling for network issues
+        });
+}
+
+function reloadEventPricing(eventId, container) {
+    const apiUrl = `/api/events/${eventId}/prices`; // Replace with the actual endpoint URL
+    fetch(apiUrl)
+        .then(response => response.json())
+        .then(data => {
+            container.innerHTML = ''; // Clear existing content
+            
+            let tablePriceList = document.createElement("table");
+            tablePriceList.align = "center";
+            data.forEach(price => {
+                const row = document.createElement("tr");
+                row.innerHTML = `
+                    <td align="left"><input type="radio" id="${price.id}" name="radioEventPrice">${price.name} (${price.price / 100}) </input></td>
+                `;
+                tablePriceList.appendChild(row);
+            });
+
+            container.appendChild(document.createElement("hr"));
+            let table = document.createElement("table");
+            table.style.width = "100%";
+            container.appendChild(table);
+
+            let tr = document.createElement("tr");
+            table.appendChild(tr);
+
+            let tdTablePriceList = document.createElement("td");
+            tdTablePriceList.style.align="left";
+            tdTablePriceList.style.width = "30%";
+            tr.appendChild(tdTablePriceList);
+            tdTablePriceList.appendChild(tablePriceList);
+
+            let tdArea = document.createElement("td");
+            tdArea.style.align = "right";
+            tdArea.style.width = "30%";
+            tr.appendChild(tdArea);
+
+            let containerArea = document.createElement("div");
+            containerArea.style.align = "center";
+            containerArea.id = "containerPricingArea";
+            tdArea.appendChild(containerArea);
+
+            let tdSeats = document.createElement("td");
+            tdSeats.style.width = "40%";
+            tr.appendChild(tdSeats);
+
+            let containerSeats = document.createElement("div");
+            containerArea.id = "containerPricingSeats";
+            tdSeats.appendChild(containerSeats);
+
+            let trButton = document.createElement("tr");
+            trButton.innerHTML = `
+                    <td></td>
+                    <td align="right"><button>Price selected area</button></td>
+                    <td align="right"><button>Price selected seats</button></td>
+                `;
+            table.appendChild(trButton);
+
+            drawEventVenueEx(eventId, containerArea, function (eventId, areaId) {
+                drawSeats(eventId, areaId, containerSeats);
+            });
+
+        })
+        .catch(error => {
+            console.error('Error fetching prices:', error);
+        });
+}
+
+
+function setupEventPricing(eventName, eventId) {
+    var modal = document.getElementById("modelSetupEventPricing");
+    var modalEventPricingList = modal.querySelector("#modalEventPricingList");
+
+    modal.eventId = eventId;
+    modal.querySelector("#modelSetupEventPricingTitle").textContent = "Event Pricing for " + eventName;
+    modal.querySelector("#newPriceName").value = "";
+    modal.querySelector("#newPrice").value = "";
+
+    cleanUpContainer(modalEventPricingList);
+    reloadEventPricing(eventId, modalEventPricingList);
+
+    modal.style.display = "block";
 }
 
 function setupEventMetadata(eventId) {
     var modal = document.getElementById("modalSetupEventMetadata");
     var jsonEditorContainer = modal.querySelector("#jsonEditor");
-    while (jsonEditorContainer.hasChildNodes())
-        jsonEditorContainer.removeChild(jsonEditorContainer.firstChild);
 
+    cleanUpContainer(jsonEditorContainer);
     fetch(`/api/events/${eventId}`, {
         method: 'GET',
         headers: {
@@ -145,7 +268,7 @@ function changeEventVenue(eventName, eventId, currentVenueId) {
     modal.style.display = "block";
 }
 
-function submitEventVenue(eventId, selectedVenueId, modal) {
+function updateEventVenue(eventId, selectedVenueId, modal) {
     fetch(`/api/events/${eventId}`, {
         method: 'PATCH',
         headers: {

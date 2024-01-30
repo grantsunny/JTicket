@@ -121,6 +121,37 @@ public class JdbcHelper {
         }
     }
 
+    public File loadEventVenueSvg(UUID eventId) throws SQLException {
+        String sql = "SELECT svg FROM TKT.Events " +
+                "INNER JOIN TKT.Venues ON venueId = TKT.Venues.id " +
+                "AND TKT.Events.id = ?";
+
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            pstmt.setString(1, eventId.toString());
+            try (ResultSet rs = pstmt.executeQuery()) {
+                if (rs.next()) {
+                    try {
+                        File file = File.createTempFile(eventId.toString(), ".svg");
+                        FileOutputStream fileOut = new FileOutputStream(file, false);
+
+                        OutputStreamWriter writer = new OutputStreamWriter(fileOut, StandardCharsets.UTF_8);
+                        writer.write(rs.getString("svg"));
+                        writer.flush();
+                        writer.close();
+
+                        fileOut.close();
+                        return file;
+                    } catch (IOException e) {
+                        return null;
+                    }
+                } else
+                    return null;
+            }
+        }
+    }
+
     public File loadVenueSvg(UUID venueId) throws SQLException {
         String sql = "SELECT svg FROM TKT.Venues WHERE id = ?";
         try (Connection conn = dataSource.getConnection();
@@ -773,7 +804,7 @@ public class JdbcHelper {
     }
 
     public List<Area> loadAllAreasInEvent(UUID eventId) throws SQLException {
-        String sql = "SELECT id, venueId, name, metadata FROM TKT.Areas " +
+        String sql = "SELECT TKT.Areas.id, TKT.Areas.venueId, TKT.Areas.name, TKT.Areas.metadata FROM TKT.Areas " +
                 "INNER JOIN TKT.Venues ON TKT.Areas.venueId = TKT.Venues.id " +
                 "INNER JOIN TKT.Events ON TKT.Events.venueId = TKT.Venues.id " +
                 "AND TKT.Events.id = ?";

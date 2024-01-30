@@ -79,7 +79,7 @@ button:hover {
     border: 1px solid #333;
     padding: 8px;
     text-align: center;
-    min-width: 50px;
+    min-width: 15px;
 }
 
 .available-seat {

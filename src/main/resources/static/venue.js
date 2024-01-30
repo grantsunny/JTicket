@@ -1,3 +1,4 @@
+import {drawVenue} from "./common.js";
 
 let areaNames = {}; // This object will store the mapping of areaId to area names
 document.addEventListener('DOMContentLoaded', function() {
@@ -48,7 +49,7 @@ function fetchVenues() {
             fetchAreaNames(selectedVenueId).then(() => {
                 attachEventListeners(selectedVenueId);
             });
-            previewVenue(selectedVenueId);
+            drawVenue(selectedVenueId, document.querySelector('.svg-container'));
         }
     });
 
@@ -197,11 +198,3 @@ function hideAreaName() {
     }
 }
 
-function previewVenue(venueId) {
-    fetch(`/api/venues/${venueId}/svg`)
-        .then(response => response.text())
-        .then(svg => {
-            const svgContainer = document.querySelector('.svg-container');
-            svgContainer.innerHTML = svg;
-        });
-}

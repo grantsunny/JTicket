@@ -8,6 +8,10 @@
     <link rel="stylesheet" type="text/css" href="modal-style.css">
     <link href="jsoneditor.min.css" rel="stylesheet" type="text/css">
 
+    <script type="module" src="common.js"></script>
+    <script type="module" src="event.js"></script> <!-- Link to your JavaScript file -->
+    <script src="jsoneditor.min.js"></script>
+
 </head>
 <body>
 <h1>Welcome to StoneTicket!</h1>
@@ -17,8 +21,9 @@
     <li><a href="/event.html">Event Management </a></li>
 </ul>
 
+
 <div class="center">
-    <form id="eventForm" onsubmit="submitFormData(event)">
+    <form id="eventForm">
         <table>
             <tr>
             <td><label for="eventName">Event Name:</label></td>
@@ -40,7 +45,7 @@
             </tr>
             <tr>
                 <td></td>
-                <td align="right"><button id="addEventButton" type="button" onclick="submitFormData()">Add Event</button></td>
+                <td align="right"><button id="addEventButton" type="button" onclick="stoneticket.submitFormData()">Add Event</button></td>
 
             </tr>
         </table>
@@ -70,7 +75,7 @@
             <span class="close" onclick="this.parentElement.parentElement.style.display='none'">&times;</span>
             <p id="modalChangeEventVenueTitle">Change Venue for Event</p>
             <div id="modalVenueOptions" style="text-align: left;"></div> <!-- Modal Venue dropdown -->
-            <button onclick="submitEventVenue(
+            <button onclick="stoneticket.updateEventVenue(
                 this.parentElement.parentElement.dataset.eventId,
                 this.parentElement.querySelector('input[name=\'venue\']:checked').value,
                 this.parentElement.parentElement)">Submit</button>
@@ -84,21 +89,48 @@
 
             <div id="jsonEditor" style="width: 400px; height: 400px;"></div>
 
-            <button onclick="submitEventMetadata(
+            <button onclick="stoneticket.submitEventMetadata(
                 this.parentElement.querySelector('#jsonEditor').editor.get(),
                 this.parentElement.parentElement,
                 false)">Save</button>
-            <button onclick="submitEventMetadata(
+            <button onclick="stoneticket.submitEventMetadata(
                 this.parentElement.querySelector('#jsonEditor').editor.get(),
                 this.parentElement.parentElement,
                 true)">Save & Close</button>
         </div>
     </div>
+
+    <div id="modelSetupEventPricing" class="modal">
+        <div class="modal-content" style="max-width: 600px;">
+            <span class="close" onclick="this.parentElement.parentElement.style.display='none'">&times;</span>
+            <p id="modelSetupEventPricingTitle">Event Pricing Management</p>
+            <div><form id="newPricingForm">
+                <table align="center">
+                    <tr>
+                        <th>PriceName</th>
+                        <td><input type="text" id="newPriceName" required></td>
+                    </tr>
+                    <tr>
+                        <th>Price(00.00)</th>
+                        <td><input type="text" id="newPrice" required
+                                    oninput="stoneticket.enforceNumericInput(this)"></td>
+                    </tr>
+                    <tr>
+                        <td></td>
+                        <td align="right"><button id="addPriceButton" type="button"
+                                    onclick="stoneticket.submitNewPricingForm(
+                                        this.closest('#modelSetupEventPricing').eventId,
+                                        this.closest('form'))">Add</button>
+                        </td>
+                    </tr>
+                </table>
+            </form></div>
+            <div id="modalEventPricingList"></div>
+        </div>
+    </div>
 </div>
 
 
-<script src="event.js"></script> <!-- Link to your JavaScript file -->
-<script src="jsoneditor.min.js"></script>
 
 </body>
 </html>
