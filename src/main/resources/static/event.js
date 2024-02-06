@@ -9,7 +9,9 @@ window.stoneticket = {
     submitNewPricingForm,
     changeEventVenue,
     updateEventVenue,
-    deleteEvent
+    deleteEvent,
+    setAreaPrice,
+    setSeatPrice
 }
 
 function fetchEvents() {
@@ -130,14 +132,18 @@ function reloadEventPricing(eventId, container) {
             tr.appendChild(tdSeats);
 
             let containerSeats = document.createElement("div");
-            containerArea.id = "containerPricingSeats";
+            containerSeats.id = "containerPricingSeats";
             tdSeats.appendChild(containerSeats);
 
             let trButton = document.createElement("tr");
             trButton.innerHTML = `
                     <td></td>
-                    <td align="right"><button>Price selected area</button></td>
-                    <td align="right"><button>Price selected seats</button></td>
+                    <td align="right"><button onclick="stoneticket.setAreaPrice(
+                        this.closest('#modalEventPricingList').querySelector('input[name=\\'radioEventPrice\\']:checked')?.id,
+                        this.closest('#modalEventPricingList').querySelector('#containerPricingArea').selectedAreaId)">set area price</button></td>
+                    <td align="right"><button onclick="stoneticket.setSeatPrice(
+                        this.closest('#modalEventPricingList').querySelector('input[name=\\'radioEventPrice\\']:checked')?.id,
+                        this.closest('#modalEventPricingList').querySelector('#containerPricingSeats').selectedSeats)">set seat price</button></td>
                 `;
             table.appendChild(trButton);
 
@@ -149,6 +155,18 @@ function reloadEventPricing(eventId, container) {
         .catch(error => {
             console.error('Error fetching prices:', error);
         });
+}
+
+function setAreaPrice(priceId, areaId) {
+    alert(priceId + "|" + areaId)
+    //TODO: implement containerPricingArea.selectedAreaId
+    //TODO: call backend API to save these into database
+}
+
+function setSeatPrice(priceId, seatIds) {
+    alert(priceId + "|" + seatIds);
+    //TODO: implement containerPricingSeats.selectedSeats
+    //TODO: call backend API to save these into database
 }
 
 

@@ -39,7 +39,7 @@ export function drawSeats(eventId, areaId, seatsContainer) {
             Object.keys(seatRows).sort((a, b) => a - b).forEach(row => {
                 const tr = table.insertRow();
                 seatRows[row].sort((a, b) => a.column - b.column).forEach(seat => {
-                    const td = tr.insertCell();
+                    const td= tr.insertCell();
                     td.textContent = seat.name;
                     td.dataset.seatid = seat.id;
                     td.dataset.selected = "false";
@@ -71,6 +71,8 @@ export function drawEventVenueEx(eventId, svgContainer, onAreaClick) {
                 areaNames[area.id] = area.name; // Map 'id' from JSON to 'areaId'
             });
         });
+
+
 
     svgContainer.addEventListener('mouseover', function(event) {
         if (event.target.tagName === 'rect' && event.target.getAttribute('areaid')) {
@@ -110,6 +112,14 @@ export function drawEventVenueEx(eventId, svgContainer, onAreaClick) {
     svgContainer.addEventListener('click', function(event) {
         if (event.target.tagName === 'rect' && event.target.getAttribute('areaid')) {
             const areaId = event.target.getAttribute('areaid');
+
+            clearSelectedAreas(svgContainer);
+            if (event.target.tagName === 'rect') {
+                //applyAreaColor(svgContainer, areaId);
+                applySelectedAreaShadow(svgContainer, areaId);
+                drawSelectedAreaBorder(svgContainer, areaId);
+            }
+
             if (onAreaClick)
                 onAreaClick(eventId, areaId);
         }
@@ -117,10 +127,134 @@ export function drawEventVenueEx(eventId, svgContainer, onAreaClick) {
     drawEventVenue(eventId, svgContainer);
 }
 
+function clearSelectedAreas(svgContainer) {
+    svgContainer.querySelectorAll('line').forEach(line => {
+        line.remove();
+    });
+    svgContainer.querySelectorAll('.overlay').forEach(overlay => {
+        overlay.remove();
+    });
+}
+
+function applySelectedAreaColor(svgContainer, areaId) {
+    svgContainer.querySelectorAll(`rect[areaid="${areaId}"]`).forEach(rect => {
+        let overlay = rect.cloneNode(true);
+        overlay.style.setProperty('fill', 'rgba(255, 0, 0, 0.2)');
+        overlay.style.pointerEvents = 'none';
+        overlay.setAttribute('filter', 'url(#shadow)'); // Apply the shadow filter
+        overlay.setAttribute('class', 'overlay');
+        rect.parentNode.insertBefore(overlay, rect.nextSibling);
+    });
+}
+
+function drawSelectedAreaBorder(svgContainer, areaId) {
+    let edgeCounts = new Map();
+    svgContainer.querySelectorAll(`rect[areaid="${areaId}"]`).forEach(rect => {
+        const x = parseFloat(rect.getAttribute('x'));
+        const y = parseFloat(rect.getAttribute('y'));
+        const width = parseFloat(rect.getAttribute('width'));
+        const height = parseFloat(rect.getAttribute('height'));
+
+        addEdge(edgeCounts, x, y, x + width, y); // Top edge
+        addEdge(edgeCounts,x + width, y, x + width, y + height); // Right edge
+        addEdge(edgeCounts,x + width, y + height, x, y + height); // Bottom edge
+        addEdge(edgeCounts, x, y + height, x, y); // Left edge
+    });
+
+    // Draw edges that are not shared, i.e., count is 1
+    edgeCounts.forEach((count, edgeKey) => {
+        if (count === 1) { // Edge is not shared
+            const [x1, y1, x2, y2] = edgeKey.split('-').map(Number);
+            const svg = svgContainer.querySelector('svg');
+
+            const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+            line.setAttribute("x1", x1);
+            line.setAttribute("y1", y1);
+            line.setAttribute("x2", x2);
+            line.setAttribute("y2", y2);
+
+            // Set line style (customize as needed)
+            line.setAttribute("stroke", "red"); // Line color
+            line.setAttribute("stroke-width", "3"); // Line thickness
+
+            // Append the line to the SVG container
+            svg.appendChild(line);
+        }
+    });
+}
+
+function addEdge(edgeCounts, x1, y1, x2, y2) {
+    const edgeKey = `${Math.min(x1, x2)}-${Math.min(y1, y2)}-${Math.max(x1, x2)}-${Math.max(y1, y2)}`;
+    // Update edge count
+    if (edgeCounts.has(edgeKey)) {
+        // Edge is shared, increase its count
+        edgeCounts.set(edgeKey, edgeCounts.get(edgeKey) + 1);
+    } else {
+        // First time seeing this edge, set its count to 1
+        edgeCounts.set(edgeKey, 1);
+    }
+}
+
+function applySelectedAreaShadow(svgContainer, areaId) {
+    // Calculate the bounding box of all rectangles with the given areaId
+    let minX = Infinity, minY = Infinity, maxX = 0, maxY = 0;
+    svgContainer.querySelectorAll(`rect[areaid="${areaId}"]`).forEach(rect => {
+        const x = parseFloat(rect.getAttribute('x'));
+        const y = parseFloat(rect.getAttribute('y'));
+        const width = parseFloat(rect.getAttribute('width'));
+        const height = parseFloat(rect.getAttribute('height'));
+        minX = Math.min(minX, x);
+        minY = Math.min(minY, y);
+        maxX = Math.max(maxX, x + width);
+        maxY = Math.max(maxY, y + height);
+    });
+
+    // Create a transparent overlay
+    const overlay = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+    overlay.setAttribute('x', minX);
+    overlay.setAttribute('y', minY);
+    overlay.setAttribute('width', maxX - minX);
+    overlay.setAttribute('height', maxY - minY);
+    overlay.setAttribute('fill', 'none'); // Make the fill transparent
+    overlay.setAttribute('stroke', 'none'); // No stroke needed, just the shadow
+    overlay.setAttribute('filter', 'url(#shadow)'); // Apply the shadow filter
+
+    overlay.setAttribute('class', 'overlay');
+
+    overlay.style.setProperty('fill', 'rgba(255, 0, 0, 0.2)');
+    overlay.style.pointerEvents = 'none'; // Ensure it doesn't capture mouse events
+
+    // Append the overlay to the SVG
+    const svg = svgContainer.querySelector('svg');
+    svg.insertBefore(overlay, svg.firstChild);
+}
+
+
 export function drawEventVenue(eventId, svgContainer) {
     fetch(`/api/events/${eventId}/venue/svg`)
         .then(response => response.text())
-        .then(svg => {
-            svgContainer.innerHTML = svg;
+        .then(svgHtml => {
+            svgContainer.innerHTML = svgHtml;
+
+            //Enable shadow filter to the SVG.
+            const svgNs = "http://www.w3.org/2000/svg";
+            const svg = svgContainer.querySelector('svg');
+            if (!svg) return;
+
+            let defs = svg.querySelector('defs') || document.createElementNS(svgNs, 'defs');
+            if (!svg.querySelector('defs')) {
+                svg.prepend(defs); // Only append if it was newly created
+                defs.innerHTML =
+                    `<defs>
+                        <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+                            <feGaussianBlur in="SourceAlpha" stdDeviation="3" result="blur"></feGaussianBlur>
+                            <feOffset in="blur" dx="2" dy="2" result="offsetBlur"></feOffset>
+                            <feMerge>
+                                <feMergeNode in="offsetBlur"></feMergeNode>
+                                <feMergeNode in="SourceGraphic"></feMergeNode>
+                            </feMerge>
+                        </filter>
+                    </defs>`;
+            }
         });
 }
