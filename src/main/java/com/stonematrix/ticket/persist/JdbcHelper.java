@@ -991,7 +991,7 @@ public class JdbcHelper {
                         "AND TKT.PricesDistribution.areaId = ? " +
                         "AND TKT.PricesDistribution.venueId IS NULL " +
                         "WHEN MATCHED THEN " +
-                            "UPDATE SET TKT.PricesDistribution.priceId = ? " +
+                            "UPDATE SET priceId = ? " +
                         "WHEN NOT MATCHED THEN " +
                             "INSERT (id, priceId, seatId, areaId, venueId) " +
                             "VALUES (?, ?, NULL, ?, NULL)";

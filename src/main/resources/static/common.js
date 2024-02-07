@@ -53,42 +53,108 @@ export function drawSeats(eventId, areaId, seatsContainer) {
                         td.addEventListener('click', function () {
                             this.dataset.selected = this.dataset.selected === "false" ? "true" : "false";
                             this.style.border = this.dataset.selected === "true" ? "3px solid red" : originalBorder;
+                            markSelectedSeats(seatsContainer);
                         });
+
+                        //Add pricing information to the seat display. Perhaps with toolTips?
+                        fetch(`/api/events/${eventId}/seats/${seat.id}/pricing`)
+                            .then(response => {
+                                if (response.ok)
+                                    response.json().then (pricing => {
+                                        td.dataset.pricing = pricing.name;
+                                    })
+                                else
+                                    td.dataset.pricing = "undefined";
+                            })
                     }
                 });
+
             });
-            seatsContainer.appendChild(table);
+           seatsContainer.appendChild(table);
+           enableSeatToolTips(seatsContainer);
         });
 }
 
-export function drawEventVenueEx(eventId, svgContainer, onAreaClick) {
-     let areaNames = {};
-     fetch(`/api/events/${eventId}/areas`)
-        .then(response => response.json())
-        .then(areas => {
-            areaNames = {}; // Reset the areaNames object
-            areas.forEach(area => {
-                areaNames[area.id] = area.name; // Map 'id' from JSON to 'areaId'
-            });
-        });
-
-
-
-    svgContainer.addEventListener('mouseover', function(event) {
-        if (event.target.tagName === 'rect' && event.target.getAttribute('areaid')) {
-            const areaId = event.target.getAttribute('areaid');
-            const name = areaNames[areaId];
-            if (name) {
+function enableSeatToolTips(seatContainer) {
+    seatContainer.addEventListener('mouseover', function(event) {
+        if (event.target.tagName.toLowerCase() === 'td' && event.target.getAttribute('data-pricing')) {
+            const pricing = event.target.getAttribute('data-pricing');
+            if (pricing) {
                 const tooltip = document.createElement('div');
-                tooltip.textContent = name;
-                tooltip.id="divToolTip";
+                tooltip.textContent = pricing;
+                tooltip.id="seatToolTip";
                 tooltip.style.cssText = `
                     position: absolute;
                     background-color: #fff;
                     border: 1px solid #000;
                     padding: 5px;
                     z-index: 10;
-                    pointer-events: none; /* This ensures the tooltip doesn't interfere with other mouse events */
+                    pointer-events: none;
+                `;
+                const rectBox = event.target.getBoundingClientRect();
+                tooltip.style.left = `${rectBox.left + window.scrollX}px`;
+                tooltip.style.top = `${rectBox.top + rectBox.height + window.scrollY}px`;
+                seatContainer.appendChild(tooltip);
+            }
+        }
+    });
+
+    // Event delegation for mouseout on SVG rect elements
+    seatContainer.addEventListener('mouseout', function(event) {
+        if (event.target.tagName.toLowerCase() === 'td' && event.target.getAttribute('data-pricing')) {
+            const tooltip = seatContainer.querySelector('#seatToolTip');
+            if (tooltip) {
+                tooltip.remove();
+            }
+        }
+    });
+}
+
+function markSelectedSeats(seatsContainer) {
+    let selectedSeatIds = [];
+    const selectedSeats = Array.from(seatsContainer.querySelectorAll('td[data-selected="true"]'));
+    const selectedSeatsInfo = selectedSeats.map(seat => {
+        selectedSeatIds.push(seat.dataset.seatid);
+    });
+    seatsContainer.selectedSeats = selectedSeatIds;
+}
+
+export function drawEventVenueEx(eventId, svgContainer, onAreaClick) {
+
+     let areaNames = {};
+     let areaPrices = {};
+
+     fetch(`/api/events/${eventId}/areas`)
+        .then(response => response.json())
+        .then(areas => {
+            areas.forEach(area => {
+                areaNames[area.id] = area.name; // Map 'id' from JSON to 'areaId'
+                fetch(`/api/events/${eventId}/areas/${area.id}/pricing`)
+                    .then(response => {
+                        if (response.ok)
+                            response.json().then (pricing => {
+                                areaPrices[area.id] = pricing.name;
+                            })
+                    })
+            });
+        });
+
+    svgContainer.addEventListener('mouseover', function(event) {
+        if (event.target.tagName === 'rect' && event.target.getAttribute('areaid')) {
+            const areaId = event.target.getAttribute('areaid');
+            const name = areaNames[areaId];
+            const pricing = areaPrices[areaId];
+            if (name) {
+                const tooltip = document.createElement('div');
+                tooltip.textContent = `${name} (${pricing})`;
+                tooltip.id="areaToolTip";
+                tooltip.style.cssText = `
+                    position: absolute;
+                    background-color: #fff;
+                    border: 1px solid #000;
+                    padding: 5px;
+                    z-index: 10;
+                    pointer-events: none;
                 `;
                 const rectBox = event.target.getBoundingClientRect();
                 tooltip.style.left = `${rectBox.left + window.scrollX}px`;
@@ -101,7 +167,7 @@ export function drawEventVenueEx(eventId, svgContainer, onAreaClick) {
     // Event delegation for mouseout on SVG rect elements
     svgContainer.addEventListener('mouseout', function(event) {
         if (event.target.tagName === 'rect' && event.target.getAttribute('areaid')) {
-            const tooltip = document.querySelector('#divToolTip');
+            const tooltip = svgContainer.querySelector('#areaToolTip');
             if (tooltip) {
                 tooltip.remove();
             }
@@ -114,11 +180,9 @@ export function drawEventVenueEx(eventId, svgContainer, onAreaClick) {
             const areaId = event.target.getAttribute('areaid');
 
             clearSelectedAreas(svgContainer);
-            if (event.target.tagName === 'rect') {
-                //applyAreaColor(svgContainer, areaId);
-                applySelectedAreaShadow(svgContainer, areaId);
-                drawSelectedAreaBorder(svgContainer, areaId);
-            }
+            applySelectedAreaShadow(svgContainer, areaId);
+            drawSelectedAreaBorder(svgContainer, areaId);
+            svgContainer.selectedAreaId = areaId;
 
             if (onAreaClick)
                 onAreaClick(eventId, areaId);

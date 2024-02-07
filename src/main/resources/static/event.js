@@ -138,10 +138,10 @@ function reloadEventPricing(eventId, container) {
             let trButton = document.createElement("tr");
             trButton.innerHTML = `
                     <td></td>
-                    <td align="right"><button onclick="stoneticket.setAreaPrice(
+                    <td align="right"><button onclick="stoneticket.setAreaPrice('${eventId}',
                         this.closest('#modalEventPricingList').querySelector('input[name=\\'radioEventPrice\\']:checked')?.id,
                         this.closest('#modalEventPricingList').querySelector('#containerPricingArea').selectedAreaId)">set area price</button></td>
-                    <td align="right"><button onclick="stoneticket.setSeatPrice(
+                    <td align="right"><button onclick="stoneticket.setSeatPrice('${eventId}',
                         this.closest('#modalEventPricingList').querySelector('input[name=\\'radioEventPrice\\']:checked')?.id,
                         this.closest('#modalEventPricingList').querySelector('#containerPricingSeats').selectedSeats)">set seat price</button></td>
                 `;
@@ -157,16 +157,51 @@ function reloadEventPricing(eventId, container) {
         });
 }
 
-function setAreaPrice(priceId, areaId) {
-    alert(priceId + "|" + areaId)
-    //TODO: implement containerPricingArea.selectedAreaId
-    //TODO: call backend API to save these into database
+function setAreaPrice(eventId, priceId, areaId) {
+    fetch(`/api/events/${eventId}/areas/${areaId}/pricing`, {
+        method: 'PATCH',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ "priceId": priceId })
+    })
+        .then(response => {
+            if (response.ok) {
+                reloadEventPricing(eventId, document.querySelector('#modalEventPricingList'));
+            } else {
+                console.error('Server returned ' + response.status);
+            }
+        })
+        .catch(error => {
+            console.error('Error setAreaPrice:', error);
+        });
 }
 
-function setSeatPrice(priceId, seatIds) {
-    alert(priceId + "|" + seatIds);
-    //TODO: implement containerPricingSeats.selectedSeats
-    //TODO: call backend API to save these into database
+function setSeatPrice(eventId, priceId, seatIds) {
+    let apiPromises = [];
+    seatIds.forEach(seatId => {
+        apiPromises.push(
+            fetch(`/api/events/${eventId}/seats/${seatId}/pricing`, {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({"priceId": priceId})
+            })
+        )
+    });
+
+    Promise.allSettled(apiPromises)
+        .then(results => {
+            results.forEach((result) => {
+                if (result.status === 'fulfilled') {
+                    console.log('Success:', result.value);
+                } else {
+                    console.log('Failure:', result.reason);
+                }
+            });
+            reloadEventPricing(eventId, document.querySelector('#modalEventPricingList'));
+        });
 }
 
 
