@@ -69,7 +69,6 @@ public class EventsApiResource implements EventsApi {
     }
 
 
-
     @Override
     public Response getAllAreasInEvent(UUID eventId) {
         try {

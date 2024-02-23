@@ -174,22 +174,27 @@ export function drawEventVenueEx(eventId, svgContainer, onAreaClick) {
         }
     });
 
-    // Event delegation for click on SVG rect elements
     svgContainer.addEventListener('click', function(event) {
         if (event.target.tagName === 'rect' && event.target.getAttribute('areaid')) {
             const areaId = event.target.getAttribute('areaid');
-
-            clearSelectedAreas(svgContainer);
-            applySelectedAreaShadow(svgContainer, areaId);
-            drawSelectedAreaBorder(svgContainer, areaId);
-            svgContainer.selectedAreaId = areaId;
-
-            if (onAreaClick)
-                onAreaClick(eventId, areaId);
+            drawSelectedArea(svgContainer, eventId, areaId, onAreaClick);
         }
     });
-    drawEventVenue(eventId, svgContainer);
+
+    drawEventVenue(eventId, svgContainer, onAreaClick);
+
 }
+
+function drawSelectedArea(svgContainer, eventId, areaId, onAreaClick) {
+    clearSelectedAreas(svgContainer);
+    applySelectedAreaShadow(svgContainer, areaId);
+    drawSelectedAreaBorder(svgContainer, areaId);
+    svgContainer.selectedAreaId = areaId;
+
+    if (onAreaClick)
+        onAreaClick(eventId, areaId);
+}
+
 
 function clearSelectedAreas(svgContainer) {
     svgContainer.querySelectorAll('line').forEach(line => {
@@ -294,7 +299,7 @@ function applySelectedAreaShadow(svgContainer, areaId) {
 }
 
 
-export function drawEventVenue(eventId, svgContainer) {
+export function drawEventVenue(eventId, svgContainer, onAreaClick) {
     fetch(`/api/events/${eventId}/venue/svg`)
         .then(response => response.text())
         .then(svgHtml => {
@@ -319,6 +324,10 @@ export function drawEventVenue(eventId, svgContainer) {
                             </feMerge>
                         </filter>
                     </defs>`;
+            }
+
+            if (svgContainer.selectedAreaId) {
+                drawSelectedArea(svgContainer, eventId, svgContainer.selectedAreaId, onAreaClick);
             }
         });
 }

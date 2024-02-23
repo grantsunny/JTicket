@@ -113,11 +113,21 @@ CREATE VIEW TKT.SeatAdvanced AS
 SELECT
     TKT.Seats.id, TKT.Seats.areaId, TKT.Areas.venueId, row, col, available, TKT.Seats.metadata,
     TKT.Events.id AS eventId,
-    COALESCE(
-            seatPrice.price,
-            areaPrice.price,
-            venuePrice.price
-    ) AS price,
+    CASE
+        WHEN seatPrice.price IS NOT NULL THEN seatPrice.id
+        WHEN areaPrice.price IS NOT NULL THEN areaPrice.id
+        ELSE venuePrice.id
+    END AS priceId,
+    CASE
+        WHEN seatPrice.price IS NOT NULL THEN seatPrice.name
+        WHEN areaPrice.price IS NOT NULL THEN areaPrice.name
+        ELSE venuePrice.name
+    END AS priceName,
+    CASE
+        WHEN seatPrice.price IS NOT NULL THEN seatPrice.price
+        WHEN areaPrice.price IS NOT NULL THEN areaPrice.price
+        ELSE venuePrice.price
+    END AS price,
     CASE WHEN EXISTS (
         SELECT 1
         FROM TKT.OrderSeats
@@ -129,7 +139,7 @@ SELECT
     )
     THEN TRUE
     ELSE FALSE
-    END AS booked
+    END           AS booked
 FROM
     TKT.Seats
         INNER JOIN TKT.Areas ON TKT.Areas.Id = TKT.Seats.areaId

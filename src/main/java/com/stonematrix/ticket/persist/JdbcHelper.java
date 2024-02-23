@@ -2,6 +2,7 @@ package com.stonematrix.ticket.persist;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.stonematrix.ticket.api.model.*;
+import org.springframework.expression.spel.ast.NullLiteral;
 import org.springframework.stereotype.Component;
 
 import jakarta.inject.Inject;
@@ -913,30 +914,29 @@ public class JdbcHelper {
     }
 
     public void saveDefaultPricingOfEvent(UUID eventId, UUID priceId) throws SQLException {
-        String sql =
-                "MERGE INTO TKT.PricesDistribution " +
-                        "USING TKT.Prices " +
-                        "ON TKT.Prices.id = TKT.PricesDistribution.priceId " +
-                        "AND TKT.Prices.eventId = ? " +
-                        "AND TKT.PricesDistribution.seatId IS NULL " +
-                        "AND TKT.PricesDistribution.areaId IS NULL " +
-                        "WHEN MATCHED " +
-                        "THEN " +
-                        "UPDATE SET priceId = ? ";
 
-        String sql2 = "INSERT INTO TKT.PricesDistribution (id, priceId, seatId, areaId, venueId) " +
-                        "SELECT ?, ?, NULL, NULL, venueId FROM TKT.Prices " +
-                        "INNER JOIN TKT.Events ON TKT.Events.id = TKT.Prices.eventId " +
-                        "AND TKT.Events.id = ?";
+        String sql =
+                "UPDATE TKT.PricesDistribution " +
+                "SET priceId = ? " +
+                "WHERE priceId IN (SELECT id FROM TKT.Prices WHERE eventId = ?) " +
+                "AND seatId IS NULL " +
+                "AND areaId IS NULL " +
+                "AND venueId IN (SELECT venueId FROM TKT.Events WHERE id = ?) ";
+
+        String sql2 =
+                "INSERT INTO TKT.PricesDistribution (id, priceId, seatId, areaId, venueId) " +
+                "SELECT ?, ?, NULL, NULL, TKT.Events.venueId FROM TKT.Prices " +
+                "INNER JOIN TKT.Events ON TKT.Events.id = TKT.Prices.eventId " +
+                "AND TKT.Events.id = ?";
 
         try (Connection conn = dataSource.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
 
-            pstmt.setString(1, eventId.toString());
-            pstmt.setString(2, priceId.toString());
-            pstmt.executeUpdate();
+            pstmt.setString(1, priceId.toString());
+            pstmt.setString(2, eventId.toString());
+            pstmt.setString(3, eventId.toString());
 
-            if (pstmt.getUpdateCount() < 1) {
+            if (pstmt.executeUpdate() < 1) {
                 try (PreparedStatement pstmt2 = conn.prepareStatement(sql2)) {
                     pstmt2.setString(1, UUID.randomUUID().toString());
                     pstmt2.setString(2, priceId.toString());
@@ -950,66 +950,66 @@ public class JdbcHelper {
 
     public void saveSeatLevelPricingOfEvent(UUID eventId, UUID seatId, UUID priceId) throws SQLException {
         String sql =
-                "MERGE INTO TKT.PricesDistribution " +
-                        "USING TKT.Prices " +
-                        "ON TKT.Prices.id = TKT.PricesDistribution.priceId " +
-                        "AND TKT.Prices.eventId = ? " +
-                        "AND TKT.PricesDistribution.seatId = ? " +
-                        "AND TKT.PricesDistribution.areaId IS NULL " +
-                        "AND TKT.PricesDistribution.venueId IS NULL " +
-                        "WHEN MATCHED THEN " +
-                            "UPDATE SET TKT.PricesDistribution.priceId = ? " +
-                        "WHEN NOT MATCHED THEN " +
-                            "INSERT (id, priceId, seatId, areaId, venueId) " +
-                            "VALUES (?, ?, ?, NULL, NULL)";
+                "UPDATE TKT.PricesDistribution " +
+                        "SET priceId = ? " +
+                        "WHERE priceId IN (SELECT TKT.Prices.id FROM TKT.Prices WHERE eventId = ?) " +
+                        "AND seatId = ? " +
+                        "AND areaId IS NULL " +
+                        "AND venueId IS NULL ";
+
+        String sql2 =
+                "INSERT INTO TKT.PricesDistribution (id, priceId, seatId, areaId, venueId) " +
+                        "VALUES (?, ?, ?, NULL, NULL)";
 
         try (Connection conn = dataSource.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
 
-            pstmt.setString(1, eventId.toString());
-            pstmt.setString(2, seatId.toString());
-            pstmt.setString(3, priceId.toString());
-            pstmt.setString(4, UUID.randomUUID().toString());
-            pstmt.setString(5, priceId.toString());
-            pstmt.setString(6, seatId.toString());
+            pstmt.setString(1, priceId.toString());
+            pstmt.setString(2, eventId.toString());
+            pstmt.setString(3, seatId.toString());
 
-            pstmt.executeUpdate();
+            if (pstmt.executeUpdate() < 1) {
+                try (PreparedStatement pstmt2 = conn.prepareStatement(sql2)) {
+                    pstmt2.setString(1, UUID.randomUUID().toString());
+                    pstmt2.setString(2, priceId.toString());
+                    pstmt2.setString(3, seatId.toString());
 
-            if (pstmt.getUpdateCount() < 1)
-                throw new SQLException("Not successfully saved", "304");
+                    pstmt2.executeUpdate();
+                }
+            }
         }
     }
 
     public void saveAreaLevelPricingOfEvent(UUID eventId, UUID areaId, UUID priceId) throws SQLException {
 
         String sql =
-                "MERGE INTO TKT.PricesDistribution " +
-                        "USING TKT.Prices " +
-                        "ON TKT.Prices.id = TKT.PricesDistribution.priceId " +
-                        "AND TKT.Prices.eventId = ? " +
-                        "AND TKT.PricesDistribution.seatId IS NULL " +
-                        "AND TKT.PricesDistribution.areaId = ? " +
-                        "AND TKT.PricesDistribution.venueId IS NULL " +
-                        "WHEN MATCHED THEN " +
-                            "UPDATE SET priceId = ? " +
-                        "WHEN NOT MATCHED THEN " +
-                            "INSERT (id, priceId, seatId, areaId, venueId) " +
-                            "VALUES (?, ?, NULL, ?, NULL)";
+                "UPDATE TKT.PricesDistribution " +
+                        "SET priceId = ? " +
+                        "WHERE priceId IN (SELECT TKT.Prices.id FROM TKT.Prices WHERE eventId = ?) " +
+                        "AND seatId IS NULL " +
+                        "AND areaId = ? " +
+                        "AND venueId IS NULL ";
+
+        String sql2 =
+                "INSERT INTO TKT.PricesDistribution (id, priceId, seatId, areaId, venueId) " +
+                        "VALUES (?, ?, NULL, ?, NULL)";
 
         try (Connection conn = dataSource.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
 
-            pstmt.setString(1, eventId.toString());
-            pstmt.setString(2, areaId.toString());
-            pstmt.setString(3, priceId.toString());
-            pstmt.setString(4, UUID.randomUUID().toString());
-            pstmt.setString(5, priceId.toString());
-            pstmt.setString(6, areaId.toString());
+            pstmt.setString(1, priceId.toString());
+            pstmt.setString(2, eventId.toString());
+            pstmt.setString(3, areaId.toString());
 
-            pstmt.executeUpdate();
+            if (pstmt.executeUpdate() < 1) {
+                try (PreparedStatement pstmt2 = conn.prepareStatement(sql2)) {
+                    pstmt2.setString(1, UUID.randomUUID().toString());
+                    pstmt2.setString(2, priceId.toString());
+                    pstmt2.setString(3, areaId.toString());
 
-            if (pstmt.getUpdateCount() < 1)
-                throw new SQLException("Not successfully saved", "304");
+                    pstmt2.executeUpdate();
+                }
+            }
         }
     }
 

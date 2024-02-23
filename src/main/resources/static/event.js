@@ -73,7 +73,7 @@ function submitNewPricingForm(eventId, newPricingForm) {
     })
         .then(response => {
             if (response.ok) {
-                reloadEventPricing(eventId, newPricingForm.parentElement.parentElement.querySelector("#modalEventPricingList"));
+                reloadEventPricing(eventId, newPricingForm.parentElement.parentElement.querySelector("#modalEventPricingList"), null);
                 newPricingForm.querySelector("#newPriceName").value = "";
                 newPricingForm.querySelector("#newPrice").value = "";
             } else {
@@ -86,7 +86,8 @@ function submitNewPricingForm(eventId, newPricingForm) {
         });
 }
 
-function reloadEventPricing(eventId, container) {
+function reloadEventPricing(eventId, container, selectedAreaId) {
+
     const apiUrl = `/api/events/${eventId}/prices`; // Replace with the actual endpoint URL
     fetch(apiUrl)
         .then(response => response.json())
@@ -125,6 +126,7 @@ function reloadEventPricing(eventId, container) {
             let containerArea = document.createElement("div");
             containerArea.style.align = "center";
             containerArea.id = "containerPricingArea";
+            containerArea.selectedAreaId = selectedAreaId;
             tdArea.appendChild(containerArea);
 
             let tdSeats = document.createElement("td");
@@ -143,13 +145,16 @@ function reloadEventPricing(eventId, container) {
                         this.closest('#modalEventPricingList').querySelector('#containerPricingArea').selectedAreaId)">set area price</button></td>
                     <td align="right"><button onclick="stoneticket.setSeatPrice('${eventId}',
                         this.closest('#modalEventPricingList').querySelector('input[name=\\'radioEventPrice\\']:checked')?.id,
+                        this.closest('#modalEventPricingList').querySelector('#containerPricingArea').selectedAreaId,
                         this.closest('#modalEventPricingList').querySelector('#containerPricingSeats').selectedSeats)">set seat price</button></td>
                 `;
-            table.appendChild(trButton);
 
-            drawEventVenueEx(eventId, containerArea, function (eventId, areaId) {
-                drawSeats(eventId, areaId, containerSeats);
-            });
+            table.appendChild(trButton);
+            drawEventVenueEx(eventId,
+                containerArea,
+                function (eventId, areaId) {
+                    drawSeats(eventId, areaId, containerSeats);
+                });
 
         })
         .catch(error => {
@@ -167,7 +172,7 @@ function setAreaPrice(eventId, priceId, areaId) {
     })
         .then(response => {
             if (response.ok) {
-                reloadEventPricing(eventId, document.querySelector('#modalEventPricingList'));
+                reloadEventPricing(eventId, document.querySelector('#modalEventPricingList'), areaId);
             } else {
                 console.error('Server returned ' + response.status);
             }
@@ -177,7 +182,7 @@ function setAreaPrice(eventId, priceId, areaId) {
         });
 }
 
-function setSeatPrice(eventId, priceId, seatIds) {
+function setSeatPrice(eventId, priceId, areaId, seatIds) {
     let apiPromises = [];
     seatIds.forEach(seatId => {
         apiPromises.push(
@@ -200,7 +205,7 @@ function setSeatPrice(eventId, priceId, seatIds) {
                     console.log('Failure:', result.reason);
                 }
             });
-            reloadEventPricing(eventId, document.querySelector('#modalEventPricingList'));
+            reloadEventPricing(eventId, document.querySelector('#modalEventPricingList'), areaId);
         });
 }
 
@@ -215,7 +220,7 @@ function setupEventPricing(eventName, eventId) {
     modal.querySelector("#newPrice").value = "";
 
     cleanUpContainer(modalEventPricingList);
-    reloadEventPricing(eventId, modalEventPricingList);
+    reloadEventPricing(eventId, modalEventPricingList, null);
 
     modal.style.display = "block";
 }

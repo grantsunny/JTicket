@@ -518,7 +518,7 @@ paths:
         '404':
           description: There is no venue level price for this event, or venue is not assigned.
     patch:
-      summary: Assign a venue level price to the event.
+      summary: Assign a seat level price to the event.
       operationId: assignSeatLevelPricingOfEvent
       parameters:
         - name: eventId
