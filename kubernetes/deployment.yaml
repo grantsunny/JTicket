@@ -1,0 +1,25 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: stoneticket
+  namespace: tontix
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: stoneticket
+  template:
+    metadata:
+      name: stoneticket
+      labels:
+        app: stoneticket
+    spec:
+      containers:
+        - name: stoneticket
+          image: registry-intl-vpc.eu-central-1.aliyuncs.com/tontix/stoneticket-service:latest
+          ports:
+            - containerPort: 8080
+          imagePullPolicy: Always
+      imagePullSecrets:
+        - name: alicloud-acr
+      restartPolicy: Always

@@ -1,0 +1,26 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: stoneticket
+  namespace: tontix
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/backend-protocol: "http"
+spec:
+  ingressClassName: nginx-ingress-intranet
+  tls:
+    - hosts:
+        - "intra.tontix.io"
+        - "*.intra.tontix.io"
+    - secretName: intra.tontix.io
+  rules:
+    - host: service.intra.tontix.io
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: stoneticket
+                port:
+                  number: 80
