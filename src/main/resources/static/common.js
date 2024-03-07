@@ -1,3 +1,17 @@
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Fetch and display venues when the page loads
+    showCurrentUser(document.getElementById('user-info'));
+});
+
+export function showCurrentUser(container) {
+    fetch('/api/auth/userinfo')
+        .then(response => response.text())
+        .then(data => {
+            container.textContent = data;
+        });
+}
+
 export function cleanUpContainer(container) {
     while (container.hasChildNodes())
         container.removeChild(container.firstChild);

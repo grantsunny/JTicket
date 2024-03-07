@@ -22,5 +22,21 @@ spring:
       mode: embedded
       schema-locations: classpath:database.sql
       continue-on-error: true
+crowd:
+  application:
+    name: stoneticket
+    password: stoneticket
+  server:
+    url: https://crowd.intra.tontix.io/crowd
+  session:
+    validationinterval: 2
+
+logging:
+  level:
+    org:
+      springframework:
+        security=DEBUG:
+
+
 
 
