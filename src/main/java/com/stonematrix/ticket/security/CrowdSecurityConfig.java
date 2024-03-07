@@ -40,7 +40,7 @@ import java.util.Properties;
 
 @Configuration
 @EnableWebSecurity
-//@Profile("production")
+@Profile("production")
 public class CrowdSecurityConfig {
     @Inject
     private Environment env;
