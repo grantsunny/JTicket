@@ -30,13 +30,3 @@ crowd:
     url: https://crowd.intra.tontix.io/crowd
   session:
     validationinterval: 2
-
-logging:
-  level:
-    org:
-      springframework:
-        security=DEBUG:
-
-
-
-

@@ -17,9 +17,11 @@ import com.atlassian.crowd.service.client.ClientPropertiesImpl;
 import com.atlassian.crowd.service.client.CrowdClient;
 
 import com.atlassian.crowd.service.factory.CrowdClientFactory;
+import jakarta.enterprise.inject.Any;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
+import org.springframework.core.annotation.Order;
 import org.springframework.security.authentication.AbstractAuthenticationToken;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -32,6 +34,8 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.core.env.Environment;
 
 import jakarta.inject.Inject;
+import org.springframework.security.web.authentication.LoginUrlAuthenticationEntryPoint;
+
 import java.util.Properties;
 
 @Configuration
@@ -50,30 +54,21 @@ public class CrowdSecurityConfig {
     private CrowdUserDetailsService crowdUserDetailsService;
     private CrowdAuthenticationProvider crowdAuthenticationProvider;
 
-    @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-        http.formLogin(Customizer.withDefaults());
 
-        http.authorizeHttpRequests(authorizeRequests -> authorizeRequests
-                                .anyRequest().authenticated()
-                ).formLogin(Customizer.withDefaults());
+    @Bean
+    public SecurityFilterChain filterChainBackOffice(HttpSecurity http) throws Exception {
+
+            http.authorizeHttpRequests(authorizeRequests -> authorizeRequests
+                .requestMatchers("/login", "/login?error", "/login?logout").permitAll()
+                .anyRequest().authenticated())
+            .formLogin(Customizer.withDefaults())
+            .httpBasic(httpBasic -> httpBasic
+                    .authenticationEntryPoint(
+                            new LoginUrlAuthenticationEntryPoint("/login")));
 
         return http.authenticationProvider(crowdAuthenticationProvider()).build();
     }
 
-    /**
-     * application.name=mySecuredApp
-     * application.password=secretPassKey
-     * crowd.server.url=https://domain.org/crowd/services/
-     * crowd.base.url=https://domain.org/crowd/
-     * application.login.url=https://domain.org/mySecuredApp/login
-     * cookie.tokenkey=crowd.token
-     * session.isauthenticated=SSO_IS_AUTHENTICATED
-     * session.tokenkey=CROWD_TOKEN
-     * session.validationinterval=0
-     * session.lastvalidation=SSO_LAST_VALIDATION
-     * @return
-     */
     @Bean ClientProperties clientProperties() {
 
         if (clientProperties != null)
@@ -84,11 +79,6 @@ public class CrowdSecurityConfig {
         crowdProperties.setProperty("application.password", env.getProperty("crowd.application.password"));
         crowdProperties.setProperty("crowd.server.url", env.getProperty("crowd.server.url"));
         crowdProperties.setProperty("session.validationinterval", env.getProperty("crowd.session.validationinterval"));
-
-        crowdProperties.setProperty("cookie.tokenkey", "crowd.token");
-        crowdProperties.setProperty("isauthenticated", "SSO_IS_AUTHENTICATED");
-        crowdProperties.setProperty("tokenkey", "CROWD_TOKEN");
-        crowdProperties.setProperty("session.lastvalidation", "SSO_LAST_VALIDATION");
 
         clientProperties = ClientPropertiesImpl.newInstanceFromProperties(crowdProperties);
 
