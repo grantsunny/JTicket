@@ -28,6 +28,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.web.SecurityFilterChain;
@@ -61,8 +62,9 @@ public class CrowdSecurityConfig {
             http.authorizeHttpRequests(authorizeRequests -> authorizeRequests
                 .requestMatchers("/login", "/login?error", "/login?logout").permitAll()
                 .anyRequest().authenticated())
-            .formLogin(Customizer.withDefaults())
-            .httpBasic(httpBasic -> httpBasic
+                    .csrf(AbstractHttpConfigurer::disable)
+                    .formLogin(Customizer.withDefaults())
+                    .httpBasic(httpBasic -> httpBasic
                     .authenticationEntryPoint(
                             new LoginUrlAuthenticationEntryPoint("/login")));
 
