@@ -1,9 +1,9 @@
-FROM maven:3.9.6-eclipse-temurin-17 AS service-build
+FROM maven:3.9.6-eclipse-temurin-21 AS service-build
 WORKDIR /
 ADD . .
 RUN mvn clean package
 
-FROM eclipse-temurin:17-jre-jammy
+FROM eclipse-temurin:21-jre-jammy
 LABEL authors="Grant Yang"
 LABEL description="Stoneticket Backend Image"
 
