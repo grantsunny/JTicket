@@ -1,4 +1,9 @@
-import {drawVenue} from "./common.js";
+import {drawVenue, enforceNumericInput} from "./common.js";
+
+window.stoneticket = {
+    uploadTemplate
+}
+
 
 let areaNames = {}; // This object will store the mapping of areaId to area names
 document.addEventListener('DOMContentLoaded', function() {
