@@ -582,7 +582,7 @@ public class JdbcHelper {
         List<Event> events = new LinkedList<>();
         try (ResultSet rs = stmt.executeQuery()) {
             while (rs.next()) {
-                String id= rs.getString("id");
+                String id = rs.getString("id");
                 String venueId = rs.getString("venueId");
                 String name = rs.getString("name");
 
@@ -599,7 +599,7 @@ public class JdbcHelper {
                 }
 
                 events.add(new Event()
-                        .id(UUID.fromString(id))
+                        .id(id == null ? null : UUID.fromString(id))
                         .venueId(UUID.fromString(venueId))
                         .name(name)
                         .startTime(startTime)
@@ -936,7 +936,7 @@ public class JdbcHelper {
     }
 
     public Area loadAreaInEvent(UUID eventId, UUID areaId) throws SQLException {
-        String sql = "SELECT venueId, name, metadata FROM TKT.Areas " +
+        String sql = "SELECT TKT.Areas.venueId, TKT.Areas.name, TKT.Areas.metadata FROM TKT.Areas " +
                 "INNER JOIN TKT.Venues ON TKT.Areas.venueId = TKT.Venues.id " +
                 "INNER JOIN TKT.Events ON TKT.Events.venueId = TKT.Venues.id " +
                 "AND TKT.Events.id = ? AND TKT.Areas.id = ?";
