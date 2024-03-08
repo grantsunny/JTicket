@@ -11,8 +11,34 @@ window.stoneticket = {
     updateEventVenue,
     deleteEvent,
     setAreaPrice,
-    setSeatPrice
+    setSeatPrice,
+    addNewEvent,
+    refreshFormEventCopyFromList
 }
+
+function refreshFormEventCopyFromList(selectContainer, venueId) {
+    if (venueId) {
+        const apiUrl = `/api/events?venueId=${venueId}`; // Replace with the actual endpoint URL
+        // Make a GET request to the API
+        fetch(apiUrl, {
+            method: 'GET'
+        })
+            .then(response => response.json())
+            .then(data => {
+                selectContainer.innerHTML = '<option value="">Select Event</option>'; // Add an empty option
+                data.forEach(event => {
+                    const option = document.createElement("option");
+                    option.value = event.id;
+                    option.textContent = event.name;
+                    selectContainer.appendChild(option);
+                });
+            })
+            .catch(error => {
+                console.error('Error fetching venues:', error);
+            });
+    }
+}
+
 
 function fetchEvents() {
     // Define the API endpoint URL for getting events
@@ -349,17 +375,36 @@ function updateEventVenue(eventId, selectedVenueId, modal) {
 }
 
 function deleteEvent(eventId) {
-    alert("not implemented");
+    if (confirm("Please confirm: delete event will clean up all price settings. And removing will be denied for event with orders placed.")) {
+        const apiUrl = `/api/events/${eventId}`; // Replace with the actual endpoint URL
+
+        // Make a POST request to the API
+        fetch(apiUrl, {
+            method: 'DELETE',
+        })
+            .then(response => {
+                if (response.status === 204) {
+                    // Event deleted successfully, refresh the event list
+                    fetchEvents();
+                } else {
+                    console.error('Error deleting event. Status:', response.status);
+                }
+            })
+            .catch(error => {
+                console.error('Error deleting event:', error);
+            });
+    }
 }
 
 // Function to handle the form submission
-function submitFormData() {
+function addNewEvent(form) {
 
     // Get input values
-    const eventName = document.getElementById("eventName").value;
-    const venueId = document.getElementById("venueId").value;
-    const startTime = formatDateTime(new Date(document.getElementById("startTime").value));
-    const endTime = formatDateTime(new Date(document.getElementById("endTime").value));
+    const eventName = form.querySelector("#eventName").value;
+    const venueId = form.querySelector("#venueId").value;
+    const startTime = formatDateTime(new Date(form.querySelector("#startTime").value));
+    const endTime = formatDateTime(new Date(form.querySelector("#endTime").value));
+    const copyEventFrom = form.querySelector("#copyEventFromVenue").value;
 
     // Create event data object
     const eventData = {
@@ -370,7 +415,7 @@ function submitFormData() {
     };
 
     // Call the submitEvent function with the event data
-    submitEvent(eventData);
+    submitEvent(eventData, copyEventFrom);
 
     // Clear the form inputs
     document.getElementById("eventName").value = "";
@@ -390,16 +435,16 @@ function formatDateTime(date) {
     return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
 }
 // Function to submit a new event to the API
-function submitEvent(eventData) {
+function submitEvent(eventData, copyEventFrom) {
     // Define the API endpoint URL for creating events
     const apiUrl = '/api/events'; // Replace with the actual endpoint URL
+    let headers = new Headers({'Content-Type': 'application/json'});
+    if (copyEventFrom) headers.append('X-Copy-From-Id', copyEventFrom);
 
     // Make a POST request to the API
     fetch(apiUrl, {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
+        headers: headers,
         body: JSON.stringify(eventData)
     })
         .then(response => {
@@ -415,9 +460,8 @@ function submitEvent(eventData) {
         });
 }
 
-
 // Function to fetch venues from the API
-function fetchVenues() {
+function refreshFormEventVenueList() {
     // Define the API endpoint URL for getting venues
     const apiUrl = '/api/venues'; // Replace with the actual endpoint URL
 
@@ -444,5 +488,5 @@ function fetchVenues() {
         });
 }
 
-// Call the fetchVenues function to populate the venue select dropdown
-fetchVenues();
+// Call the refreshFormEventVenueList function to populate the venue select dropdown
+refreshFormEventVenueList();

@@ -2,7 +2,6 @@ package com.stonematrix.ticket.persist;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.stonematrix.ticket.api.model.*;
-import org.springframework.expression.spel.ast.NullLiteral;
 import org.springframework.stereotype.Component;
 
 import jakarta.inject.Inject;
@@ -454,26 +453,80 @@ public class JdbcHelper {
         }
         return null;
     }
+    public void saveEventAndCopyPrices(Event event, String copyFromEventId) throws SQLException {
+        try (Connection conn = dataSource.getConnection()) {
+            saveEvent(event, conn);
+
+            /* Key: priceCopyFrom, Value: new priceId */
+            Map<String, String> priceIdMap = new HashMap<>();
+
+            String sqlCopyPrices = "SELECT id, name, price FROM TKT.Prices WHERE eventId = ?";
+            try (PreparedStatement stmt = conn.prepareStatement(sqlCopyPrices)) {
+                stmt.setString(1, copyFromEventId);
+                ResultSet rsCopyPrices = stmt.executeQuery();
+                try (PreparedStatement stmtInsertCopiedPrices = conn.prepareStatement("INSERT INTO TKT.Prices VALUES (?, ?, ?, ?)")) {
+                    while (rsCopyPrices.next()) {
+                        String priceId = UUID.randomUUID().toString();
+                        priceIdMap.put(rsCopyPrices.getString("id"), priceId);
+
+                        stmtInsertCopiedPrices.setString(1, priceId);
+                        stmtInsertCopiedPrices.setString(2, event.getId().toString());
+                        stmtInsertCopiedPrices.setString(3, rsCopyPrices.getString("name"));
+                        stmtInsertCopiedPrices.setBigDecimal(4, rsCopyPrices.getBigDecimal("price"));
+                        stmtInsertCopiedPrices.addBatch();
+                    }
+                    stmtInsertCopiedPrices.executeBatch();
+                }
+            }
+
+            String sqlCopyPriceDistribution = "SELECT priceId, seatId, areaId, venueId FROM TKT.PricesDistribution " +
+                    "INNER JOIN TKT.Prices ON TKT.Prices.id = TKT.PricesDistribution.priceId " +
+                    "AND TKT.Prices.eventId = ?";
+
+            try (PreparedStatement stmt = conn.prepareStatement(sqlCopyPriceDistribution)) {
+                stmt.setString(1, copyFromEventId);
+                ResultSet rsCopyPriceDistribution = stmt.executeQuery();
+                try (PreparedStatement stmtInsertCopiedPriceDistribution = conn.prepareStatement(
+                        "INSERT INTO TKT.PricesDistribution VALUES (?, ?, ?, ?, ?)")) {
+                    while (rsCopyPriceDistribution.next()) {
+                        String priceId = priceIdMap.get(rsCopyPriceDistribution.getString("priceId"));
+                        if (priceId != null) {
+                            stmtInsertCopiedPriceDistribution.setString(1, UUID.randomUUID().toString());
+                            stmtInsertCopiedPriceDistribution.setString(2, priceId);
+                            stmtInsertCopiedPriceDistribution.setString(3, rsCopyPriceDistribution.getString("seatId"));
+                            stmtInsertCopiedPriceDistribution.setString(4, rsCopyPriceDistribution.getString("areaId"));
+                            stmtInsertCopiedPriceDistribution.setString(5, rsCopyPriceDistribution.getString("venueId"));
+                            stmtInsertCopiedPriceDistribution.addBatch();
+                        }
+                    }
+                    stmtInsertCopiedPriceDistribution.executeBatch();
+                }
+            }
+        }
+    }
 
     public void saveEvent(Event event) throws SQLException {
+        try (Connection conn = dataSource.getConnection()) {
+            saveEvent(event, conn);
+        }
+    }
 
+    private void saveEvent(Event event, Connection connection) throws SQLException {
         String sql = "INSERT INTO TKT.Events (id, name, venueId, startTime, endTime, metadata) " +
                 "VALUES (?, ?, ?, ?, ?, ?)";
 
-        try (Connection conn = dataSource.getConnection();
-             PreparedStatement pstmt = conn.prepareStatement(sql)) {
-
-            pstmt.setString(1, event.getId().toString());
-            pstmt.setString(2, event.getName());
+        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+            stmt.setString(1, event.getId().toString());
+            stmt.setString(2, event.getName());
 
             UUID venueId;
             if ((venueId = event.getVenueId()) != null)
-                pstmt.setString(3, venueId.toString());
+                stmt.setString(3, venueId.toString());
             else
-                pstmt.setNull(3, Types.VARCHAR);
+                stmt.setNull(3, Types.VARCHAR);
 
-            pstmt.setTimestamp(4, new Timestamp(event.getStartTime().getTime()));
-            pstmt.setTimestamp(5, new Timestamp(event.getEndTime().getTime()));
+            stmt.setTimestamp(4, new Timestamp(event.getStartTime().getTime()));
+            stmt.setTimestamp(5, new Timestamp(event.getEndTime().getTime()));
 
             String metadataJson;
             try {
@@ -481,8 +534,8 @@ public class JdbcHelper {
             } catch (JsonProcessingException e) {
                 metadataJson = "{}";
             }
-            pstmt.setString(6, metadataJson);
-            pstmt.executeUpdate();
+            stmt.setString(6, metadataJson);
+            stmt.executeUpdate();
         }
     }
 
@@ -525,44 +578,57 @@ public class JdbcHelper {
         return null;
     }
 
-    public List<Event> loadAllEvents() throws SQLException {
-
+    private List<Event> loadEvents(PreparedStatement stmt) throws SQLException {
         List<Event> events = new LinkedList<>();
-        String sql = "SELECT id, venueId, name, startTime, endTime, metadata FROM TKT.Events";
-        try (Connection conn = dataSource.getConnection();
-             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+        try (ResultSet rs = stmt.executeQuery()) {
+            while (rs.next()) {
+                String id= rs.getString("id");
+                String venueId = rs.getString("venueId");
+                String name = rs.getString("name");
 
-            try (ResultSet rs = pstmt.executeQuery()) {
-                while (rs.next()) {
-                    String id= rs.getString("id");
-                    String venueId = rs.getString("venueId");
-                    String name = rs.getString("name");
+                Date startTime = rs.getTimestamp("startTime");
+                Date endTime = rs.getTimestamp("endTime");
 
-                    Date startTime = rs.getTimestamp("startTime");
-                    Date endTime = rs.getTimestamp("endTime");
-
-                    Map<String, Object> metadata;
-                    try {
-                        metadata = new ObjectMapper().readValue(
-                                rs.getString("metadata"),
-                                Map.class);
-                    } catch (JsonProcessingException ex) {
-                        metadata = new HashMap<>();
-                    }
-
-                    events.add(new Event()
-                            .id(UUID.fromString(id))
-                            .venueId(UUID.fromString(venueId))
-                            .name(name)
-                            .startTime(startTime)
-                            .endTime(endTime)
-                            .metadata(metadata));
+                Map<String, Object> metadata;
+                try {
+                    metadata = new ObjectMapper().readValue(
+                            rs.getString("metadata"),
+                            Map.class);
+                } catch (JsonProcessingException ex) {
+                    metadata = new HashMap<>();
                 }
+
+                events.add(new Event()
+                        .id(UUID.fromString(id))
+                        .venueId(UUID.fromString(venueId))
+                        .name(name)
+                        .startTime(startTime)
+                        .endTime(endTime)
+                        .metadata(metadata));
             }
         }
         return events;
     }
 
+    public List<Event> loadEventsByVenue(String venueId) throws SQLException {
+        String sql = "SELECT id, venueId, name, startTime, endTime, metadata FROM TKT.Events " +
+                "WHERE venueId = ?";
+
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setString(1, venueId);
+            return loadEvents(stmt);
+        }
+    }
+
+    public List<Event> loadAllEvents() throws SQLException {
+        String sql = "SELECT id, venueId, name, startTime, endTime, metadata FROM TKT.Events";
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            return loadEvents(stmt);
+        }
+    }
 
     public void updateVenueOfEvent(UUID eventId, UUID venueId) throws SQLException {
 
@@ -759,7 +825,7 @@ public class JdbcHelper {
     public Seat loadSeatInEvent(UUID eventId, UUID seatId) throws SQLException {
         String sql =
                 "SELECT row, col, available, metadata, price, booked FROM " +
-                        "TKT.SeatAdvanced WHERE id = ? AND eventId = ?";
+                        "TKT.SKU WHERE seatId = ? AND eventId = ?";
 
         try (Connection conn = dataSource.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
@@ -835,8 +901,8 @@ public class JdbcHelper {
     public List<Seat> loadSeatsInAreaOfEvent(UUID eventId, UUID areaId) throws SQLException {
 
         String sql =
-                "SELECT id, row, col, venueId, available, metadata, price, booked FROM " +
-                "TKT.SeatAdvanced WHERE eventId = ? AND areaId = ?";
+                "SELECT seatId, row, col, venueId, available, metadata, price, booked FROM " +
+                "TKT.SKU WHERE eventId = ? AND areaId = ?";
 
         List<Seat> seats = new LinkedList<>();
 
@@ -848,7 +914,7 @@ public class JdbcHelper {
 
             try (ResultSet rs = pstmt.executeQuery()) {
                 while (rs.next()) {
-                    String id = rs.getString("id");
+                    String id = rs.getString("seatId");
                     int row = rs.getInt("row");
                     int col = rs.getInt("col");
                     boolean available = rs.getBoolean("available");
@@ -1012,5 +1078,24 @@ public class JdbcHelper {
             }
         }
     }
+
+    public void deleteEvent(UUID eventId) throws SQLException {
+        try (Connection conn = dataSource.getConnection()) {
+            String[] sqlCleanUp = {
+                    "DELETE FROM TKT.PricesDistribution WHERE priceId IN (SELECT id FROM TKT.Prices WHERE eventId = ?)",
+                    "DELETE FROM TKT.Prices WHERE eventId = ?",
+                    "DELETE FROM TKT.Events WHERE id = ?"
+            };
+
+            for (String sql: sqlCleanUp) {
+                try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+                    pstmt.setString(1, eventId.toString());
+                    pstmt.executeUpdate();
+                }
+            }
+        }
+    }
+
+
 
 }

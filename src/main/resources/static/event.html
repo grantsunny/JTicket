@@ -32,9 +32,17 @@
             </tr>
             <tr>
             <td><label for="venueId">Venue:</label></td>
-            <td><select id="venueId" required>
+            <td><select id="venueId" required
+                        onchange="stoneticket.refreshFormEventCopyFromList(
+                            this.form.querySelector('#copyEventFromVenue'), this.value)">
                 <option value="">Select Venue</option>
             </select></td>
+            </tr>
+            <tr>
+                <td><label for="copyEventFromVenue">Replicate Metadata & Pricing from: </label></td>
+                <td><select id="copyEventFromVenue" required>
+                    <option value="">Select Event</option>
+                </select></td>
             </tr>
             <tr>
                 <td><label for="startTime">Start Time:</label></td>
@@ -46,8 +54,9 @@
             </tr>
             <tr>
                 <td></td>
-                <td align="right"><button id="addEventButton" type="button" onclick="stoneticket.submitFormData()">Add Event</button></td>
-
+                <td align="right">
+                    <button id="addEventButton" type="button"
+                            onclick="stoneticket.addNewEvent(this.form)">Add Event</button></td>
             </tr>
         </table>
     </form>

@@ -4,12 +4,16 @@ import com.stonematrix.ticket.api.EventsApi;
 import com.stonematrix.ticket.api.model.*;
 import com.stonematrix.ticket.persist.JdbcHelper;
 import jakarta.inject.Inject;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
 import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.ClientErrorException;
+import jakarta.ws.rs.HeaderParam;
 import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.UriBuilder;
 import jakarta.ws.rs.core.UriInfo;
+import org.springframework.security.task.DelegatingSecurityContextAsyncTaskExecutor;
 
 import java.sql.SQLException;
 import java.util.List;
@@ -162,6 +166,25 @@ public class EventsApiResource implements EventsApi {
     }
 
     @Override
+    public Response deleteEvent(UUID eventId) {
+        try {
+            jdbc.deleteEvent(eventId);
+            return Response.status(Response.Status.NO_CONTENT).build();
+
+        } catch (SQLException e) {
+            switch (e.getSQLState()) {
+                case "304":
+                    return Response.notModified().build();
+                case "23000":
+                case "23505":
+                    throw new ClientErrorException("Conflict occurred", Response.Status.CONFLICT);
+                default:
+                    throw new BadRequestException(e);
+            }
+        }
+    }
+
+    @Override
     public Response getTicketPriceOfEvent(UUID eventId, UUID priceId) {
         try {
             Price price = jdbc.loadPriceOfEventById(eventId, priceId);
@@ -260,9 +283,27 @@ public class EventsApiResource implements EventsApi {
         return null;
     }
 
-    @Override
-    public Response createEvent(Event event) {
 
+    @Override
+    public Response createEvent(Event event, String xCopyFromId) {
+        if (xCopyFromId == null)
+            return createEvent(event);
+        else {
+            event = event.id(UUID.randomUUID());
+            try {
+                jdbc.saveEventAndCopyPrices(event, xCopyFromId);
+                UriBuilder uriBuilder =
+                        uriInfo.getRequestUriBuilder().
+                                path(String.valueOf(event.getId()));
+
+                return Response.created(uriBuilder.build()).build();
+            } catch (SQLException e) {
+                throw new BadRequestException(e);
+            }
+        }
+    }
+
+    private Response createEvent(Event event) {
         event = event.id(UUID.randomUUID());
         try {
             jdbc.saveEvent(event);
@@ -289,9 +330,20 @@ public class EventsApiResource implements EventsApi {
         }
     }
 
-
     @Override
-    public Response listEvents() {
+    public Response listEvents(String venueId) {
+        if (venueId != null) {
+            try {
+                List<Event> events = jdbc.loadEventsByVenue(venueId);
+                return Response.ok(events).build();
+            } catch (SQLException e) {
+                throw new BadRequestException(e);
+            }
+        } else
+            return listEvents();
+    }
+
+    private Response listEvents() {
         try {
             List<Event> events = jdbc.loadAllEvents();
             return Response.ok(events).build();
@@ -299,7 +351,6 @@ public class EventsApiResource implements EventsApi {
             throw new BadRequestException(e);
         }
     }
-
 
     @Override
     public Response getVenueOfEvent(UUID eventId) {
@@ -313,6 +364,8 @@ public class EventsApiResource implements EventsApi {
             throw new BadRequestException(e);
         }
     }
+
+
 
     @Override
     public Response getEventVenueSvgLayout(UUID eventId) {

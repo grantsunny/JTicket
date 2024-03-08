@@ -109,49 +109,45 @@ CREATE VIEW TKT.SeatDetails AS
     INNER JOIN TKT.Areas ON TKT.Areas.id = TKT.Seats.areaId
 ;
 
-CREATE VIEW TKT.SeatAdvanced AS
+CREATE VIEW TKT.SKU AS
 SELECT
-    TKT.Seats.id, TKT.Seats.areaId, TKT.Areas.venueId, row, col, available, TKT.Seats.metadata,
-    TKT.Events.id AS eventId,
+    T.*,
+    ROW, COL, AVAILABLE, METADATA,
+    PRICES.NAME AS priceName, PRICES.PRICE AS price,
     CASE
-        WHEN seatPrice.price IS NOT NULL THEN seatPrice.id
-        WHEN areaPrice.price IS NOT NULL THEN areaPrice.id
-        ELSE venuePrice.id
-    END AS priceId,
-    CASE
-        WHEN seatPrice.price IS NOT NULL THEN seatPrice.name
-        WHEN areaPrice.price IS NOT NULL THEN areaPrice.name
-        ELSE venuePrice.name
-    END AS priceName,
-    CASE
-        WHEN seatPrice.price IS NOT NULL THEN seatPrice.price
-        WHEN areaPrice.price IS NOT NULL THEN areaPrice.price
-        ELSE venuePrice.price
-    END AS price,
-    CASE WHEN EXISTS (
-        SELECT 1
+    WHEN EXISTS (
+        SELECT *
         FROM TKT.OrderSeats
-                INNER JOIN TKT.Orders ON
-                TKT.Orders.id = TKT.OrderSeats.orderId
-        WHERE TKT.OrderSeats.seatId = TKT.Seats.Id
-          AND TKT.Orders.eventId = TKT.Events.Id
-          AND TKT.Orders.paid = TRUE
-    )
+                 INNER JOIN TKT.Orders ON
+            TKT.Orders.id = TKT.OrderSeats.orderId
+        WHERE TKT.OrderSeats.seatId = T.seatId
+          AND TKT.Orders.eventId = T.eventId
+          AND TKT.Orders.paid = TRUE)
     THEN TRUE
     ELSE FALSE
-    END           AS booked
-FROM
-    TKT.Seats
-        INNER JOIN TKT.Areas ON TKT.Areas.Id = TKT.Seats.areaId
-        INNER JOIN TKT.Venues ON TKT.Venues.id = TKT.Areas.venueId
-        LEFT JOIN TKT.Events ON TKT.Events.venueId = TKT.Venues.id
-
-        LEFT JOIN TKT.PricesDistribution pdVenue ON TKT.Venues.id = pdVenue.venueId
-        LEFT JOIN TKT.Prices venuePrice ON pdVenue.priceId = venuePrice.id AND venuePrice.eventId = TKT.Events.id
-
-        LEFT JOIN TKT.PricesDistribution pdArea ON TKT.Areas.id = pdArea.areaId
-        LEFT JOIN TKT.Prices areaPrice ON pdArea.priceId = areaPrice.id AND areaPrice.eventId = TKT.Events.id
-
-        LEFT JOIN TKT.PricesDistribution pdSeat ON TKT.Seats.id = pdSeat.seatId
-        LEFT JOIN TKT.Prices seatPrice ON pdSeat.priceId = seatPrice.Id AND seatPrice.eventId = TKT.Events.id
-;
+    END AS booked
+FROM (SELECT
+        EVENTS.ID AS eventId,
+        VENUES.ID AS venueId,
+        AREAS.ID AS areaId,
+        SEATS.ID AS seatId,
+        COALESCE(
+            (SELECT priceId FROM PRICESDISTRIBUTION INNER JOIN PRICES
+                ON PRICESDISTRIBUTION.PRICEID = PRICES.ID
+                WHERE PRICESDISTRIBUTION.SEATID = SEATS.ID
+                AND PRICES.EVENTID = EVENTS.ID),
+            (SELECT priceId FROM PRICESDISTRIBUTION INNER JOIN PRICES
+                ON PRICESDISTRIBUTION.PRICEID = PRICES.ID
+                WHERE PRICESDISTRIBUTION.AREAID = AREAS.ID
+                AND PRICES.EVENTID = EVENTS.ID),
+            (SELECT priceId FROM PRICESDISTRIBUTION INNER JOIN PRICES
+                ON PRICESDISTRIBUTION.PRICEID = PRICES.ID
+                WHERE PRICESDISTRIBUTION.VENUEID = VENUES.ID
+                AND PRICES.EVENTID = EVENTS.ID)
+          ) AS priceId
+        FROM EVENTS
+            INNER JOIN VENUES ON VENUES.ID = EVENTS.VENUEID
+            INNER JOIN AREAS ON AREAS.VENUEID = VENUES.ID
+            INNER JOIN SEATS ON SEATS.AREAID = AREAS.ID) T
+INNER JOIN PRICES ON PRICES.ID = T.priceId
+INNER JOIN SEATS ON SEATS.ID = seatId;
