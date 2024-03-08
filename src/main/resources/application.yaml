@@ -16,4 +16,4 @@ crowd:
   server:
     url: https://crowd.intra.tontix.io/crowd
   session:
-    validationinterval: 2
+    validationinterval: 30
