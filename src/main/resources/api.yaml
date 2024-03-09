@@ -99,7 +99,7 @@ paths:
                   type: string
                   format: uuid
       responses:
-        '204':
+        '202':
           description: Venue associated with event successfully
         '400':
           description: Invalid input
@@ -335,7 +335,7 @@ paths:
                   type: string
                   format: uuid
       responses:
-        '204':
+        '202':
           description: Assigned the price successfully
         '400':
           description: Invalid input
@@ -451,7 +451,7 @@ paths:
                   type: string
                   format: uuid
       responses:
-        '204':
+        '202':
           description: Assigned the price successfully
         '400':
           description: Invalid input
@@ -460,7 +460,7 @@ paths:
 
   /events/{eventId}/areas/{areaId}/seats:
     get:
-      summary: List seats in an area of a venue (seatAdvanced)
+      summary: List seats in an area of a venue (SKU)
       operationId: getAllSeatsInAreaOfEvent
       description: Retrieve a list of seats within a specific area of a specific event.
       parameters:
@@ -492,7 +492,7 @@ paths:
 
   /events/{eventId}/seats/{seatId}:
     get:
-      summary: Get a specific seat with details (Advanced) under given event
+      summary: Get a specific seat with details (SKU) under given event
       operationId: getSeatInEvent
       description: Retrieve details of a specific seat by its UUID.
       parameters:
@@ -574,7 +574,7 @@ paths:
                   type: string
                   format: uuid
       responses:
-        '204':
+        '202':
           description: Assigned the price successfully
         '400':
           description: Invalid input
@@ -811,6 +811,12 @@ paths:
       operationId: getAllOrders
       description: Retrieve a list of orders within an optional time range. Filter orders by creation timestamp using query parameters.
       parameters:
+        - name: x-ticket-userId
+          in: cookie
+          schema:
+            type: string
+          required: false
+          description: If there is userId in cookie, will return orders under given user
         - name: startTime
           in: query
           schema:
@@ -839,6 +845,13 @@ paths:
       summary: Create an order
       operationId: createOrder
       description: Create a new order with multiple seat selections. Returns the created order with payment details.
+      parameters:
+        - name: x-ticket-userId
+          in: cookie
+          schema:
+            type: string
+          required: false
+          description: If there is userId in cookie, will use this userId to create order; otherwise the body shall contain the userId.
       requestBody:
         description: Order creation request
         required: true
@@ -862,6 +875,12 @@ paths:
       operationId: getOrder
       description: Retrieve details of a specific order by its UUID.
       parameters:
+        - name: x-ticket-userId
+          in: cookie
+          schema:
+            type: string
+          required: false
+          description: If there is userId in cookie, getting order does not belong to user will get 404.
         - name: orderId
           in: path
           required: true
@@ -883,6 +902,12 @@ paths:
       summary: Accomplish a payment to a order
       operationId: payOrder
       parameters:
+        - name: x-ticket-userId
+          in: cookie
+          schema:
+            type: string
+          required: false
+          description: If there is userId in cookie, payment order does not belong to user will fail with 404.
         - name: orderId
           in: path
           required: true
@@ -898,21 +923,27 @@ paths:
               type: object
               title: payment
               properties:
-                priceToPay:
+                paidAmount:
                   type: integer
       responses:
-        '200':
-          description: Venue associated with event successfully
+        '202':
+          description: Payment accepted
         '400':
           description: Invalid input
         '404':
-          description: Event not found
+          description: order not found
 
     delete:
       summary: Cancel an order
       operationId: cancelOrder
       description: Cancel a specific order by marking it as unpaid. Can only cancel orders that are not paid.
       parameters:
+        - name: x-ticket-userId
+          in: cookie
+          schema:
+            type: string
+          required: false
+          description: If there is userId in cookie, cancel order does not belong to user will fail with 404.
         - name: orderId
           in: path
           required: true
@@ -927,30 +958,6 @@ paths:
           description: Order not found or already paid
         '500':
           description: Internal server error
-
-  /orders/archived/{orderId}:
-    get:
-      summary: Retrieve a specific archived order
-      operationId: getArchivedOrder
-      description: Gets the details of a specific archived order by its UUID.
-      parameters:
-        - name: orderId
-          in: path
-          required: true
-          description: Unique UUID of the archived order
-          schema:
-            type: string
-            format: uuid
-      responses:
-        '200':
-          description: Details of the archived order
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Order'
-        '404':
-          description: Archived order not found
-
 
 components:
   schemas:
@@ -1044,18 +1051,12 @@ components:
           type: string
           format: uuid
           description: Unique ID of the area to which this seat belongs
-        name:
-          type: string
         row:
           type: integer
         column:
           type: integer
         available:
           type: boolean
-        booked:
-          type: boolean
-        price:
-          type: integer
         metadata:
           type: object
           additionalProperties: true
@@ -1070,6 +1071,9 @@ components:
           type: string
           format: uuid
           description: Unique identifier of the order (UUID).
+        userId:
+          type: string
+          description: UserId (the format is still TBD)
         eventId:
           type: string
           format: uuid
@@ -1077,17 +1081,22 @@ components:
         seats:
           type: array
           items:
-            type: string
-            format: uuid
-          description: An array of seat UUIDs booked in the order. (Required)
-        priceToPay:
+            type: object
+            properties:
+              seatId:
+                type: string
+                format: uuid
+              metadata:
+                type: object
+                additionalProperties: true
+          description: An array of seats with metadata (perhaps QR code, etc) booked in the order. (Required)
+        paidAmount:
           type: integer
           description: The total amount of the order to pay. (in *cents*)
-        paid:
-          type: boolean
-          description: Indicates whether the order is paid (true) or unpaid (false).
         timestamp:
           type: string
           format: date-time
           description: Timestamp indicating when the order was created.
-
+        metadata:
+          type: object
+          additionalProperties: true

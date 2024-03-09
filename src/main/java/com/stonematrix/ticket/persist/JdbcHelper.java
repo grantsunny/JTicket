@@ -2,10 +2,15 @@ package com.stonematrix.ticket.persist;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.stonematrix.ticket.api.model.*;
+import jakarta.ws.rs.core.Link;
+import org.bouncycastle.util.Times;
 import org.springframework.stereotype.Component;
 
 import jakarta.inject.Inject;
+import org.springframework.transaction.annotation.Transactional;
+
 import javax.sql.DataSource;
+import javax.xml.transform.Result;
 import java.io.*;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
@@ -453,6 +458,7 @@ public class JdbcHelper {
         }
         return null;
     }
+    @Transactional(rollbackFor = SQLException.class)
     public void saveEventAndCopyPrices(Event event, String copyFromEventId) throws SQLException {
         try (Connection conn = dataSource.getConnection()) {
             saveEvent(event, conn);
@@ -822,39 +828,7 @@ public class JdbcHelper {
         }
     }
 
-    public Seat loadSeatInEvent(UUID eventId, UUID seatId) throws SQLException {
-        String sql =
-                "SELECT row, col, available, metadata, price, booked FROM " +
-                        "TKT.SKU WHERE seatId = ? AND eventId = ?";
 
-        try (Connection conn = dataSource.getConnection();
-             PreparedStatement pstmt = conn.prepareStatement(sql)) {
-
-            pstmt.setString(1, seatId.toString());
-            pstmt.setString(2, eventId.toString());
-
-            try (ResultSet rs = pstmt.executeQuery()) {
-                if (rs.next()) {
-
-                    int row = rs.getInt("row");
-                    int col = rs.getInt("col");
-                    boolean available = rs.getBoolean("available");
-                    boolean booked = rs.getBoolean("booked");
-                    BigDecimal price = rs.getBigDecimal("price");
-                    String metadata = rs.getString("metadata");
-
-                    return new Seat().id(seatId)
-                            .row(row)
-                            .column(col)
-                            .available(available)
-                            .booked(booked)
-                            .price((price == null) ? null : price.multiply(BigDecimal.valueOf(100L)).intValue())
-                            .metadata(parseMetadata(metadata));
-                }
-                return null;
-            }
-        }
-    }
 
     public void deleteTicketPriceOfEvent(UUID eventId, UUID priceId) throws SQLException {
         String sql = "DELETE FROM TKT.Prices WHERE id = ? AND eventId = ?";
@@ -898,37 +872,72 @@ public class JdbcHelper {
         return areas;
     }
 
+    private Seat readSeatFromSKU(ResultSet rs) throws SQLException {
+
+        String id = rs.getString("seatId");
+        int row = rs.getInt("row");
+        int col = rs.getInt("col");
+        String areaId = rs.getString("areaId");
+        String venueId = rs.getString("venueId");
+
+
+        boolean available = rs.getBoolean("available");
+        String orderId = rs.getString("orderId");
+        String priceName = rs.getString("priceName");
+        BigDecimal price = rs.getBigDecimal("price");
+
+        Map<String, Object> metadata = new HashMap<>(
+                parseMetadata(rs.getString("metadata")));
+
+        metadata.put("orderId", orderId);
+        metadata.put("price", (price == null) ? null : price.multiply(BigDecimal.valueOf(100L)).intValue());
+        metadata.put("priceName", priceName);
+
+        return new Seat().id(UUID.fromString(id))
+                .areaId(UUID.fromString(areaId))
+                .venueId(UUID.fromString(venueId))
+                .row(row)
+                .column(col)
+                .available(available)
+                .metadata(metadata);
+    }
+
+    public Seat loadSeatInEvent(UUID eventId, UUID seatId) throws SQLException {
+        String sql =
+                "SELECT seatId, areaId, venueId, row, col, available, metadata, price, priceName, orderId FROM " +
+                        "TKT.SKU WHERE seatId = ? AND eventId = ?";
+
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            pstmt.setString(1, seatId.toString());
+            pstmt.setString(2, eventId.toString());
+
+            try (ResultSet rs = pstmt.executeQuery()) {
+                if (rs.next()) {
+                    return readSeatFromSKU(rs);
+                }
+                return null;
+            }
+        }
+    }
     public List<Seat> loadSeatsInAreaOfEvent(UUID eventId, UUID areaId) throws SQLException {
 
         String sql =
-                "SELECT seatId, row, col, venueId, available, metadata, price, booked FROM " +
+                "SELECT seatId, areaId, venueId, row, col, available, metadata, price, priceName, orderId FROM " +
                 "TKT.SKU WHERE eventId = ? AND areaId = ?";
 
         List<Seat> seats = new LinkedList<>();
 
         try (Connection conn = dataSource.getConnection();
-             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
 
-            pstmt.setString(1, eventId.toString());
-            pstmt.setString(2, areaId.toString());
+            stmt.setString(1, eventId.toString());
+            stmt.setString(2, areaId.toString());
 
-            try (ResultSet rs = pstmt.executeQuery()) {
+            try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
-                    String id = rs.getString("seatId");
-                    int row = rs.getInt("row");
-                    int col = rs.getInt("col");
-                    boolean available = rs.getBoolean("available");
-                    boolean booked = rs.getBoolean("booked");
-                    BigDecimal price = rs.getBigDecimal("price");
-                    String metadata = rs.getString("metadata");
-
-                    seats.add(new Seat().id(UUID.fromString(id))
-                            .row(row)
-                            .column(col)
-                            .available(available)
-                            .booked(booked)
-                            .price((price == null) ? null : price.multiply(BigDecimal.valueOf(100L)).intValue())
-                            .metadata(parseMetadata(metadata)));
+                    seats.add(readSeatFromSKU(rs));
                 }
             }
         }
@@ -979,6 +988,7 @@ public class JdbcHelper {
         }
     }
 
+    @Transactional(rollbackFor = SQLException.class)
     public void saveDefaultPricingOfEvent(UUID eventId, UUID priceId) throws SQLException {
 
         String sql =
@@ -1014,6 +1024,7 @@ public class JdbcHelper {
         }
     }
 
+    @Transactional(rollbackFor = SQLException.class)
     public void saveSeatLevelPricingOfEvent(UUID eventId, UUID seatId, UUID priceId) throws SQLException {
         String sql =
                 "UPDATE TKT.PricesDistribution " +
@@ -1046,6 +1057,7 @@ public class JdbcHelper {
         }
     }
 
+    @Transactional(rollbackFor = SQLException.class)
     public void saveAreaLevelPricingOfEvent(UUID eventId, UUID areaId, UUID priceId) throws SQLException {
 
         String sql =
@@ -1079,6 +1091,7 @@ public class JdbcHelper {
         }
     }
 
+    @Transactional(rollbackFor = SQLException.class)
     public void deleteEvent(UUID eventId) throws SQLException {
         try (Connection conn = dataSource.getConnection()) {
             String[] sqlCleanUp = {
@@ -1088,14 +1101,199 @@ public class JdbcHelper {
             };
 
             for (String sql: sqlCleanUp) {
-                try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
-                    pstmt.setString(1, eventId.toString());
-                    pstmt.executeUpdate();
+                try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+                    stmt.setString(1, eventId.toString());
+                    stmt.executeUpdate();
                 }
             }
         }
     }
 
 
+    public boolean isUserOrderExist(String userId, UUID orderId) throws SQLException {
+        String sql = "SELECT COUNT(*) FROM TKT.ORDERS WHERE USERID = ? AND ID = ?";
 
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setString(1, userId);
+            stmt.setString(2, orderId.toString());
+
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getInt(1) > 0;
+                }
+            }
+            return false;
+        }
+    }
+
+    @Transactional(rollbackFor = SQLException.class)
+    public void saveNewOrder(Order order) throws SQLException {
+
+        try (Connection conn = dataSource.getConnection()) {
+            String sqlNewOrder = "INSERT INTO TKT.ORDERS(ID, EVENTID, USERID, TIMESTAMP, METADATA) VALUES (?, ?, ?, CURRENT_TIMESTAMP, ?)";
+            try (PreparedStatement stmt = conn.prepareStatement(sqlNewOrder)) {
+                stmt.setString(1, UUID.randomUUID().toString());
+                stmt.setString(2, order.getEventId().toString());
+                stmt.setString(3, order.getUserId());
+                stmt.setString(4, metadataMapToJsonString(order.getMetadata()));
+                stmt.executeUpdate();
+            }
+
+            String sqlNewOrderSeat = "INSERT INTO TKT.ORDERSEATS(ORDERID, EVENTID, SEATID, METADATA) VALUES (?, ?, ?, ?)";
+            try (PreparedStatement stmt = conn.prepareStatement(sqlNewOrderSeat)) {
+                for (OrderSeatsInner seatEntry: order.getSeats()) {
+                    stmt.setString(1, order.getId().toString());
+                    stmt.setString(2, order.getEventId().toString());
+                    stmt.setString(3, seatEntry.getSeatId().toString());
+                    stmt.setString(4, metadataMapToJsonString(seatEntry.getMetadata()));
+                    stmt.addBatch();
+                }
+                stmt.executeBatch();
+            }
+        }
+    }
+
+    private List<Order> loadOrders(Connection conn, ResultSet rsOrders) throws SQLException {
+        List<Order> loadOrders = new LinkedList<>();
+        while (rsOrders.next()) {
+            Order order = new Order()
+                    .id(UUID.fromString(rsOrders.getString("id")))
+                    .eventId(UUID.fromString(rsOrders.getString("eventId")))
+                    .userId(rsOrders.getString("userId"))
+                    .timestamp(rsOrders.getTimestamp("timeStamp"))
+                    .paidAmount(rsOrders.getBigDecimal("paidAmount").multiply(BigDecimal.valueOf(100L)).intValue())
+                    .metadata(parseMetadata(rsOrders.getString("metadata")));
+
+            String sqlSeats = "SELECT ORDERID, EVENTID, SEATID, METADATA FROM TKT.ORDERSEATS " +
+                    "WHERE ORDERID = ?";
+
+            try (PreparedStatement stmtSeat = conn.prepareStatement(sqlSeats)) {
+                stmtSeat.setString(1, order.getId().toString());
+                ResultSet rsSeats = stmtSeat.executeQuery();
+
+                while (rsSeats.next()) {
+                    order.getSeats().add(
+                            new OrderSeatsInner()
+                                    .seatId(UUID.fromString(rsSeats.getString("seatId")))
+                                    .metadata(parseMetadata(rsSeats.getString("metadata"))));
+                }
+            }
+            loadOrders.add(order);
+        }
+        return loadOrders;
+    }
+
+
+    public List<Order> loadOrders(String userId, Date startTime, Date endTime) throws SQLException {
+
+        try (Connection conn = dataSource.getConnection()) {
+            String sqlOrders = "SELECT ID, EVENTID, USERID, TIMESTAMP, PAIDAMOUNT, METADATA FROM TKT.ORDERS " +
+                    "WHERE USERID = ? AND TIMESTAMP BETWEEN ? AND ?";
+
+            try (PreparedStatement stmt = conn.prepareStatement(sqlOrders)) {
+                stmt.setString(1, userId);
+                stmt.setTimestamp(2, new Timestamp(startTime.getTime()));
+                stmt.setTimestamp(3, new Timestamp(endTime.getTime()));
+                ResultSet rsOrders = stmt.executeQuery();
+
+                return loadOrders(conn, rsOrders);
+            }
+        }
+    }
+
+    public List<Order> loadOrders(Date startTime, Date endTime) throws SQLException {
+        try (Connection conn = dataSource.getConnection()) {
+            String sqlOrders = "SELECT ID, EVENTID, USERID, TIMESTAMP, PAIDAMOUNT, METADATA FROM TKT.ORDERS " +
+                    "WHERE TIMESTAMP BETWEEN ? AND ?";
+
+            try (PreparedStatement stmt = conn.prepareStatement(sqlOrders)) {
+                stmt.setTimestamp(2, new Timestamp(startTime.getTime()));
+                stmt.setTimestamp(3, new Timestamp(endTime.getTime()));
+                ResultSet rsOrders = stmt.executeQuery();
+
+                return loadOrders(conn, rsOrders);
+            }
+        }
+
+    }
+
+    public List<Order> loadOrders(String userId) throws SQLException {
+        try (Connection conn = dataSource.getConnection()) {
+            String sqlOrders = "SELECT ID, EVENTID, USERID, TIMESTAMP, PAIDAMOUNT, METADATA FROM TKT.ORDERS " +
+                    "WHERE USERID = ?";
+
+            try (PreparedStatement stmt = conn.prepareStatement(sqlOrders)) {
+                stmt.setString(1, userId);
+                ResultSet rsOrders = stmt.executeQuery();
+
+                return loadOrders(conn, rsOrders);
+            }
+        }
+    }
+
+    public List<Order> loadOrders() throws SQLException {
+        try (Connection conn = dataSource.getConnection()) {
+            String sqlOrders = "SELECT ID, EVENTID, USERID, TIMESTAMP, PAIDAMOUNT, METADATA FROM TKT.ORDERS";
+
+            try (PreparedStatement stmt = conn.prepareStatement(sqlOrders)) {
+                ResultSet rsOrders = stmt.executeQuery();
+                return loadOrders(conn, rsOrders);
+            }
+        }
+    }
+
+    public Order loadOrder(UUID orderId) throws SQLException {
+        try (Connection conn = dataSource.getConnection()) {
+            String sqlOrders = "SELECT ID, EVENTID, USERID, TIMESTAMP, PAIDAMOUNT, METADATA FROM TKT.ORDERS " +
+                    "WHERE ID = ?";
+
+            try (PreparedStatement stmt = conn.prepareStatement(sqlOrders)) {
+                stmt.setString(1, orderId.toString());
+                ResultSet rsOrders = stmt.executeQuery();
+
+                return loadOrders(conn, rsOrders).get(0);
+            }
+        }
+    }
+
+    @Transactional(rollbackFor = SQLException.class)
+    public void updateOrderPayAmount(UUID orderId, Integer paidAmount) throws SQLException {
+        try (Connection conn = dataSource.getConnection()) {
+            String sql = "UPDATE TKT.ORDERS SET PAIDAMOUNT = PAIDAMOUNT + ?";
+            try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+                stmt.setBigDecimal(1, BigDecimal.valueOf(paidAmount, 2));
+                stmt.executeUpdate();
+            }
+        }
+    }
+
+    @Transactional(rollbackFor = SQLException.class)
+    public void deleteOrder(UUID orderId) throws SQLException {
+        try (Connection conn = dataSource.getConnection()) {
+            String sqlSeats = "DELETE FROM TKT.ORDERSEATS WHERE ORDERID = ?";
+            String sqlOrder = "DELETE FROM TKT.ORDERS WHERE ID = ?";
+
+            try (PreparedStatement stmtSeats = conn.prepareStatement(sqlSeats);
+                 PreparedStatement stmtOrder = conn.prepareStatement(sqlOrder)) {
+
+                stmtSeats.setString(1, orderId.toString());
+                stmtSeats.executeUpdate();
+
+                stmtOrder.setString(1, orderId.toString());
+                stmtOrder.executeUpdate();
+            }
+        }
+    }
+
+    private String metadataMapToJsonString(Map<String, Object> metadataMap) {
+        String metadataJson;
+        try {
+            metadataJson = new ObjectMapper().writeValueAsString(metadataMap);
+        } catch (JsonProcessingException e) {
+            metadataJson = "{}";
+        }
+        return metadataJson;
+    }
 }

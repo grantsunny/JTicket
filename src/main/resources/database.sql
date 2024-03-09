@@ -61,21 +61,33 @@ WHEN (EXISTS (
 CALL RaiseException('Event time overlapping encountered')
 ;
 
+--Trigger to prevent removal of paiAmount > 0 (paid order)
+CREATE TRIGGER TKT.PreventPaidOrderRemoval
+    NO CASCADE BEFORE DELETE ON TKT.ORDERS
+REFERENCING OLD ROW AS deletedRow
+FOR EACH ROW MODE DB2SQL
+WHEN (deletedRow.paidAmount > 0)
+    CALL RaiseException('Paid order cannot be deleted')
+;
+
 CREATE TABLE TKT.Orders (
                     id VARCHAR(36) PRIMARY KEY,
                     eventId VARCHAR(36) NOT NULL,
+                    userId VARCHAR(36) NOT NULL,
                     timestamp TIMESTAMP,
-                    amountDue INT,
-                    paid BOOLEAN,
+                    paidAmount DECIMAL(10, 2) DEFAULT 0,
                     metadata CLOB,
                     FOREIGN KEY (eventId) REFERENCES TKT.Events(id)
 );
 
 CREATE TABLE TKT.OrderSeats (
                     orderId VARCHAR(36),
-                    seatId VARCHAR(36),
-                    PRIMARY KEY (orderId, seatId),
+                    eventId VARCHAR(36) NOT NULL,
+                    seatId VARCHAR(36) NOT NULL,
+                    metadata CLOB,
+                    PRIMARY KEY (orderId, eventId, seatId),
                     FOREIGN KEY (orderId) REFERENCES TKT.Orders(id),
+                    FOREIGN KEY (eventId) REFERENCES TKT.EVENTS(id),
                     FOREIGN KEY (seatId) REFERENCES TKT.Seats(id)
 );
 
@@ -112,20 +124,13 @@ CREATE VIEW TKT.SeatDetails AS
 CREATE VIEW TKT.SKU AS
 SELECT
     T.*,
-    ROW, COL, AVAILABLE, METADATA,
-    PRICES.NAME AS priceName, PRICES.PRICE AS price,
-    CASE
-    WHEN EXISTS (
-        SELECT *
-        FROM TKT.OrderSeats
-                 INNER JOIN TKT.Orders ON
-            TKT.Orders.id = TKT.OrderSeats.orderId
-        WHERE TKT.OrderSeats.seatId = T.seatId
-          AND TKT.Orders.eventId = T.eventId
-          AND TKT.Orders.paid = TRUE)
-    THEN TRUE
-    ELSE FALSE
-    END AS booked
+    Seats.ROW,
+    Seats.COL,
+    Seats.AVAILABLE,
+    Seats.METADATA,
+    PRICES.NAME AS priceName,
+    PRICES.PRICE AS price,
+    ORDERSEATS.ORDERID AS orderId
 FROM (SELECT
         EVENTS.ID AS eventId,
         VENUES.ID AS venueId,
@@ -150,4 +155,5 @@ FROM (SELECT
             INNER JOIN AREAS ON AREAS.VENUEID = VENUES.ID
             INNER JOIN SEATS ON SEATS.AREAID = AREAS.ID) T
 INNER JOIN PRICES ON PRICES.ID = T.priceId
-INNER JOIN SEATS ON SEATS.ID = seatId;
+INNER JOIN SEATS ON SEATS.ID = seatId
+LEFT JOIN ORDERSEATS ON ORDERSEATS.EVENTID = T.eventId AND ORDERSEATS.SEATID = T.seatId;

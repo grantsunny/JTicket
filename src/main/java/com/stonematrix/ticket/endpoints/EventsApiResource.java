@@ -222,7 +222,7 @@ public class EventsApiResource implements EventsApi {
         UUID priceId = linkPrice.getPriceId();
         try {
             jdbc.saveDefaultPricingOfEvent(eventId, priceId);
-            return Response.status(Response.Status.NO_CONTENT).build();
+            return Response.accepted().build();
 
         } catch (SQLException e) {
             switch (e.getSQLState()) {
@@ -242,7 +242,7 @@ public class EventsApiResource implements EventsApi {
         UUID priceId = linkPrice.getPriceId();
         try {
             jdbc.saveSeatLevelPricingOfEvent(eventId, seatId, priceId);
-            return Response.status(Response.Status.NO_CONTENT).build();
+            return Response.accepted().build();
 
         } catch (SQLException e) {
             switch (e.getSQLState()) {
@@ -262,7 +262,7 @@ public class EventsApiResource implements EventsApi {
         UUID priceId = linkPrice.getPriceId();
         try {
             jdbc.saveAreaLevelPricingOfEvent(eventId, areaId, priceId);
-            return Response.status(Response.Status.NO_CONTENT).build();
+            return Response.accepted().build();
 
         } catch (SQLException e) {
             switch (e.getSQLState()) {
@@ -381,7 +381,7 @@ public class EventsApiResource implements EventsApi {
         UUID venueId = linkVenue.getVenueId();
         try {
             jdbc.updateVenueOfEvent(eventId, venueId);
-            return Response.noContent().build();
+            return Response.accepted().build();
         } catch (SQLException e) {
             switch (e.getSQLState()) {
                 case "304":
