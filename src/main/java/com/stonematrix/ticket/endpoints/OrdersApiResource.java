@@ -3,7 +3,7 @@ package com.stonematrix.ticket.endpoints;
 import com.stonematrix.ticket.api.OrdersApi;
 import com.stonematrix.ticket.api.model.Order;
 import com.stonematrix.ticket.api.model.Payment;
-import com.stonematrix.ticket.api.model.Price;
+import com.stonematrix.ticket.integration.OrderPluginHelper;
 import com.stonematrix.ticket.persist.JdbcHelper;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.BadRequestException;
@@ -26,6 +26,9 @@ public class OrdersApiResource implements OrdersApi {
     @Inject
     private JdbcHelper jdbc;
 
+    @Inject
+    private OrderPluginHelper plugin;
+
     private void verifyOrderAndUser(String userId, UUID orderId) {
         try {
             if (!jdbc.isUserOrderExist(userId, orderId))
@@ -47,6 +50,7 @@ public class OrdersApiResource implements OrdersApi {
             throw new WebApplicationException("Cannot create order without user information", Response.Status.BAD_REQUEST);
 
         try {
+            order = plugin.beforePlaceOrder(userId, order);
             jdbc.saveNewOrder(order);
             UriBuilder uriBuilder =
                     uriInfo.getRequestUriBuilder().
@@ -97,6 +101,7 @@ public class OrdersApiResource implements OrdersApi {
     public Response payOrder(UUID orderId, Payment payment, String xTicketUserId) {
         verifyOrderAndUser(xTicketUserId, orderId);
         try {
+            plugin.beforePayOrder(xTicketUserId, orderId.toString(), payment.getPaidAmount());
             jdbc.updateOrderPayAmount(orderId, payment.getPaidAmount());
             return Response.accepted().build();
         } catch (SQLException e) {
@@ -108,6 +113,7 @@ public class OrdersApiResource implements OrdersApi {
     public Response cancelOrder(UUID orderId, String xTicketUserId) {
         verifyOrderAndUser(xTicketUserId, orderId);
         try {
+            plugin.beforeCancelOrder(xTicketUserId, orderId.toString());
             jdbc.deleteOrder(orderId);
             return Response.noContent().build();
         } catch (SQLException e) {

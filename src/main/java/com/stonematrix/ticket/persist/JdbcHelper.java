@@ -2,15 +2,12 @@ package com.stonematrix.ticket.persist;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.stonematrix.ticket.api.model.*;
-import jakarta.ws.rs.core.Link;
-import org.bouncycastle.util.Times;
 import org.springframework.stereotype.Component;
 
 import jakarta.inject.Inject;
 import org.springframework.transaction.annotation.Transactional;
 
 import javax.sql.DataSource;
-import javax.xml.transform.Result;
 import java.io.*;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
@@ -201,25 +198,6 @@ public class JdbcHelper {
             }
             pstmt.setString(3, metadataJson);
             pstmt.setString(4, svg);
-            pstmt.executeUpdate();
-        }
-    }
-
-    public void saveVenue(Venue venue) throws SQLException {
-        String sql = "INSERT INTO TKT.Venues (id, name, metadata) VALUES (?, ?, ?)";
-
-        try (Connection conn = dataSource.getConnection();
-            PreparedStatement pstmt = conn.prepareStatement(sql)) {
-
-            pstmt.setString(1, venue.getId().toString());
-            pstmt.setString(2, venue.getName());
-            String metadataJson;
-            try {
-                metadataJson = new ObjectMapper().writeValueAsString(venue.getMetadata());
-            } catch (JsonProcessingException e) {
-                metadataJson = "{}";
-            }
-            pstmt.setString(3, metadataJson);
             pstmt.executeUpdate();
         }
     }
@@ -1261,13 +1239,40 @@ public class JdbcHelper {
     @Transactional(rollbackFor = SQLException.class)
     public void updateOrderPayAmount(UUID orderId, Integer paidAmount) throws SQLException {
         try (Connection conn = dataSource.getConnection()) {
-            String sql = "UPDATE TKT.ORDERS SET PAIDAMOUNT = PAIDAMOUNT + ?";
+            String sql = "UPDATE TKT.ORDERS SET PAIDAMOUNT = PAIDAMOUNT + ? WHERE ID = ?";
             try (PreparedStatement stmt = conn.prepareStatement(sql)) {
                 stmt.setBigDecimal(1, BigDecimal.valueOf(paidAmount, 2));
+                stmt.setString(2, orderId.toString());
                 stmt.executeUpdate();
             }
         }
     }
+
+    @Transactional
+    public void updateOrderMetadata(Order order) throws SQLException {
+        try (Connection conn = dataSource.getConnection()) {
+            String sqlUpdateOrder = "UPDATE TKT.ORDERS SET METADATA = ? WHERE ID = ?";
+            try (PreparedStatement stmt = conn.prepareStatement(sqlUpdateOrder)) {
+                stmt.setString(1, metadataMapToJsonString(order.getMetadata()));
+                stmt.setString(1, order.getId().toString());
+                stmt.executeUpdate();
+            }
+
+            String sqlUpdateSeat = "UPDATE TKT.ORDERSEATS SET METADATA = ? " +
+                    "WHERE ORDERID = ? AND EVENTID = ? AND SEATID = ?";
+            try (PreparedStatement stmt = conn.prepareStatement(sqlUpdateSeat)) {
+                for (OrderSeatsInner seatEntry: order.getSeats()) {
+                    stmt.setString(1, metadataMapToJsonString(seatEntry.getMetadata()));
+                    stmt.setString(2, order.getId().toString());
+                    stmt.setString(3, order.getEventId().toString());
+                    stmt.setString(4, seatEntry.getSeatId().toString());
+                    stmt.addBatch();
+                }
+                stmt.executeBatch();
+            }
+        }
+    }
+
 
     @Transactional(rollbackFor = SQLException.class)
     public void deleteOrder(UUID orderId) throws SQLException {

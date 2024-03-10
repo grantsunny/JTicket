@@ -13,3 +13,8 @@ spring:
       mode: embedded
       schema-locations: classpath:database.sql
       continue-on-error: true
+ticket:
+  user-token:
+    required: false
+    path: /api/order
+    cookie: x-ticket-userId
