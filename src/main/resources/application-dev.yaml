@@ -17,4 +17,4 @@ ticket:
   user-token:
     required: false
     path: /api/order
-    cookie: x-ticket-userId
+    name: x-ticket-userId

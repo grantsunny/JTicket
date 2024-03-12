@@ -28,17 +28,18 @@ public class UserTokenFilter implements ContainerRequestFilter {
     @Value("${ticket.user-token.required:false}")
     private boolean userTokenRequired;
 
-    @Value("${ticket.user-token.cookie:x-ticket-userId}")
-    private String userTokenCookieName;
+    @Value("${ticket.user-token.name:x-ticket-userId}")
+    private String userTokenName;
 
     @Override
     public void filter(ContainerRequestContext requestContext) throws IOException {
         if (userTokenRequired) {
             if (requestContext.getUriInfo().getRequestUri().getPath().startsWith(baseUrl)){
-                if (!(requestContext.getCookies().containsKey(userTokenCookieName)))
+                if (!(requestContext.getCookies().containsKey(userTokenName))
+                        && !(requestContext.getHeaders().containsKey(userTokenName)))
                     requestContext.abortWith(
                             Response.status(Response.Status.UNAUTHORIZED)
-                                    .entity("Missing cookie " + userTokenCookieName + " in request")
+                                    .entity("Missing cookie " + userTokenName + " in request")
                                     .build());
             }
         }

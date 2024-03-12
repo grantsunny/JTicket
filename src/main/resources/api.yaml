@@ -817,6 +817,12 @@ paths:
             type: string
           required: false
           description: If there is userId in cookie, will return orders under given user
+        - name: x-ticket-userId
+          in: header
+          schema:
+            type: string
+          required: false
+          description: If there is userId in cookie, will return orders under given user
         - name: startTime
           in: query
           schema:
@@ -852,6 +858,12 @@ paths:
             type: string
           required: false
           description: If there is userId in cookie, will use this userId to create order; otherwise the body shall contain the userId.
+        - name: x-ticket-userId
+          in: header
+          schema:
+            type: string
+          required: false
+          description: If there is userId in cookie, will return orders under given user
       requestBody:
         description: Order creation request
         required: true
@@ -881,6 +893,12 @@ paths:
             type: string
           required: false
           description: If there is userId in cookie, getting order does not belong to user will get 404.
+        - name: x-ticket-userId
+          in: header
+          schema:
+            type: string
+          required: false
+          description: If there is userId in cookie, will return orders under given user
         - name: orderId
           in: path
           required: true
@@ -908,6 +926,12 @@ paths:
             type: string
           required: false
           description: If there is userId in cookie, payment order does not belong to user will fail with 404.
+        - name: x-ticket-userId
+          in: header
+          schema:
+            type: string
+          required: false
+          description: If there is userId in cookie, will return orders under given user
         - name: orderId
           in: path
           required: true
@@ -944,6 +968,12 @@ paths:
             type: string
           required: false
           description: If there is userId in cookie, cancel order does not belong to user will fail with 404.
+        - name: x-ticket-userId
+          in: header
+          schema:
+            type: string
+          required: false
+          description: If there is userId in cookie, will return orders under given user
         - name: orderId
           in: path
           required: true

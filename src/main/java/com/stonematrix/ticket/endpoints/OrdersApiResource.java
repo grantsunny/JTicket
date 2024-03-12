@@ -39,8 +39,8 @@ public class OrdersApiResource implements OrdersApi {
     }
 
     @Override
-    public Response createOrder(Order order, String xTicketUserId) {
-        String userId = xTicketUserId;
+    public Response createOrder(Order order, String userIdCookie, String userIdHeader) {
+        String userId = userIdHeader != null ? userIdHeader : userIdCookie;
         if (userId != null)
             order.setUserId(userId);
         else
@@ -63,17 +63,18 @@ public class OrdersApiResource implements OrdersApi {
     }
 
     @Override
-    public Response getAllOrders(String xTicketUserId, Date startTime, Date endTime) {
+    public Response getAllOrders(String userIdCookie, String userIdHeader, Date startTime, Date endTime) {
+        String userId = userIdHeader != null ? userIdHeader : userIdCookie;
         List<Order> orders;
         try {
             if (startTime != null && endTime != null)
-                if (xTicketUserId != null)
-                    orders = jdbc.loadOrders(xTicketUserId, startTime, endTime);
+                if (userId != null)
+                    orders = jdbc.loadOrders(userId, startTime, endTime);
                 else
                     orders = jdbc.loadOrders(startTime, endTime);
             else
-            if (xTicketUserId != null)
-                orders = jdbc.loadOrders(xTicketUserId);
+            if (userId != null)
+                orders = jdbc.loadOrders(userId);
             else
                 orders = jdbc.loadOrders();
         } catch (SQLException e) {
@@ -87,8 +88,9 @@ public class OrdersApiResource implements OrdersApi {
     }
 
     @Override
-    public Response getOrder(UUID orderId, String xTicketUserId) {
-        verifyOrderAndUser(xTicketUserId, orderId);
+    public Response getOrder(UUID orderId, String userIdCookie, String userIdHeader) {
+        String userId = userIdHeader != null ? userIdHeader : userIdCookie;
+        verifyOrderAndUser(userId, orderId);
         try {
             Order order = jdbc.loadOrder(orderId);
             return Response.ok(order).build();
@@ -98,10 +100,11 @@ public class OrdersApiResource implements OrdersApi {
     }
 
     @Override
-    public Response payOrder(UUID orderId, Payment payment, String xTicketUserId) {
-        verifyOrderAndUser(xTicketUserId, orderId);
+    public Response payOrder(UUID orderId, Payment payment, String userIdCookie, String userIdHeader) {
+        String userId = userIdHeader != null ? userIdHeader : userIdCookie;
+        verifyOrderAndUser(userId, orderId);
         try {
-            plugin.beforePayOrder(xTicketUserId, orderId.toString(), payment.getPaidAmount());
+            plugin.beforePayOrder(userId, orderId.toString(), payment.getPaidAmount());
             jdbc.updateOrderPayAmount(orderId, payment.getPaidAmount());
             return Response.accepted().build();
         } catch (SQLException e) {
@@ -110,10 +113,11 @@ public class OrdersApiResource implements OrdersApi {
     }
 
     @Override
-    public Response cancelOrder(UUID orderId, String xTicketUserId) {
-        verifyOrderAndUser(xTicketUserId, orderId);
+    public Response cancelOrder(UUID orderId, String userIdCookie, String userIdHeader) {
+        String userId = userIdHeader != null ? userIdHeader : userIdCookie;
+        verifyOrderAndUser(userId, orderId);
         try {
-            plugin.beforeCancelOrder(xTicketUserId, orderId.toString());
+            plugin.beforeCancelOrder(userId, orderId.toString());
             jdbc.deleteOrder(orderId);
             return Response.noContent().build();
         } catch (SQLException e) {
