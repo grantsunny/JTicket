@@ -1,7 +1,7 @@
 package com.stonematrix.ticket.endpoints;
 
 import com.stonematrix.ticket.api.SeatsApi;
-import com.stonematrix.ticket.persist.JdbcHelper;
+import com.stonematrix.ticket.persist.SeatsRepository;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.core.Response;
@@ -12,12 +12,12 @@ import java.util.UUID;
 public class SeatsApiResource implements SeatsApi {
 
     @Inject
-    private JdbcHelper jdbc;
+    private SeatsRepository repository;
 
     @Override
     public Response getAllSeats(UUID venueId, UUID areaId) {
         try {
-            return Response.ok(jdbc.loadSeats(venueId, areaId)).build();
+            return Response.ok(repository.loadSeats(venueId, areaId)).build();
         } catch (SQLException e) {
             throw new BadRequestException(e.getMessage());
         }
@@ -26,7 +26,7 @@ public class SeatsApiResource implements SeatsApi {
     @Override
     public Response getSeat(UUID seatId) {
         try {
-            return Response.ok(jdbc.loadSeat(seatId)).build();
+            return Response.ok(repository.loadSeat(seatId)).build();
         } catch (SQLException e) {
             throw new BadRequestException(e.getMessage());
         }

@@ -1,7 +1,7 @@
 package com.stonematrix.ticket.integration;
 
 import com.stonematrix.ticket.api.model.Order;
-import com.stonematrix.ticket.persist.JdbcHelper;
+import com.stonematrix.ticket.persist.jdbc.JdbcHelper;
 import jakarta.inject.Inject;
 import org.springframework.stereotype.Component;
 

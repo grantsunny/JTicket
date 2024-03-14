@@ -4,7 +4,7 @@ import com.stonematrix.ticket.api.OrdersApi;
 import com.stonematrix.ticket.api.model.Order;
 import com.stonematrix.ticket.api.model.Payment;
 import com.stonematrix.ticket.integration.OrderPluginHelper;
-import com.stonematrix.ticket.persist.JdbcHelper;
+import com.stonematrix.ticket.persist.OrdersRepository;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.WebApplicationException;
@@ -24,14 +24,14 @@ public class OrdersApiResource implements OrdersApi {
     private UriInfo uriInfo;
 
     @Inject
-    private JdbcHelper jdbc;
+    private OrdersRepository repository;
 
     @Inject
     private OrderPluginHelper plugin;
 
     private void verifyOrderAndUser(String userId, UUID orderId) {
         try {
-            if (!jdbc.isUserOrderExist(userId, orderId))
+            if (!repository.isUserOrderExist(userId, orderId))
                 throw new WebApplicationException("UserId is not the owner of specified order", Response.Status.NOT_FOUND);
         } catch (SQLException e) {
             throw new BadRequestException(e);
@@ -51,7 +51,7 @@ public class OrdersApiResource implements OrdersApi {
 
         try {
             order = plugin.beforePlaceOrder(userId, order);
-            jdbc.saveNewOrder(order);
+            repository.saveNewOrder(order);
             UriBuilder uriBuilder =
                     uriInfo.getRequestUriBuilder().
                             path(String.valueOf(order.getId()));
@@ -69,14 +69,14 @@ public class OrdersApiResource implements OrdersApi {
         try {
             if (startTime != null && endTime != null)
                 if (userId != null)
-                    orders = jdbc.loadOrders(userId, startTime, endTime);
+                    orders = repository.loadOrders(userId, startTime, endTime);
                 else
-                    orders = jdbc.loadOrders(startTime, endTime);
+                    orders = repository.loadOrders(startTime, endTime);
             else
             if (userId != null)
-                orders = jdbc.loadOrders(userId);
+                orders = repository.loadOrders(userId);
             else
-                orders = jdbc.loadOrders();
+                orders = repository.loadOrders();
         } catch (SQLException e) {
             throw new BadRequestException(e);
         }
@@ -92,7 +92,7 @@ public class OrdersApiResource implements OrdersApi {
         String userId = userIdHeader != null ? userIdHeader : userIdCookie;
         verifyOrderAndUser(userId, orderId);
         try {
-            Order order = jdbc.loadOrder(orderId);
+            Order order = repository.loadOrder(orderId);
             return Response.ok(order).build();
         } catch (SQLException e) {
             throw new BadRequestException(e);
@@ -105,7 +105,7 @@ public class OrdersApiResource implements OrdersApi {
         verifyOrderAndUser(userId, orderId);
         try {
             plugin.beforePayOrder(userId, orderId.toString(), payment.getPaidAmount());
-            jdbc.updateOrderPayAmount(orderId, payment.getPaidAmount());
+            repository.updateOrderPayAmount(orderId, payment.getPaidAmount());
             return Response.accepted().build();
         } catch (SQLException e) {
             throw new BadRequestException(e);
@@ -118,7 +118,7 @@ public class OrdersApiResource implements OrdersApi {
         verifyOrderAndUser(userId, orderId);
         try {
             plugin.beforeCancelOrder(userId, orderId.toString());
-            jdbc.deleteOrder(orderId);
+            repository.deleteOrder(orderId);
             return Response.noContent().build();
         } catch (SQLException e) {
             throw new BadRequestException(e);

@@ -2,18 +2,14 @@ package com.stonematrix.ticket.endpoints;
 
 import com.stonematrix.ticket.api.EventsApi;
 import com.stonematrix.ticket.api.model.*;
-import com.stonematrix.ticket.persist.JdbcHelper;
+import com.stonematrix.ticket.persist.EventsRepository;
 import jakarta.inject.Inject;
-import jakarta.validation.Valid;
-import jakarta.validation.constraints.NotNull;
 import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.ClientErrorException;
-import jakarta.ws.rs.HeaderParam;
 import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.UriBuilder;
 import jakarta.ws.rs.core.UriInfo;
-import org.springframework.security.task.DelegatingSecurityContextAsyncTaskExecutor;
 
 import java.sql.SQLException;
 import java.util.List;
@@ -25,14 +21,13 @@ public class EventsApiResource implements EventsApi {
     private UriInfo uriInfo;
 
     @Inject
-    private JdbcHelper jdbc;
-
+    private EventsRepository repository;
 
 
     @Override
     public Response listTicketPricesOfEvent(UUID eventId) {
         try {
-            List<Price> prices = jdbc.loadPrices(eventId);
+            List<Price> prices = repository.loadPrices(eventId);
             if ((prices == null) || (prices.isEmpty()))
                 return Response.status(Response.Status.NOT_FOUND).build();
             else
@@ -47,7 +42,7 @@ public class EventsApiResource implements EventsApi {
     @Override
     public Response getSeatLevelPricingOfEvent(UUID eventId, UUID seatId) {
         try {
-            Price price = jdbc.loadSeatLevelPricingOfEvent(eventId, seatId);
+            Price price = repository.loadSeatLevelPricingOfEvent(eventId, seatId);
             if (price == null)
                 return Response.status(Response.Status.NOT_FOUND).build();
             else
@@ -62,7 +57,7 @@ public class EventsApiResource implements EventsApi {
     @Override
     public Response getSeatInEvent(UUID eventId, UUID seatId) {
         try {
-            Seat seat = jdbc.loadSeatInEvent(eventId, seatId);
+            Seat seat = repository.loadSeatInEvent(eventId, seatId);
             if (seat == null)
                 return Response.status(Response.Status.NOT_FOUND).build();
             else
@@ -76,7 +71,7 @@ public class EventsApiResource implements EventsApi {
     @Override
     public Response getAllAreasInEvent(UUID eventId) {
         try {
-            List<Area> areas = jdbc.loadAllAreasInEvent(eventId);
+            List<Area> areas = repository.loadAllAreasInEvent(eventId);
             if ((areas == null) || (areas.isEmpty()))
                 return Response.status(Response.Status.NOT_FOUND).build();
             else
@@ -89,7 +84,7 @@ public class EventsApiResource implements EventsApi {
     @Override
     public Response getAllSeatsInAreaOfEvent(UUID eventId, UUID areaId) {
         try {
-            List<Seat> seats = jdbc.loadSeatsInAreaOfEvent(eventId, areaId);
+            List<Seat> seats = repository.loadSeatsInAreaOfEvent(eventId, areaId);
             if ((seats == null) || (seats.isEmpty()))
                 return Response.status(Response.Status.NOT_FOUND).build();
             else
@@ -102,7 +97,7 @@ public class EventsApiResource implements EventsApi {
     @Override
     public Response getAreaInEvent(UUID eventId, UUID areaId) {
         try {
-            Area area = jdbc.loadAreaInEvent(eventId, areaId);
+            Area area = repository.loadAreaInEvent(eventId, areaId);
             if (area == null)
                 return Response.status(Response.Status.NOT_FOUND).build();
             else
@@ -117,7 +112,7 @@ public class EventsApiResource implements EventsApi {
     @Override
     public Response getAreaLevelPricingOfEvent(UUID eventId, UUID areaId) {
         try {
-            Price price = jdbc.loadAreaLevelPricingOfEvent(eventId, areaId);
+            Price price = repository.loadAreaLevelPricingOfEvent(eventId, areaId);
             if (price == null)
                 return Response.status(Response.Status.NOT_FOUND).build();
             else
@@ -130,7 +125,7 @@ public class EventsApiResource implements EventsApi {
     @Override
     public Response getDefaultPricingOfEvent(UUID eventId) {
         try {
-            Price price = jdbc.loadDefaultPricingOfEvent(eventId);
+            Price price = repository.loadDefaultPricingOfEvent(eventId);
             if (price == null)
                 return Response.status(Response.Status.NOT_FOUND).build();
             else
@@ -144,7 +139,7 @@ public class EventsApiResource implements EventsApi {
     public Response createTicketPriceOfEvent(UUID eventId, Price price) {
         try {
             price = price.id(UUID.randomUUID());
-            jdbc.saveTicketPriceOfEvent(eventId, price);
+            repository.saveTicketPriceOfEvent(eventId, price);
 
             return Response.created(
                     uriInfo.getRequestUriBuilder()
@@ -168,7 +163,7 @@ public class EventsApiResource implements EventsApi {
     @Override
     public Response deleteEvent(UUID eventId) {
         try {
-            jdbc.deleteEvent(eventId);
+            repository.deleteEvent(eventId);
             return Response.status(Response.Status.NO_CONTENT).build();
 
         } catch (SQLException e) {
@@ -187,7 +182,7 @@ public class EventsApiResource implements EventsApi {
     @Override
     public Response getTicketPriceOfEvent(UUID eventId, UUID priceId) {
         try {
-            Price price = jdbc.loadPriceOfEventById(eventId, priceId);
+            Price price = repository.loadPriceOfEventById(eventId, priceId);
             if (price == null)
                 return Response.status(Response.Status.NOT_FOUND).build();
             else
@@ -200,7 +195,7 @@ public class EventsApiResource implements EventsApi {
     @Override
     public Response deleteTicketPriceOfEvent(UUID eventId, UUID priceId) {
         try {
-            jdbc.deleteTicketPriceOfEvent(eventId, priceId);
+            repository.deleteTicketPriceOfEvent(eventId, priceId);
             return Response.status(Response.Status.NO_CONTENT).build();
 
         } catch (SQLException e) {
@@ -221,7 +216,7 @@ public class EventsApiResource implements EventsApi {
 
         UUID priceId = linkPrice.getPriceId();
         try {
-            jdbc.saveDefaultPricingOfEvent(eventId, priceId);
+            repository.saveDefaultPricingOfEvent(eventId, priceId);
             return Response.accepted().build();
 
         } catch (SQLException e) {
@@ -241,7 +236,7 @@ public class EventsApiResource implements EventsApi {
     public Response assignSeatLevelPricingOfEvent(UUID eventId, UUID seatId, LinkPrice linkPrice) {
         UUID priceId = linkPrice.getPriceId();
         try {
-            jdbc.saveSeatLevelPricingOfEvent(eventId, seatId, priceId);
+            repository.saveSeatLevelPricingOfEvent(eventId, seatId, priceId);
             return Response.accepted().build();
 
         } catch (SQLException e) {
@@ -261,7 +256,7 @@ public class EventsApiResource implements EventsApi {
     public Response assignAreaLevelPricingOfEvent(UUID eventId, UUID areaId, LinkPrice linkPrice) {
         UUID priceId = linkPrice.getPriceId();
         try {
-            jdbc.saveAreaLevelPricingOfEvent(eventId, areaId, priceId);
+            repository.saveAreaLevelPricingOfEvent(eventId, areaId, priceId);
             return Response.accepted().build();
 
         } catch (SQLException e) {
@@ -291,7 +286,7 @@ public class EventsApiResource implements EventsApi {
         else {
             event = event.id(UUID.randomUUID());
             try {
-                jdbc.saveEventAndCopyPrices(event, xCopyFromId);
+                repository.saveEventAndCopyPrices(event, xCopyFromId);
                 UriBuilder uriBuilder =
                         uriInfo.getRequestUriBuilder().
                                 path(String.valueOf(event.getId()));
@@ -306,7 +301,7 @@ public class EventsApiResource implements EventsApi {
     private Response createEvent(Event event) {
         event = event.id(UUID.randomUUID());
         try {
-            jdbc.saveEvent(event);
+            repository.saveEvent(event);
             UriBuilder uriBuilder =
                     uriInfo.getRequestUriBuilder().
                             path(String.valueOf(event.getId()));
@@ -320,7 +315,7 @@ public class EventsApiResource implements EventsApi {
     @Override
     public Response getEventById(UUID eventId) {
         try {
-            Event event = jdbc.loadEvent(eventId);
+            Event event = repository.loadEvent(eventId);
             if (event == null)
                 return Response.status(Response.Status.NOT_FOUND).build();
             else
@@ -334,7 +329,7 @@ public class EventsApiResource implements EventsApi {
     public Response listEvents(String venueId) {
         if (venueId != null) {
             try {
-                List<Event> events = jdbc.loadEventsByVenue(venueId);
+                List<Event> events = repository.loadEventsByVenue(venueId);
                 return Response.ok(events).build();
             } catch (SQLException e) {
                 throw new BadRequestException(e);
@@ -345,7 +340,7 @@ public class EventsApiResource implements EventsApi {
 
     private Response listEvents() {
         try {
-            List<Event> events = jdbc.loadAllEvents();
+            List<Event> events = repository.loadAllEvents();
             return Response.ok(events).build();
         } catch (SQLException e) {
             throw new BadRequestException(e);
@@ -355,7 +350,7 @@ public class EventsApiResource implements EventsApi {
     @Override
     public Response getVenueOfEvent(UUID eventId) {
         try {
-            Venue venue = jdbc.loadVenueByEvent(eventId);
+            Venue venue = repository.loadVenueByEvent(eventId);
             if (venue == null)
                 return Response.status(Response.Status.NOT_FOUND).build();
             else
@@ -370,7 +365,7 @@ public class EventsApiResource implements EventsApi {
     @Override
     public Response getEventVenueSvgLayout(UUID eventId) {
         try {
-            return Response.ok(jdbc.loadEventVenueSvg(eventId)).build();
+            return Response.ok(repository.loadEventVenueSvg(eventId)).build();
         } catch (SQLException e) {
             throw new BadRequestException(e.getMessage());
         }
@@ -380,7 +375,7 @@ public class EventsApiResource implements EventsApi {
     public Response assignVenueToEvent(UUID eventId, LinkVenue linkVenue) {
         UUID venueId = linkVenue.getVenueId();
         try {
-            jdbc.updateVenueOfEvent(eventId, venueId);
+            repository.updateVenueOfEvent(eventId, venueId);
             return Response.accepted().build();
         } catch (SQLException e) {
             switch (e.getSQLState()) {
@@ -398,7 +393,7 @@ public class EventsApiResource implements EventsApi {
     @Override
     public Response updateEvent(UUID eventId, Event event) {
         try {
-            jdbc.updateEvent(eventId, event);
+            repository.updateEvent(eventId, event);
             return Response.noContent().build();
         } catch (SQLException e) {
             switch (e.getSQLState()) {

@@ -5,7 +5,8 @@ import com.stonematrix.ticket.api.model.Area;
 import com.stonematrix.ticket.api.model.Seat;
 import com.stonematrix.ticket.api.model.Venue;
 import com.stonematrix.ticket.excel.ExcelTemplateHelper;
-import com.stonematrix.ticket.persist.JdbcHelper;
+import com.stonematrix.ticket.persist.SeatsRepository;
+import com.stonematrix.ticket.persist.VenuesRepository;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.*;
@@ -25,14 +26,18 @@ import java.util.Map;
 @Path("/template")
 public class TemplateResource {
 
-    @Inject
-    private JdbcHelper jdbc;
+    @Context
+    private UriInfo uriInfo;
 
     @Inject
     private ExcelTemplateHelper templateHelper;
 
-    @Context
-    private UriInfo uriInfo;
+    @Inject
+    private VenuesRepository venuesRepository;
+
+    @Inject
+    private SeatsRepository seatsRepository;
+
     @GET
     @Produces("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
     public Response downloadTemplate() {
@@ -81,14 +86,14 @@ public class TemplateResource {
             Map<String, Area> areas = templateHelper.parseAreas(workbook, venue.getId());
             String svg = templateHelper.parseVenueSvg(venueLayoutSheet, areas);
 
-            jdbc.saveVenue(venue, svg);
-            jdbc.saveAreas(new LinkedList<>(areas.values()));
+            venuesRepository.saveVenue(venue, svg);
+            venuesRepository.saveAreas(new LinkedList<>(areas.values()));
 
             for (String areaIndex: areas.keySet()) {
                 Area area = areas.get(areaIndex);
 
                 List<Seat> seats = templateHelper.parseSeats(workbook, areaIndex, area);
-                jdbc.saveSeats(seats);
+                seatsRepository.saveSeats(seats);
             }
 
             return venue;
