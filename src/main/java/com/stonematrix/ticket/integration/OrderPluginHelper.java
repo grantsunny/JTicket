@@ -1,7 +1,8 @@
 package com.stonematrix.ticket.integration;
 
 import com.stonematrix.ticket.api.model.Order;
-import com.stonematrix.ticket.persist.jdbc.JdbcHelper;
+import com.stonematrix.ticket.persist.EventsRepository;
+import com.stonematrix.ticket.persist.OrdersRepository;
 import jakarta.inject.Inject;
 import org.springframework.stereotype.Component;
 
@@ -14,7 +15,10 @@ import java.util.UUID;
 public class OrderPluginHelper {
 
     @Inject
-    private JdbcHelper jdbc;
+    private EventsRepository eventsRepository;
+
+    @Inject
+    private OrdersRepository ordersRepository;
 
     @Inject
     private List<OrderPlugin> orderPlugins;
@@ -27,7 +31,7 @@ public class OrderPluginHelper {
                 if (plugin.matches(
                         order.getEventId().toString(),
                         userId,
-                        jdbc.loadEvent(order.getEventId()).getMetadata()))
+                        eventsRepository.loadEvent(order.getEventId()).getMetadata()))
                     return plugin.beforePlaceOrder(order);
             } catch (OrderPluginException e) {
                 throw new SQLException(e);
@@ -39,15 +43,15 @@ public class OrderPluginHelper {
 
     public void beforePayOrder(String userId, String orderId, Integer payAmount) throws SQLException {
         if (orderPlugins.isEmpty()) return;
-        Order order = jdbc.loadOrder(UUID.fromString(orderId));
+        Order order = ordersRepository.loadOrder(UUID.fromString(orderId));
 
         for (OrderPlugin plugin: orderPlugins) {
             try {
                 if (plugin.matches(
                         order.getEventId().toString(),
                         userId,
-                        jdbc.loadEvent(order.getEventId()).getMetadata())) {
-                    jdbc.updateOrderMetadata(plugin.beforePayOrder(order, payAmount));
+                        eventsRepository.loadEvent(order.getEventId()).getMetadata())) {
+                    ordersRepository.updateOrderMetadata(plugin.beforePayOrder(order, payAmount));
                     return;
                 }
             } catch (OrderPluginException e) {
@@ -58,14 +62,14 @@ public class OrderPluginHelper {
 
     public void beforeCancelOrder(String userId, String orderId) throws SQLException {
         if (orderPlugins.isEmpty()) return;
-        Order order = jdbc.loadOrder(UUID.fromString(orderId));
+        Order order = ordersRepository.loadOrder(UUID.fromString(orderId));
 
         for (OrderPlugin plugin: orderPlugins) {
             try {
                 if (plugin.matches(
                         order.getEventId().toString(),
                         userId,
-                        jdbc.loadEvent(order.getEventId()).getMetadata())) {
+                        eventsRepository.loadEvent(order.getEventId()).getMetadata())) {
                     plugin.beforeCancelOrder(order);
                     return;
                 }
