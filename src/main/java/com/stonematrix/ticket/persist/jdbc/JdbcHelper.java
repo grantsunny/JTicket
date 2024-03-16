@@ -2,7 +2,6 @@ package com.stonematrix.ticket.persist.jdbc;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.stonematrix.ticket.api.model.*;
-import com.stonematrix.ticket.persist.*;
 import org.springframework.stereotype.Component;
 
 import jakarta.inject.Inject;
@@ -17,12 +16,32 @@ import java.util.*;
 import java.util.Date;
 
 @Component
-public class JdbcHelper
-        extends AbstractPersister {
+public class JdbcHelper {
 
     @Inject
     private DataSource dataSource;
 
+    private String metadataMapToJsonString(Map<String, Object> metadataMap) {
+        String metadataJson;
+        try {
+            metadataJson = new ObjectMapper().writeValueAsString(metadataMap);
+        } catch (JsonProcessingException e) {
+            metadataJson = "{}";
+        }
+        return metadataJson;
+    }
+
+    private Map<String, Object> parseMetadata(String rawMetadata) {
+        Map<String, Object> metadata;
+        try {
+            metadata = new ObjectMapper().readValue(
+                    rawMetadata,
+                    Map.class);
+        } catch (JsonProcessingException ex) {
+            metadata = new HashMap<>();
+        }
+        return metadata;
+    }
 
     public List<Venue> loadAllVenues() throws SQLException {
 

@@ -22,18 +22,18 @@ public class UUIDHandler extends BaseTypeHandler<UUID> {
     @Override
     public UUID getNullableResult(ResultSet rs, String columnName) throws SQLException {
         String s = rs.getString(columnName);
-        return (s == null) ? null : UUID.fromString(rs.getString(columnName));
+        return (s == null) ? null : UUID.fromString(s);
     }
 
     @Override
     public UUID getNullableResult(ResultSet rs, int columnIndex) throws SQLException {
         String s = rs.getString(columnIndex);
-        return (s == null) ? null : UUID.fromString(rs.getString(columnIndex));
+        return (s == null) ? null : UUID.fromString(s);
     }
 
     @Override
     public UUID getNullableResult(CallableStatement cs, int columnIndex) throws SQLException {
         String s = cs.getString(columnIndex);
-        return (s == null) ? null : UUID.fromString(cs.getString(columnIndex));
+        return (s == null) ? null : UUID.fromString(s);
     }
 }
