@@ -1,9 +1,6 @@
 package com.stonematrix.ticket.persist.mybatis;
 
-import com.stonematrix.ticket.persist.EventsRepository;
-import com.stonematrix.ticket.persist.PersistenceException;
-import com.stonematrix.ticket.persist.SeatsRepository;
-import com.stonematrix.ticket.persist.VenuesRepository;
+import com.stonematrix.ticket.persist.*;
 import jakarta.inject.Inject;
 import org.apache.ibatis.session.ExecutorType;
 import org.apache.ibatis.session.SqlSession;
@@ -30,6 +27,8 @@ public class MybatisPersistConfiguration {
     @Inject
     private EventsMapper eventsMapper;
     @Inject
+    private OrdersMapper ordersMapper;
+    @Inject
     private SqlSessionFactory sqlSessionFactory;
 
     @Bean
@@ -54,6 +53,14 @@ public class MybatisPersistConfiguration {
                 SeatsRepository.class.getClassLoader(),
                 new Class<?>[]{SeatsRepository.class},
                 new MybatisInvocationHandler(seatsMapper, sqlSessionFactory));
+    }
+
+    @Bean
+    public OrdersRepository getOrdersRepository() {
+        return (OrdersRepository) Proxy.newProxyInstance(
+                OrdersRepository.class.getClassLoader(),
+                new Class<?>[]{OrdersRepository.class},
+                new MybatisInvocationHandler(ordersMapper, sqlSessionFactory));
     }
 
     private static class MybatisInvocationHandler implements InvocationHandler {

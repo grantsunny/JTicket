@@ -1124,7 +1124,7 @@ public class JdbcHelper {
         try (Connection conn = dataSource.getConnection()) {
             String sqlNewOrder = "INSERT INTO TKT.ORDERS(ID, EVENTID, USERID, TIMESTAMP, METADATA) VALUES (?, ?, ?, CURRENT_TIMESTAMP, ?)";
             try (PreparedStatement stmt = conn.prepareStatement(sqlNewOrder)) {
-                stmt.setString(1, UUID.randomUUID().toString());
+                stmt.setString(1, order.getId() == null ? UUID.randomUUID().toString(): order.getId().toString());
                 stmt.setString(2, order.getEventId().toString());
                 stmt.setString(3, order.getUserId());
                 stmt.setString(4, metadataMapToJsonString(order.getMetadata()));

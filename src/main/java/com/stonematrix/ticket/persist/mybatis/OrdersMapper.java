@@ -1,31 +1,141 @@
 package com.stonematrix.ticket.persist.mybatis;
 
 import com.stonematrix.ticket.api.model.Order;
-import org.apache.ibatis.annotations.Mapper;
+import com.stonematrix.ticket.api.model.OrderSeatsInner;
+import com.stonematrix.ticket.persist.PersistenceException;
+import org.apache.ibatis.annotations.*;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.sql.SQLException;
 import java.util.Date;
 import java.util.List;
 import java.util.UUID;
 
 @Mapper
 public interface OrdersMapper {
-    boolean isUserOrderExist(String userId, UUID orderId);
+    @Select("SELECT CASE WHEN (COUNT(*) > 0) THEN TRUE ELSE FALSE END FROM TKT.ORDERS WHERE USERID = #{userId} AND ID = #{orderId}")
+    boolean isUserOrderExist(@Param("userId") String userId, @Param("orderId") UUID orderId);
 
-    void saveNewOrder(Order order);
+    @Select("SELECT ORDERID, EVENTID, SEATID, METADATA FROM TKT.ORDERSEATS WHERE ORDERID = #{orderId}")
+    List<OrderSeatsInner> _loadOrderSeats(@Param("orderId") UUID orderId);
 
-    List<Order> loadOrders(String userId, Date startTime, Date endTime);
+    @Select("SELECT ID, EVENTID, USERID, TIMESTAMP, (PAIDAMOUNT * 100) AS PAIDAMOUNT, METADATA FROM TKT.ORDERS " +
+            "WHERE USERID = #{userId} AND TIMESTAMP BETWEEN #{startTime} AND #{endTime}")
+    List<Order> _loadOrders(@Param("userId") String userId, @Param("startTime") Date startTime, @Param("endTime") Date endTime);
 
-    List<Order> loadOrders(Date startTime, Date endTime);
+    @Transactional
+    default List<Order> loadOrders(String userId, Date startTime, Date endTime) {
+        List<Order> orders = _loadOrders(userId, startTime, endTime);
+        for (Order order: orders) {
+            UUID orderId = order.getId();
+            order.setSeats(_loadOrderSeats(orderId));
+        }
+        return orders;
+    }
 
-    List<Order> loadOrders(String userId);
+    @Select("SELECT ID, EVENTID, USERID, TIMESTAMP, (PAIDAMOUNT * 100) AS PAIDAMOUNT, METADATA FROM TKT.ORDERS " +
+            "WHERE TIMESTAMP BETWEEN #{startTime} AND #{endTime}")
+    List<Order> _loadOrders(@Param("startTime") Date startTime, @Param("endTime") Date endTime);
 
-    List<Order> loadOrders();
+    @Transactional
+    default List<Order> loadOrders(Date startTime, Date endTime) {
+        List<Order> orders = _loadOrders(startTime, endTime);
+        for (Order order: orders) {
+            UUID orderId = order.getId();
+            order.setSeats(_loadOrderSeats(orderId));
+        }
+        return orders;
+    }
 
-    Order loadOrder(UUID orderId);
+    @Select("SELECT ID, EVENTID, USERID, TIMESTAMP, (PAIDAMOUNT * 100) AS PAIDAMOUNT, METADATA FROM TKT.ORDERS " +
+            "WHERE USERID = #{userId} ")
+    List<Order> _loadOrders(@Param("userId") String userId);
 
-    void updateOrderPayAmount(UUID orderId, Integer paidAmount);
+    @Transactional
+    default List<Order> loadOrders(String userId) {
+        List<Order> orders = _loadOrders(userId);
+        for (Order order: orders) {
+            UUID orderId = order.getId();
+            order.setSeats(_loadOrderSeats(orderId));
+        }
+        return orders;
+    }
 
-    void deleteOrder(UUID orderId);
+    @Select("SELECT ID, EVENTID, USERID, TIMESTAMP, (PAIDAMOUNT * 100) AS PAIDAMOUNT, METADATA FROM TKT.ORDERS")
+    List<Order> _loadOrders();
 
-    void updateOrderMetadata(Order order);
+    @Transactional
+    default List<Order> loadOrders() {
+        List<Order> orders = _loadOrders();
+        for (Order order: orders) {
+            UUID orderId = order.getId();
+            order.setSeats(_loadOrderSeats(orderId));
+        }
+        return orders;
+    }
+
+    @Select("SELECT ID, EVENTID, USERID, TIMESTAMP, (PAIDAMOUNT * 100) AS PAIDAMOUNT, METADATA FROM TKT.ORDERS " +
+            "WHERE ID = #{orderId} ")
+    Order _loadOrder(@Param("orderId") UUID orderId);
+
+    @Transactional
+    default Order loadOrder(UUID orderId) {
+        Order order = _loadOrder(orderId);
+        order.setSeats(_loadOrderSeats(orderId));
+        return order;
+    }
+
+    @Insert("<script>INSERT INTO TKT.ORDERSEATS(ORDERID, EVENTID, SEATID, METADATA) VALUES " +
+            "<foreach collection='seats' item='seat' separator=','> " +
+            "(#{orderId}, #{eventId}, #{seat.seatId}, #{seat.metadata}) " +
+            "</foreach>" +
+            "</script>")
+    int _saveOrderSeats(UUID orderId, UUID eventId, List<OrderSeatsInner> seats);
+
+    @Insert("INSERT INTO TKT.ORDERS(ID, EVENTID, USERID, TIMESTAMP, METADATA) VALUES (#{order.Id}, #{order.eventId}, #{order.userId}, CURRENT_TIMESTAMP, #{order.metadata})")
+    int _saveNewOrder(Order order);
+
+    @Transactional
+    @ExecutorType(org.apache.ibatis.session.ExecutorType.BATCH)
+    default void saveNewOrder(Order order) throws PersistenceException {
+        if (_saveNewOrder(order) < 1)
+            throw new PersistenceException(
+                    new SQLException("_saveNewOrder not successfully performed", "304")
+            );
+        if (_saveOrderSeats(order.getId(), order.getEventId(), order.getSeats()) < order.getSeats().size())
+            throw new PersistenceException(
+                    new SQLException("_saveOrderSeats not successfully performed: affected rows less than expected", "304")
+            );
+    }
+
+    @Update("UPDATE TKT.ORDERS SET PAIDAMOUNT = PAIDAMOUNT + (#{paidAmount} / 100.0) WHERE ID = #{orderId}")
+    void updateOrderPayAmount(@Param("orderId") UUID orderId, @Param("paidAmount") Integer paidAmount);
+
+    @Update("UPDATE TKT.ORDERS SET METADATA = #{order.metadata} WHERE ID = #{order.order}")
+    void _updateOrderMetadata(@Param("order") Order order);
+
+    @Update("UPDATE TKT.ORDERSEATS SET METADATA = #{orderSeat.metadata} WHERE ORDERID = #{orderId} AND EVENTID = #{eventId} AND SEATID = #{orderSeat.seatId}")
+    void _updateOrderSeatsMetadata(@Param("orderId") UUID orderId, @Param("eventId") UUID eventId, @Param("orderSeat") OrderSeatsInner orderSeat);
+
+    @Transactional
+    @ExecutorType(org.apache.ibatis.session.ExecutorType.BATCH)
+    default void updateOrderMetadata(Order order) {
+        _updateOrderMetadata(order);
+        for (OrderSeatsInner orderSeat: order.getSeats()) {
+            _updateOrderSeatsMetadata(order.getId(), order.getEventId(), orderSeat);
+        }
+    }
+
+    @Delete("DELETE FROM TKT.ORDERSEATS WHERE ORDERID = #{orderId}")
+    void _deleteOrderSeats(@Param("orderId") UUID orderId);
+
+    @Delete("DELETE FROM TKT.ORDERS WHERE ID = #{orderId}")
+    void _deleteOrder(@Param("orderId") UUID orderId);
+
+    @Transactional
+    @ExecutorType(org.apache.ibatis.session.ExecutorType.BATCH)
+    default void deleteOrder(UUID orderId) {
+        _deleteOrderSeats(orderId);
+        _deleteOrder(orderId);
+    }
 }

@@ -3,7 +3,7 @@ SET SCHEMA TKT;
 
 -- Create the Venue table
 CREATE TABLE TKT.Venues (
-                    id VARCHAR(36) PRIMARY KEY,
+                    id VARCHAR(36) PRIMARY KEY NOT NULL,
                     name VARCHAR(255) NOT NULL,
                     metadata CLOB,
                     svg CLOB,
@@ -12,7 +12,7 @@ CREATE TABLE TKT.Venues (
 
 -- Create the Area table
 CREATE TABLE TKT.Areas (
-                    id VARCHAR(36) PRIMARY KEY,
+                    id VARCHAR(36) PRIMARY KEY NOT NULL,
                     venueId VARCHAR(36) NOT NULL,
                     name VARCHAR(255) NOT NULL,
                     metadata CLOB,
@@ -22,7 +22,7 @@ CREATE TABLE TKT.Areas (
 
 -- Create the Seat table
 CREATE TABLE TKT.Seats (
-                    id VARCHAR(36) PRIMARY KEY,
+                    id VARCHAR(36) PRIMARY KEY NOT NULL,
                     areaId VARCHAR(36) NOT NULL,
                     row INT,
                     col INT,
@@ -33,7 +33,7 @@ CREATE TABLE TKT.Seats (
 );
 
 CREATE TABLE TKT.Events (
-                    id VARCHAR(36) PRIMARY KEY,
+                    id VARCHAR(36) PRIMARY KEY NOT NULL,
                     name VARCHAR(255) NOT NULL,
                     venueId VARCHAR(36),
                     startTime TIMESTAMP NOT NULL,
@@ -71,7 +71,7 @@ WHEN (deletedRow.paidAmount > 0)
 ;
 
 CREATE TABLE TKT.Orders (
-                    id VARCHAR(36) PRIMARY KEY,
+                    id VARCHAR(36) PRIMARY KEY NOT NULL,
                     eventId VARCHAR(36) NOT NULL,
                     userId VARCHAR(36) NOT NULL,
                     timestamp TIMESTAMP,
@@ -81,7 +81,7 @@ CREATE TABLE TKT.Orders (
 );
 
 CREATE TABLE TKT.OrderSeats (
-                    orderId VARCHAR(36),
+                    orderId VARCHAR(36) NOT NULL,
                     eventId VARCHAR(36) NOT NULL,
                     seatId VARCHAR(36) NOT NULL,
                     metadata CLOB,
@@ -92,7 +92,7 @@ CREATE TABLE TKT.OrderSeats (
 );
 
 CREATE TABLE TKT.Prices (
-                    id VARCHAR(36) PRIMARY KEY,
+                    id VARCHAR(36) PRIMARY KEY NOT NULL,
                     eventId VARCHAR(36) NOT NULL,
                     name VARCHAR(255),
                     price DECIMAL(10, 2),
@@ -101,7 +101,7 @@ CREATE TABLE TKT.Prices (
 );
 
 CREATE TABLE TKT.PricesDistribution (
-                    id VARCHAR(36) PRIMARY KEY,
+                    id VARCHAR(36) PRIMARY KEY NOT NULL,
                     priceId VARCHAR(36) NOT NULL,
                     seatId VARCHAR(36),
                     areaId VARCHAR(36),

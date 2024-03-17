@@ -50,6 +50,7 @@ public class OrdersApiResource implements OrdersApi {
             throw new WebApplicationException("Cannot create order without user information", Response.Status.BAD_REQUEST);
 
         try {
+            order.setId(UUID.randomUUID());
             order = plugin.beforePlaceOrder(userId, order);
             repository.saveNewOrder(order);
             UriBuilder uriBuilder =
