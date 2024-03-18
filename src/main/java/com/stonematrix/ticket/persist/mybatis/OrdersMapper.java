@@ -3,6 +3,7 @@ package com.stonematrix.ticket.persist.mybatis;
 import com.stonematrix.ticket.api.model.Order;
 import com.stonematrix.ticket.api.model.OrderSeatsInner;
 import com.stonematrix.ticket.persist.PersistenceException;
+import com.stonematrix.ticket.persist.mybatis.handlers.MetadataHandler;
 import org.apache.ibatis.annotations.*;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -14,18 +15,21 @@ import java.util.UUID;
 @Mapper
 public interface OrdersMapper {
     @Select("SELECT CASE WHEN (COUNT(*) > 0) THEN TRUE ELSE FALSE END FROM TKT.ORDERS WHERE USERID = #{userId} AND ID = #{orderId}")
+    @Results({@Result(property = "metadata", column = "metadata", typeHandler = MetadataHandler.class)})
     boolean isUserOrderExist(@Param("userId") String userId, @Param("orderId") UUID orderId);
 
     @Select("SELECT ORDERID, EVENTID, SEATID, METADATA FROM TKT.ORDERSEATS WHERE ORDERID = #{orderId}")
+    @Results({@Result(property = "metadata", column = "metadata", typeHandler = MetadataHandler.class)})
     List<OrderSeatsInner> _loadOrderSeats(@Param("orderId") UUID orderId);
 
     @Select("SELECT ID, EVENTID, USERID, TIMESTAMP, (PAIDAMOUNT * 100) AS PAIDAMOUNT, METADATA FROM TKT.ORDERS " +
             "WHERE USERID = #{userId} AND TIMESTAMP BETWEEN #{startTime} AND #{endTime}")
-    List<Order> _loadOrders(@Param("userId") String userId, @Param("startTime") Date startTime, @Param("endTime") Date endTime);
+    @Results({@Result(property = "metadata", column = "metadata", typeHandler = MetadataHandler.class)})
+    List<Order> _loadOrdersByUserIdAndDateRange(@Param("userId") String userId, @Param("startTime") Date startTime, @Param("endTime") Date endTime);
 
     @Transactional
     default List<Order> loadOrders(String userId, Date startTime, Date endTime) {
-        List<Order> orders = _loadOrders(userId, startTime, endTime);
+        List<Order> orders = _loadOrdersByUserIdAndDateRange(userId, startTime, endTime);
         for (Order order: orders) {
             UUID orderId = order.getId();
             order.setSeats(_loadOrderSeats(orderId));
@@ -35,11 +39,12 @@ public interface OrdersMapper {
 
     @Select("SELECT ID, EVENTID, USERID, TIMESTAMP, (PAIDAMOUNT * 100) AS PAIDAMOUNT, METADATA FROM TKT.ORDERS " +
             "WHERE TIMESTAMP BETWEEN #{startTime} AND #{endTime}")
-    List<Order> _loadOrders(@Param("startTime") Date startTime, @Param("endTime") Date endTime);
+    @Results({@Result(property = "metadata", column = "metadata", typeHandler = MetadataHandler.class)})
+    List<Order> _loadOrdersByDateRange(@Param("startTime") Date startTime, @Param("endTime") Date endTime);
 
     @Transactional
     default List<Order> loadOrders(Date startTime, Date endTime) {
-        List<Order> orders = _loadOrders(startTime, endTime);
+        List<Order> orders = _loadOrdersByDateRange(startTime, endTime);
         for (Order order: orders) {
             UUID orderId = order.getId();
             order.setSeats(_loadOrderSeats(orderId));
@@ -49,11 +54,12 @@ public interface OrdersMapper {
 
     @Select("SELECT ID, EVENTID, USERID, TIMESTAMP, (PAIDAMOUNT * 100) AS PAIDAMOUNT, METADATA FROM TKT.ORDERS " +
             "WHERE USERID = #{userId} ")
-    List<Order> _loadOrders(@Param("userId") String userId);
+    @Results({@Result(property = "metadata", column = "metadata", typeHandler = MetadataHandler.class)})
+    List<Order> _loadOrdersByUserId(@Param("userId") String userId);
 
     @Transactional
     default List<Order> loadOrders(String userId) {
-        List<Order> orders = _loadOrders(userId);
+        List<Order> orders = _loadOrdersByUserId(userId);
         for (Order order: orders) {
             UUID orderId = order.getId();
             order.setSeats(_loadOrderSeats(orderId));
@@ -62,6 +68,7 @@ public interface OrdersMapper {
     }
 
     @Select("SELECT ID, EVENTID, USERID, TIMESTAMP, (PAIDAMOUNT * 100) AS PAIDAMOUNT, METADATA FROM TKT.ORDERS")
+    @Results({@Result(property = "metadata", column = "metadata", typeHandler = MetadataHandler.class)})
     List<Order> _loadOrders();
 
     @Transactional
@@ -76,6 +83,7 @@ public interface OrdersMapper {
 
     @Select("SELECT ID, EVENTID, USERID, TIMESTAMP, (PAIDAMOUNT * 100) AS PAIDAMOUNT, METADATA FROM TKT.ORDERS " +
             "WHERE ID = #{orderId} ")
+    @Results({@Result(property = "metadata", column = "metadata", typeHandler = MetadataHandler.class)})
     Order _loadOrder(@Param("orderId") UUID orderId);
 
     @Transactional
@@ -87,12 +95,15 @@ public interface OrdersMapper {
 
     @Insert("<script>INSERT INTO TKT.ORDERSEATS(ORDERID, EVENTID, SEATID, METADATA) VALUES " +
             "<foreach collection='seats' item='seat' separator=','> " +
-            "(#{orderId}, #{eventId}, #{seat.seatId}, #{seat.metadata}) " +
+            "(#{orderId}, #{eventId}, #{seat.seatId}, " +
+            "#{seat.metadata, typeHandler=com.stonematrix.ticket.persist.mybatis.handlers.MetadataHandler}) " +
             "</foreach>" +
             "</script>")
     int _saveOrderSeats(UUID orderId, UUID eventId, List<OrderSeatsInner> seats);
 
-    @Insert("INSERT INTO TKT.ORDERS(ID, EVENTID, USERID, TIMESTAMP, METADATA) VALUES (#{order.Id}, #{order.eventId}, #{order.userId}, CURRENT_TIMESTAMP, #{order.metadata})")
+    @Insert("INSERT INTO TKT.ORDERS(ID, EVENTID, USERID, TIMESTAMP, METADATA) " +
+            "VALUES (#{order.Id}, #{order.eventId}, #{order.userId}, CURRENT_TIMESTAMP, " +
+            "#{order.metadata, typeHandler=com.stonematrix.ticket.persist.mybatis.handlers.MetadataHandler})")
     int _saveNewOrder(Order order);
 
     @Transactional
@@ -111,10 +122,11 @@ public interface OrdersMapper {
     @Update("UPDATE TKT.ORDERS SET PAIDAMOUNT = PAIDAMOUNT + (#{paidAmount} / 100.0) WHERE ID = #{orderId}")
     void updateOrderPayAmount(@Param("orderId") UUID orderId, @Param("paidAmount") Integer paidAmount);
 
-    @Update("UPDATE TKT.ORDERS SET METADATA = #{order.metadata} WHERE ID = #{order.order}")
+    @Update("UPDATE TKT.ORDERS SET METADATA = #{order.metadata, typeHandler=com.stonematrix.ticket.persist.mybatis.handlers.MetadataHandler} WHERE ID = #{order.order}")
     void _updateOrderMetadata(@Param("order") Order order);
 
-    @Update("UPDATE TKT.ORDERSEATS SET METADATA = #{orderSeat.metadata} WHERE ORDERID = #{orderId} AND EVENTID = #{eventId} AND SEATID = #{orderSeat.seatId}")
+    @Update("UPDATE TKT.ORDERSEATS SET METADATA = " +
+            "#{orderSeat.metadata, typeHandler=com.stonematrix.ticket.persist.mybatis.handlers.MetadataHandler} WHERE ORDERID = #{orderId} AND EVENTID = #{eventId} AND SEATID = #{orderSeat.seatId}")
     void _updateOrderSeatsMetadata(@Param("orderId") UUID orderId, @Param("eventId") UUID eventId, @Param("orderSeat") OrderSeatsInner orderSeat);
 
     @Transactional

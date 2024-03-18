@@ -93,6 +93,12 @@
         </dependency>
 
         <dependency>
+            <groupId>jakarta.transaction</groupId>
+            <artifactId>jakarta.transaction-api</artifactId>
+            <version>2.0.1</version>
+        </dependency>
+
+        <dependency>
             <groupId>javax.xml.bind</groupId>
             <artifactId>jaxb-api</artifactId>
             <version>2.3.1</version>
@@ -187,7 +193,35 @@
                     </execution>
                 </executions>
             </plugin>
-       </plugins>
+
+            <plugin>
+                <groupId>com.github.blutorange</groupId>
+                <artifactId>closure-compiler-maven-plugin</artifactId>
+                <version>2.30.0</version>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>minify</goal>
+                        </goals>
+                        <configuration>
+                            <closureModuleResolution>BROWSER</closureModuleResolution>
+                            <skipMerge>false</skipMerge>
+                            <outputFilename>script.js</outputFilename>
+                            <baseSourceDir>${project.build.outputDirectory}</baseSourceDir>
+                            <sourceDir>static</sourceDir>
+                            <baseTargetDir>${project.build.outputDirectory}</baseTargetDir>
+                            <targetDir>static</targetDir>
+                            <includes>
+                                <include>*.js</include>
+                            </includes>
+                            <excludes>
+                                <exclude>*.min.js</exclude>
+                            </excludes>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+         </plugins>
     </build>
 
     <repositories>

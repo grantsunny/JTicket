@@ -5,17 +5,17 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Welcome to StoneTicket!</title>
     <link rel="stylesheet" href="style.css">
-    <script type="module" src="common.js"></script>
-    <script type="module" src="venue.js"></script>
+    <script type="module" src="script.js"></script>
 </head>
-<body>
+
+<body onload="stoneticket.showCurrentUser(document.getElementById('user-info'));
+        stoneticket.fetchVenues();">
 <h1><label id="user-info"></label>, welcome to StoneTicket!  </h1>
 
 <ul>
     <li><a href="/venue.html">Venue Management </a></li>
     <li><a href="/event.html">Event Management </a></li>
 </ul>
-
 
 <p></p>
 <form id="templateUploadForm" action="/api/template" method="post" enctype="multipart/form-data">
@@ -36,8 +36,6 @@
     <p>
     <div id="seatsContainer"></div>
 </div>
-
-
 
 </body>
 </html>

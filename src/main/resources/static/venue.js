@@ -1,15 +1,12 @@
 import {drawVenue, enforceNumericInput} from "./common.js";
 
 window.stoneticket = {
-    uploadTemplate
+    ...window.stoneticket,
+    uploadTemplate,
+    fetchVenues
 }
 
-
 let areaNames = {}; // This object will store the mapping of areaId to area names
-document.addEventListener('DOMContentLoaded', function() {
-    // Fetch and display venues when the page loads
-    fetchVenues();
-});
 
 function uploadTemplate(form) {
     const formData = new FormData(form);

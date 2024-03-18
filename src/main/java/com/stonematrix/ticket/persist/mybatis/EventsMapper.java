@@ -2,6 +2,7 @@ package com.stonematrix.ticket.persist.mybatis;
 
 import com.stonematrix.ticket.api.model.*;
 import com.stonematrix.ticket.persist.PersistenceException;
+import com.stonematrix.ticket.persist.mybatis.handlers.MetadataHandler;
 import org.apache.ibatis.annotations.*;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,24 +25,28 @@ public interface EventsMapper {
     @Select("SELECT id, name, (price / 100.0) AS price, eventId FROM TKT.Prices Where eventId = #{eventId}")
     List<Price> loadPrices(@Param("eventId") UUID eventId);
 
-    @Select("SELECT seatId, areaId, venueId, row, col, available, metadata, (price / 100.0) AS price, priceName, orderId FROM " +
+    @Select("SELECT seatId AS id, areaId, venueId, row, col, available, metadata, (price / 100.0) AS price, priceName, orderId FROM " +
             "TKT.SKU WHERE seatId = #{seatId} AND eventId = #{eventId}")
+    @Results({@Result(property = "metadata", column = "metadata", typeHandler = MetadataHandler.class)})
     Seat loadSeatInEvent(@Param("eventId") UUID eventId, @Param("seatId") UUID seatId);
 
     @Select("SELECT TKT.Areas.id, TKT.Areas.venueId, TKT.Areas.name, TKT.Areas.metadata FROM TKT.Areas " +
             "INNER JOIN TKT.Venues ON TKT.Areas.venueId = TKT.Venues.id " +
             "INNER JOIN TKT.Events ON TKT.Events.venueId = TKT.Venues.id " +
             "AND TKT.Events.id = #{eventId}")
+    @Results({@Result(property = "metadata", column = "metadata", typeHandler = MetadataHandler.class)})
     List<Area> loadAllAreasInEvent(@Param("eventId") UUID eventId);
 
-    @Select("SELECT seatId, areaId, venueId, row, col, available, metadata, (price / 100.0) AS price, priceName, orderId FROM "+
+    @Select("SELECT seatId AS id, areaId, venueId, row, col, available, metadata, (price / 100.0) AS price, priceName, orderId FROM "+
             "TKT.SKU WHERE eventId = #{eventId} AND areaId = #{areaId}")
+    @Results({@Result(property = "metadata", column = "metadata", typeHandler = MetadataHandler.class)})
     List<Seat> loadSeatsInAreaOfEvent(@Param("eventId") UUID eventId, @Param("areaId") UUID areaId);
 
     @Select("SELECT TKT.Areas.id, TKT.Areas.venueId, TKT.Areas.name, TKT.Areas.metadata FROM TKT.Areas " +
             "INNER JOIN TKT.Venues ON TKT.Areas.venueId = TKT.Venues.id " +
             "INNER JOIN TKT.Events ON TKT.Events.venueId = TKT.Venues.id " +
             "AND TKT.Events.id = #{eventId} AND TKT.Areas.id = #{areaId}")
+    @Results({@Result(property = "metadata", column = "metadata", typeHandler = MetadataHandler.class)})
     Area loadAreaInEvent(@Param("eventId") UUID eventId, @Param("areaId") UUID areaId);
 
     @Select("SELECT TKT.Prices.id, name, (price / 100.0) AS price, eventId FROM TKT.PricesDistribution " +
@@ -61,18 +66,22 @@ public interface EventsMapper {
     Price loadPriceOfEventById(@Param("eventId") UUID eventId, @Param("priceId") UUID priceId);
 
     @Select("SELECT id, venueId, name, startTime, endTime, metadata FROM TKT.Events WHERE id = #{eventId}")
+    @Results({@Result(property = "metadata", column = "metadata", typeHandler = MetadataHandler.class)})
     Event loadEvent(@Param("eventId") UUID eventId);
 
     @Select("SELECT id, venueId, name, startTime, endTime, metadata FROM TKT.Events WHERE venueId = #{venueId}")
+    @Results({@Result(property = "metadata", column = "metadata", typeHandler = MetadataHandler.class)})
     List<Event> loadEventsByVenue(@Param("venueId") String venueId);
 
     @Select("SELECT id, venueId, name, startTime, endTime, metadata FROM TKT.Events")
+    @Results({@Result(property = "metadata", column = "metadata", typeHandler = MetadataHandler.class)})
     List<Event> loadAllEvents();
 
-    @Select("SELECT venueId, TKT.Venues.name, TKT.Venues.metadata " +
+    @Select("SELECT venueId AS id, TKT.Venues.name, TKT.Venues.metadata " +
             "FROM TKT.Events " +
             "INNER JOIN TKT.Venues ON venueId = TKT.Venues.id " +
             "AND TKT.Events.id = #{eventId}")
+    @Results({@Result(property = "metadata", column = "metadata", typeHandler = MetadataHandler.class)})
     Venue loadVenueByEvent(@Param("eventId") UUID eventId);
 
     @Select("SELECT svg FROM TKT.Events " +
@@ -182,7 +191,8 @@ public interface EventsMapper {
     }
 
     @Insert("INSERT INTO TKT.Events (id, name, venueId, startTime, endTime, metadata) " +
-            "VALUES (#{event.id}, #{event.name}, #{event.venueId}, #{event.startTime}, #{event.endTime}, #{event.metadata})")
+            "VALUES (#{event.id}, #{event.name}, #{event.venueId}, #{event.startTime}, #{event.endTime}, " +
+            "#{event.metadata, typeHandler=com.stonematrix.ticket.persist.mybatis.handlers.MetadataHandler})")
     void saveEvent(@Param("event") Event event);
 
     @Update("UPDATE TKT.Events SET venueId = #{venueId} WHERE id = #{eventId}")
@@ -200,7 +210,7 @@ public interface EventsMapper {
             "name = #{event.name}, " +
             "startTime = #{event.startTime}, " +
             "endTime = #{event.endTime}, " +
-            "metadata = #{event.metadata} " +
+            "metadata = #{event.metadata, typeHandler=com.stonematrix.ticket.persist.mybatis.handlers.MetadataHandler} " +
             "WHERE id = #{eventId}")
     int _updateEvent(@Param("eventId") UUID eventId, @Param("event") Event event);
 
@@ -216,9 +226,11 @@ public interface EventsMapper {
             "AND TKT.Prices.eventId = #{eventId}")
     List<Map<String, Object>> _loadAllPricingOfEvent(@Param("eventId") UUID eventId);
 
-    @Insert("<script>INSERT INTO TKT.PricesDistribution VALUES (?, ?, ?, ?, ?)" +
+    @Insert("<script>INSERT INTO TKT.PricesDistribution VALUES " +
             "<foreach collection='pricings' item='pricing' separator=','> " +
-            "(#{pricing.id}, #{pricing.priceId}, #{pricing.seatId}, #{pricing.areaId}, #{pricing.venueId}) " +
+            "(#{pricing.ID, jdbcType=VARCHAR}, #{pricing.PRICEID, jdbcType=VARCHAR}, " +
+            "#{pricing.SEATID, jdbcType=VARCHAR}, #{pricing.AREAID, jdbcType=VARCHAR}, " +
+            "#{pricing.VENUEID, jdbcType=VARCHAR})" +
             "</foreach>" +
             "</script>")
     void _saveAllPricingOfEvent(@Param("pricings") List<Map<String, Object>> pricings);
@@ -237,10 +249,10 @@ public interface EventsMapper {
             saveTicketPriceOfEvent(event.getId(), price);
         }
 
-        List<Map<String, Object>> pricings = _loadAllPricingOfEvent(event.getId());
+        List<Map<String, Object>> pricings = _loadAllPricingOfEvent(UUID.fromString(copyFromEventId));
         for (Map<String, Object> pricing: pricings) {
-            pricing.put("id", UUID.randomUUID());
-            pricing.put("priceId", priceIdMap.get(UUID.fromString(pricing.get("priceId").toString())));
+            pricing.put("ID", UUID.randomUUID());
+            pricing.put("PRICEID", priceIdMap.get(UUID.fromString(pricing.get("PRICEID").toString())));
         }
 
         _saveAllPricingOfEvent(pricings);

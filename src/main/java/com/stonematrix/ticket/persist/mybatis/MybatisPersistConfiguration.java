@@ -7,6 +7,7 @@ import org.apache.ibatis.session.SqlSession;
 import org.apache.ibatis.session.SqlSessionFactory;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Profile;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.lang.reflect.InvocationHandler;
@@ -19,6 +20,7 @@ import java.util.HashSet;
 import java.util.Set;
 
 @Configuration
+@Profile("dev")
 public class MybatisPersistConfiguration {
     @Inject
     private VenuesMapper venuesMapper;

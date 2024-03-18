@@ -1,8 +1,8 @@
-// Function to fetch existing events from the API
-// Function to fetch existing events from the API
+
 import {cleanUpContainer, enforceNumericInput, drawEventVenueEx, drawSeats} from "./common.js";
 
 window.stoneticket = {
+    ...window.stoneticket,
     setupEventMetadata,
     setupEventPricing,
     enforceNumericInput,
@@ -13,7 +13,9 @@ window.stoneticket = {
     setAreaPrice,
     setSeatPrice,
     addNewEvent,
-    refreshFormEventCopyFromList
+    refreshFormEventCopyFromList,
+    refreshFormEventVenueList,
+    submitEventMetadata
 }
 
 function refreshFormEventCopyFromList(selectContainer, venueId) {
@@ -252,8 +254,8 @@ function setupEventPricing(eventName, eventId) {
 }
 
 function setupEventMetadata(eventId) {
-    var modal = document.getElementById("modalSetupEventMetadata");
-    var jsonEditorContainer = modal.querySelector("#jsonEditor");
+    let modal = document.getElementById("modalSetupEventMetadata");
+    let jsonEditorContainer = modal.querySelector("#jsonEditor");
 
     cleanUpContainer(jsonEditorContainer);
     fetch(`/api/events/${eventId}`, {
@@ -273,8 +275,7 @@ function setupEventMetadata(eventId) {
                 "indentation": 2
             };
 
-            let jsonEditor = new JSONEditor(jsonEditorContainer, options, metadata);
-            jsonEditorContainer.editor = jsonEditor;
+            jsonEditorContainer.editor = new JSONEditor(jsonEditorContainer, options, metadata);
             modal.dataset.event = JSON.stringify(data);
             modal.style.display = "block";
 
@@ -285,7 +286,7 @@ function setupEventMetadata(eventId) {
         });
 }
 
-function submitEventMetadata(metadata, modal, closeModal = false) {
+export function submitEventMetadata(metadata, modal, closeModal = false) {
     // Make a POST request to the API
 
     let eventData = JSON.parse(modal.dataset.event);
@@ -488,5 +489,3 @@ function refreshFormEventVenueList() {
         });
 }
 
-// Call the refreshFormEventVenueList function to populate the venue select dropdown
-refreshFormEventVenueList();

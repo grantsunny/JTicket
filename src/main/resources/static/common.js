@@ -1,8 +1,8 @@
 
-document.addEventListener('DOMContentLoaded', function() {
-    // Fetch and display venues when the page loads
-    showCurrentUser(document.getElementById('user-info'));
-});
+window.stoneticket = {
+    ...window.stoneticket,
+    showCurrentUser
+}
 
 export function showCurrentUser(container) {
     fetch('/api/auth/userinfo')

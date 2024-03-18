@@ -4,6 +4,7 @@ import com.stonematrix.ticket.persist.*;
 import jakarta.inject.Inject;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Profile;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionStatus;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,6 +20,7 @@ import java.util.HashSet;
 import java.util.Set;
 
 @Configuration
+@Profile("production")
 public class JdbcPersistConfiguration {
 
     @Inject

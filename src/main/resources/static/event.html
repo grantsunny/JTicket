@@ -7,14 +7,12 @@
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" type="text/css" href="modal-style.css">
     <link href="jsoneditor.min.css" rel="stylesheet" type="text/css">
-
-    <script type="module" src="common.js"></script>
-    <script type="module" src="event.js"></script> <!-- Link to your JavaScript file -->
     <script src="jsoneditor.min.js"></script>
-
+    <script type="module" src="script.js"></script>
 </head>
-<body>
 
+<body onload="stoneticket.showCurrentUser(document.getElementById('user-info'));
+        stoneticket.refreshFormEventVenueList();">
 <h1><label id="user-info"></label>, welcome to StoneTicket!  </h1>
 
 <ul>
@@ -139,8 +137,6 @@
         </div>
     </div>
 </div>
-
-
 
 </body>
 </html>

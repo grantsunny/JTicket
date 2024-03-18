@@ -1,6 +1,5 @@
 package com.stonematrix.ticket.endpoints;
 
-import com.fasterxml.jackson.core.JacksonException;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.databind.*;
@@ -8,6 +7,7 @@ import jakarta.inject.Inject;
 import jakarta.ws.rs.ext.ContextResolver;
 import jakarta.ws.rs.ext.Provider;
 import com.fasterxml.jackson.databind.module.SimpleModule;
+import org.springframework.stereotype.Component;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -21,6 +21,7 @@ import java.util.TimeZone;
  * If in future we shall support multiple timezone, we can modify this objectmapper.
  */
 @Provider
+@Component
 public class DateObjectMapperProvider implements ContextResolver<ObjectMapper> {
 
     private static final String DATEFORMAT = "yyyy-MM-dd HH:mm:ss";

@@ -9,6 +9,8 @@ spring:
       static-locations: classpath:/static/
   jersey:
     application-path: /api/
+#mybatis:
+#  type-handlers-package: com.stonematrix.ticket.persist.mybatis.handlers
 crowd:
   application:
     name: stoneticket

@@ -9,6 +9,6 @@ public interface SeatsRepository {
     List<Seat> loadSeats(UUID venueId, UUID areaId) throws PersistenceException;
     Seat loadSeat(UUID seatId) throws PersistenceException;
     void saveSeats(List<Seat> seats) throws PersistenceException;
-    List<Seat> loadSeats(UUID venueId) throws PersistenceException;
+    List<Seat> loadSeatsByVenue(UUID venueId) throws PersistenceException;
 
 }

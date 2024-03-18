@@ -321,7 +321,7 @@ public class JdbcHelper {
         }
     }
 
-    public List<Seat> loadSeats(UUID venueId) throws SQLException {
+    public List<Seat> loadSeatsByVenue(UUID venueId) throws SQLException {
         String sql = "SELECT id, areaId, venueId, row, col, available, metadata " +
                 "FROM TKT.SeatDetails WHERE venueId = ?";
 
@@ -366,7 +366,7 @@ public class JdbcHelper {
     public List<Seat> loadSeats(UUID venueId, UUID areaId) throws SQLException {
 
         if (areaId == null)
-            return loadSeats(venueId);
+            return loadSeatsByVenue(venueId);
 
         String sql = "SELECT id, areaId, venueId, row, col, available, metadata " +
                 "FROM TKT.SeatDetails WHERE venueId = ? AND areaId = ?";
