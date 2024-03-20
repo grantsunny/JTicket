@@ -1,19 +1,22 @@
 package com.stonematrix.ticket.persist.jdbc;
+
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.stonematrix.ticket.api.model.*;
-import org.springframework.stereotype.Component;
-
 import jakarta.inject.Inject;
+import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import javax.sql.DataSource;
-import java.io.*;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.OutputStreamWriter;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.sql.*;
-import java.util.*;
 import java.util.Date;
+import java.util.*;
 
 @Component
 public class JdbcHelper {
@@ -507,8 +510,8 @@ public class JdbcHelper {
     }
 
     private void saveEvent(Event event, Connection connection) throws SQLException {
-        String sql = "INSERT INTO TKT.Events (id, name, venueId, startTime, endTime, metadata) " +
-                "VALUES (?, ?, ?, ?, ?, ?)";
+        String sql = "INSERT INTO TKT.Events (id, name, venueId, metadata) " +
+                "VALUES (?, ?, ?, ?)";
 
         try (PreparedStatement stmt = connection.prepareStatement(sql)) {
             stmt.setString(1, event.getId().toString());
@@ -519,9 +522,6 @@ public class JdbcHelper {
                 stmt.setString(3, venueId.toString());
             else
                 stmt.setNull(3, Types.VARCHAR);
-
-            stmt.setTimestamp(4, new Timestamp(event.getStartTime().getTime()));
-            stmt.setTimestamp(5, new Timestamp(event.getEndTime().getTime()));
 
             String metadataJson;
             try {
@@ -535,7 +535,7 @@ public class JdbcHelper {
     }
 
     public Event loadEvent(UUID eventId) throws SQLException {
-        String sql = "SELECT venueId, name, startTime, endTime, metadata FROM TKT.Events WHERE id = ?";
+        String sql = "SELECT venueId, name, metadata FROM TKT.Events WHERE id = ?";
         try (Connection conn = dataSource.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
 
@@ -547,9 +547,6 @@ public class JdbcHelper {
                 if (rs.next()) {
                     String venueId = rs.getString("venueId");
                     String name = rs.getString("name");
-
-                    Date startTime = rs.getTimestamp("startTime");
-                    Date endTime = rs.getTimestamp("endTime");
 
                     Map<String, Object> metadata;
                     try {
@@ -564,8 +561,6 @@ public class JdbcHelper {
                             .id(eventId)
                             .venueId(UUID.fromString(venueId))
                             .name(name)
-                            .startTime(startTime)
-                            .endTime(endTime)
                             .metadata(metadata);
                 }
             }
@@ -581,9 +576,6 @@ public class JdbcHelper {
                 String venueId = rs.getString("venueId");
                 String name = rs.getString("name");
 
-                Date startTime = rs.getTimestamp("startTime");
-                Date endTime = rs.getTimestamp("endTime");
-
                 Map<String, Object> metadata;
                 try {
                     metadata = new ObjectMapper().readValue(
@@ -597,8 +589,6 @@ public class JdbcHelper {
                         .id(id == null ? null : UUID.fromString(id))
                         .venueId(UUID.fromString(venueId))
                         .name(name)
-                        .startTime(startTime)
-                        .endTime(endTime)
                         .metadata(metadata));
             }
         }
@@ -606,7 +596,7 @@ public class JdbcHelper {
     }
 
     public List<Event> loadEventsByVenue(String venueId) throws SQLException {
-        String sql = "SELECT id, venueId, name, startTime, endTime, metadata FROM TKT.Events " +
+        String sql = "SELECT id, venueId, name, metadata FROM TKT.Events " +
                 "WHERE venueId = ?";
 
         try (Connection conn = dataSource.getConnection();
@@ -618,7 +608,7 @@ public class JdbcHelper {
     }
 
     public List<Event> loadAllEvents() throws SQLException {
-        String sql = "SELECT id, venueId, name, startTime, endTime, metadata FROM TKT.Events";
+        String sql = "SELECT id, venueId, name, metadata FROM TKT.Events";
         try (Connection conn = dataSource.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
             return loadEvents(stmt);
@@ -645,15 +635,11 @@ public class JdbcHelper {
         String sql = "UPDATE TKT.Events SET " +
                 "venueId = ?, " +
                 "name = ?, " +
-                "startTime = ?, " +
-                "endTime = ?, " +
                 "metadata = ? " +
                 "WHERE id = ?";
 
         try (Connection conn = dataSource.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
-
-
 
             UUID venueId;
             if ((venueId = event.getVenueId()) != null)
@@ -662,8 +648,6 @@ public class JdbcHelper {
                 pstmt.setNull(1, Types.VARCHAR);
 
             pstmt.setString(2, event.getName());
-            pstmt.setTimestamp(3, new Timestamp(event.getStartTime().getTime()));
-            pstmt.setTimestamp(4, new Timestamp(event.getEndTime().getTime()));
 
             String metadataJson;
             try {

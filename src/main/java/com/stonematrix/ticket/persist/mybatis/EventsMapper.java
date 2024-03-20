@@ -65,15 +65,15 @@ public interface EventsMapper {
     @Select("SELECT id, eventId, name, (price / 100.0) AS price FROM TKT.Prices WHERE id = #{priceId} AND eventId = #{eventId}")
     Price loadPriceOfEventById(@Param("eventId") UUID eventId, @Param("priceId") UUID priceId);
 
-    @Select("SELECT id, venueId, name, startTime, endTime, metadata FROM TKT.Events WHERE id = #{eventId}")
+    @Select("SELECT id, venueId, name, metadata FROM TKT.Events WHERE id = #{eventId}")
     @Results({@Result(property = "metadata", column = "metadata", typeHandler = MetadataHandler.class)})
     Event loadEvent(@Param("eventId") UUID eventId);
 
-    @Select("SELECT id, venueId, name, startTime, endTime, metadata FROM TKT.Events WHERE venueId = #{venueId}")
+    @Select("SELECT id, venueId, name, metadata FROM TKT.Events WHERE venueId = #{venueId}")
     @Results({@Result(property = "metadata", column = "metadata", typeHandler = MetadataHandler.class)})
     List<Event> loadEventsByVenue(@Param("venueId") String venueId);
 
-    @Select("SELECT id, venueId, name, startTime, endTime, metadata FROM TKT.Events")
+    @Select("SELECT id, venueId, name, metadata FROM TKT.Events")
     @Results({@Result(property = "metadata", column = "metadata", typeHandler = MetadataHandler.class)})
     List<Event> loadAllEvents();
 
@@ -190,8 +190,8 @@ public interface EventsMapper {
                 );
     }
 
-    @Insert("INSERT INTO TKT.Events (id, name, venueId, startTime, endTime, metadata) " +
-            "VALUES (#{event.id}, #{event.name}, #{event.venueId}, #{event.startTime}, #{event.endTime}, " +
+    @Insert("INSERT INTO TKT.Events (id, name, venueId, metadata) " +
+            "VALUES (#{event.id}, #{event.name}, #{event.venueId}, " +
             "#{event.metadata, typeHandler=com.stonematrix.ticket.persist.mybatis.handlers.MetadataHandler})")
     void saveEvent(@Param("event") Event event);
 
@@ -208,8 +208,6 @@ public interface EventsMapper {
     @Update("UPDATE TKT.Events SET " +
             "venueId = #{event.venueId}, " +
             "name = #{event.name}, " +
-            "startTime = #{event.startTime}, " +
-            "endTime = #{event.endTime}, " +
             "metadata = #{event.metadata, typeHandler=com.stonematrix.ticket.persist.mybatis.handlers.MetadataHandler} " +
             "WHERE id = #{eventId}")
     int _updateEvent(@Param("eventId") UUID eventId, @Param("event") Event event);

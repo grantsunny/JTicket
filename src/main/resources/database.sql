@@ -36,11 +36,19 @@ CREATE TABLE TKT.Events (
                     id VARCHAR(36) PRIMARY KEY NOT NULL,
                     name VARCHAR(255) NOT NULL,
                     venueId VARCHAR(36),
-                    startTime TIMESTAMP NOT NULL,
-                    endTime TIMESTAMP NOT NULL,
                     metadata CLOB,
                     FOREIGN KEY (venueId) REFERENCES TKT.Venues(id),
                     UNIQUE(name)
+);
+
+CREATE TABLE TKT.Sessions (
+                    id VARCHAR(36) PRIMARY KEY NOT NULL,
+                    name VARCHAR(255) NOT NULL,
+                    eventId VARCHAR (36) NOT NULL,
+                    startTime TIMESTAMP NOT NULL,
+                    endTime TIMESTAMP NOT NULL,
+                    FOREIGN KEY (eventId) REFERENCES TKT.Events(id),
+                    UNIQUE(name, eventId)
 );
 
 CREATE PROCEDURE TKT.RaiseException(IN error VARCHAR(100))
@@ -51,14 +59,14 @@ CREATE PROCEDURE TKT.RaiseException(IN error VARCHAR(100))
 ;
 
 CREATE TRIGGER TKT.PreventEventTimeOverLap
-    NO CASCADE BEFORE INSERT ON TKT.Events
+    NO CASCADE BEFORE INSERT ON TKT.Sessions
 REFERENCING NEW ROW AS newRow
 FOR EACH ROW MODE DB2SQL
 WHEN (EXISTS (
-        SELECT 1 FROM TKT.Events
-        WHERE venueId = newRow.venueId
-        AND NOT (startTime >= newRow.endTime OR endTime <= newRow.startTime)))
-CALL RaiseException('Event time overlapping encountered')
+        SELECT * FROM Sessions INNER JOIN Events ON Sessions.eventId = Events.id
+            AND Events.venueId IN (SELECT venueId FROM Events WHERE eventId = newRow.eventid)
+            AND NOT (startTime >= newRow.endTime OR endTime <= newRow.startTime)))
+CALL RaiseException('Session time overlapping encountered within a given event')
 ;
 
 --Trigger to prevent removal of paiAmount > 0 (paid order)
@@ -73,21 +81,25 @@ WHEN (deletedRow.paidAmount > 0)
 CREATE TABLE TKT.Orders (
                     id VARCHAR(36) PRIMARY KEY NOT NULL,
                     eventId VARCHAR(36) NOT NULL,
+                    sessionId VARCHAR(36) NOT NULL,
                     userId VARCHAR(36) NOT NULL,
                     timestamp TIMESTAMP,
                     paidAmount DECIMAL(10, 2) DEFAULT 0,
                     metadata CLOB,
-                    FOREIGN KEY (eventId) REFERENCES TKT.Events(id)
+                    FOREIGN KEY (eventId) REFERENCES TKT.Events(id),
+                    FOREIGN KEY (sessionId) REFERENCES TKT.Sessions(id)
 );
 
 CREATE TABLE TKT.OrderSeats (
                     orderId VARCHAR(36) NOT NULL,
                     eventId VARCHAR(36) NOT NULL,
+                    sessionId VARCHAR (36) NOT NULL,
                     seatId VARCHAR(36) NOT NULL,
                     metadata CLOB,
                     PRIMARY KEY (orderId, eventId, seatId),
                     FOREIGN KEY (orderId) REFERENCES TKT.Orders(id),
-                    FOREIGN KEY (eventId) REFERENCES TKT.EVENTS(id),
+                    FOREIGN KEY (eventId) REFERENCES TKT.Events(id),
+                    FOREIGN KEY (sessionId) REFERENCES TKT.Sessions(id),
                     FOREIGN KEY (seatId) REFERENCES TKT.Seats(id)
 );
 
@@ -133,6 +145,7 @@ SELECT
     ORDERSEATS.ORDERID AS orderId
 FROM (SELECT
         EVENTS.ID AS eventId,
+        SESSIONS.ID AS sessionId,
         VENUES.ID AS venueId,
         AREAS.ID AS areaId,
         SEATS.ID AS seatId,
@@ -150,10 +163,15 @@ FROM (SELECT
                 WHERE PRICESDISTRIBUTION.VENUEID = VENUES.ID
                 AND PRICES.EVENTID = EVENTS.ID)
           ) AS priceId
-        FROM EVENTS
+        FROM SESSIONS
+            INNER JOIN EVENTS ON SESSIONS.eventId = Events.id
             INNER JOIN VENUES ON VENUES.ID = EVENTS.VENUEID
             INNER JOIN AREAS ON AREAS.VENUEID = VENUES.ID
             INNER JOIN SEATS ON SEATS.AREAID = AREAS.ID) T
 INNER JOIN PRICES ON PRICES.ID = T.priceId
 INNER JOIN SEATS ON SEATS.ID = seatId
-LEFT JOIN ORDERSEATS ON ORDERSEATS.EVENTID = T.eventId AND ORDERSEATS.SEATID = T.seatId;
+LEFT JOIN ORDERSEATS ON
+    ORDERSEATS.EVENTID = T.eventId
+    AND OrderSeats.sessionId = T.sessionId
+    AND ORDERSEATS.SEATID = T.seatId
+;

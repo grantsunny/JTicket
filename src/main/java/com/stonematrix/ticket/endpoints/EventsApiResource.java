@@ -52,6 +52,10 @@ public class EventsApiResource implements EventsApi {
         }
     }
 
+    @Override
+    public Response getSession(UUID eventId, UUID sessionId) {
+        return null;
+    }
 
 
     @Override
@@ -338,6 +342,7 @@ public class EventsApiResource implements EventsApi {
             return listEvents();
     }
 
+
     private Response listEvents() {
         try {
             List<Event> events = repository.loadAllEvents();
@@ -406,5 +411,25 @@ public class EventsApiResource implements EventsApi {
                     throw new BadRequestException(e);
             }
         }
+    }
+
+    @Override
+    public Response createSession(UUID eventId, Session session) {
+        return null;
+    }
+
+    @Override
+    public Response listSessions(UUID eventId) {
+        return null;
+    }
+
+    @Override
+    public Response updateSession(UUID eventId, UUID sessionId, Session session) {
+        return null;
+    }
+
+    @Override
+    public Response deleteSession(UUID eventId, UUID sessionId) {
+        return null;
     }
 }

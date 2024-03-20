@@ -149,6 +149,128 @@ paths:
           description: Event failed due to constraints
         '404':
           description: Event not found
+
+  /events/{eventId}/sessions:
+    get:
+      operationId: listSessions
+      parameters:
+        - name: eventId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: list sessions under one event
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Session'
+    post:
+      operationId: createSession
+      parameters:
+        - name: eventId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Session'
+      responses:
+        '201':
+          description: Session created successfully
+          headers:
+            Location:
+              description: Location of the created resource
+              schema:
+                type: string
+        '400':
+          description: Invalid input
+        '409':
+          description: Duplicated session (name) found
+  /events/{eventId}/sessions/{sessionId}:
+    get:
+      operationId: getSession
+      parameters:
+        - name: eventId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: sessionId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: One session according eventId and sessionId
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Session'
+    put:
+      operationId: updateSession
+      parameters:
+        - name: eventId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: sessionId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Session'
+      responses:
+        '204':
+          description: session updated successfully
+        '400':
+          description: invalid input
+        '404':
+          description: session not found
+        '409':
+          description: conflict name or event in session
+    delete:
+      operationId: deleteSession
+      parameters:
+        - name: eventId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: sessionId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: session deleted successfully
+        '400':
+          description: invalid input
+        '404':
+          description: session not found
   /events/{eventId}/prices:
     get:
       summary: Get a list of prices available under given event
@@ -995,8 +1117,6 @@ components:
       type: object
       required:
         - name
-        - startTime
-        - endTime      
       properties:
         id:
           type: string
@@ -1004,6 +1124,26 @@ components:
         name:
           type: string
         venueId:
+          type: string
+          format: uuid
+        metadata:
+          type: object
+          additionalProperties: true  # Allows any set of properties
+
+    Session:
+      type: object
+      required:
+        - eventId
+        - name
+        - startTime
+        - endTime
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        eventId:
           type: string
           format: uuid
         startTime:
@@ -1107,7 +1247,11 @@ components:
         eventId:
           type: string
           format: uuid
-          description: Unique ID of the event booked in the order. (Required)          
+          description: Unique ID of the event booked in the order. (Required)
+        sessionId:
+          type: string
+          format: uuid
+          description: Unique ID of the event booked in the order. (Required)
         seats:
           type: array
           items:
