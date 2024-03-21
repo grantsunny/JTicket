@@ -53,12 +53,6 @@ public class EventsApiResource implements EventsApi {
     }
 
     @Override
-    public Response getSession(UUID eventId, UUID sessionId) {
-        return null;
-    }
-
-
-    @Override
     public Response getSeatInEvent(UUID eventId, UUID seatId) {
         try {
             Seat seat = repository.loadSeatInEvent(eventId, seatId);
@@ -415,21 +409,75 @@ public class EventsApiResource implements EventsApi {
 
     @Override
     public Response createSession(UUID eventId, Session session) {
-        return null;
+        session = session.id(UUID.randomUUID());
+        try {
+            repository.saveSession(eventId, session);
+            UriBuilder uriBuilder =
+                    uriInfo.getRequestUriBuilder().
+                            path(String.valueOf(session.getId()));
+
+            return Response.created(uriBuilder.build()).build();
+        } catch (SQLException e) {
+            throw new BadRequestException(e);
+        }
     }
 
     @Override
     public Response listSessions(UUID eventId) {
-        return null;
+        try {
+            List<Session> sessions = repository.loadSessions(eventId);
+            return Response.ok(sessions).build();
+        } catch (SQLException e) {
+            throw new BadRequestException(e);
+        }
     }
 
     @Override
     public Response updateSession(UUID eventId, UUID sessionId, Session session) {
-        return null;
+        try {
+            repository.updateSession(eventId, sessionId, session);
+            return Response.noContent().build();
+        } catch (SQLException e) {
+            switch (e.getSQLState()) {
+                case "304":
+                    return Response.notModified().build();
+                case "23000":
+                case "23505":
+                    throw new ClientErrorException("Conflict occurred", Response.Status.CONFLICT);
+                default:
+                    throw new BadRequestException(e);
+            }
+        }
     }
 
     @Override
     public Response deleteSession(UUID eventId, UUID sessionId) {
-        return null;
+        try {
+            repository.deleteSession(eventId, sessionId);
+            return Response.status(Response.Status.NO_CONTENT).build();
+
+        } catch (SQLException e) {
+            switch (e.getSQLState()) {
+                case "304":
+                    return Response.notModified().build();
+                case "23000":
+                case "23505":
+                    throw new ClientErrorException("Conflict occurred", Response.Status.CONFLICT);
+                default:
+                    throw new BadRequestException(e);
+            }
+        }
     }
+
+
+    @Override
+    public Response getSession(UUID eventId, UUID sessionId) {
+        try {
+            Session session = repository.loadSession(eventId, sessionId);
+            return Response.ok(session).build();
+        } catch (SQLException e) {
+            throw new BadRequestException(e);
+        }
+    }
+
 }

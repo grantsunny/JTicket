@@ -255,4 +255,28 @@ public interface EventsMapper {
 
         _saveAllPricingOfEvent(pricings);
     }
+
+    @Insert("INSERT INTO TKT.SESSIONS (id, name, eventId, startTime, endTime, metadata) " +
+            "VALUES (#{session.id}, #{session.name}, #{eventId}, #{session.startTime}, #{session.endTime}, " +
+            "#{session.metadata, typeHandler=com.stonematrix.ticket.persist.mybatis.handlers.MetadataHandler})")
+    void saveSession(@Param("eventId") UUID eventId, @Param("session") Session session);
+
+    @Update("UPDATE TKT.Sessions SET " +
+            "name = #{session.name}, " +
+            "startTime = #{session.startTime}, " +
+            "endTime = #{session.endTime}, " +
+            "metadata = #{session.metadata, typeHandler=com.stonematrix.ticket.persist.mybatis.handlers.MetadataHandler} " +
+            "WHERE id = #{sessionId} AND eventId = #{eventId}")
+    void updateSession(@Param("eventId") UUID eventId, @Param("sessionId") UUID sessionId, @Param("session") Session session);
+
+    @Delete("DELETE FROM TKT.Sessions WHERE id = #{id} AND eventId = #{eventid}")
+    void deleteSession(@Param("eventId") UUID eventId, @Param("sessionId") UUID sessionId);
+
+    @Select("SELECT id, eventId, name, startTime, endTime, metadata FROM TKT.Sessions WHERE eventId = ?")
+    @Results({@Result(property = "metadata", column = "metadata", typeHandler = MetadataHandler.class)})
+    List<Session> loadSessions(@Param("eventId") UUID eventId);
+
+    @Select("SELECT id, eventId, name, startTime, endTime, metadata FROM TKT.Sessions WHERE id = ? AND eventId = ?")
+    @Results({@Result(property = "metadata", column = "metadata", typeHandler = MetadataHandler.class)})
+    Session loadSession(@Param("eventId") UUID eventId, @Param("eventId") UUID sessionId);
 }

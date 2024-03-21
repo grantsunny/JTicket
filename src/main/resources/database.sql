@@ -47,6 +47,7 @@ CREATE TABLE TKT.Sessions (
                     eventId VARCHAR (36) NOT NULL,
                     startTime TIMESTAMP NOT NULL,
                     endTime TIMESTAMP NOT NULL,
+                    metadata CLOB,
                     FOREIGN KEY (eventId) REFERENCES TKT.Events(id),
                     UNIQUE(name, eventId)
 );

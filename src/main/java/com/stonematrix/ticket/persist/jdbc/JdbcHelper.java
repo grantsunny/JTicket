@@ -1269,7 +1269,6 @@ public class JdbcHelper {
         }
     }
 
-
     @Transactional(rollbackFor = SQLException.class)
     public void deleteOrder(UUID orderId) throws SQLException {
         try (Connection conn = dataSource.getConnection()) {
@@ -1284,6 +1283,103 @@ public class JdbcHelper {
 
                 stmtOrder.setString(1, orderId.toString());
                 stmtOrder.executeUpdate();
+            }
+        }
+    }
+
+    public void saveSession(UUID eventId, Session session) throws SQLException {
+        try (Connection conn = dataSource.getConnection()) {
+            String sql = "INSERT INTO TKT.SESSIONS (id, name, eventId, startTime, endTime, metadata) VALUES (?, ?, ?, ?, ?, ?)";
+
+            try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+                stmt.setString(1, session.getId().toString());
+                stmt.setString(2, session.getName());
+                stmt.setString(3, eventId.toString());
+                stmt.setTimestamp(4, new Timestamp(session.getStartTime().getTime()));
+                stmt.setTimestamp(5, new Timestamp(session.getEndTime().getTime()));
+                stmt.setString(6, metadataMapToJsonString(session.getMetadata()));
+                stmt.executeUpdate();
+            }
+        }
+    }
+
+    public void updateSession(UUID eventId, UUID sessionId, Session session) throws SQLException {
+        String sql = "UPDATE TKT.Sessions SET " +
+                "name = ?, " +
+                "startTime = ?, " +
+                "endTime = ?, " +
+                "metadata = ? " +
+                "WHERE id = ? AND eventId = ?";
+
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setString(1, session.getName());
+            stmt.setTimestamp(2, new Timestamp(session.getStartTime().getTime()));
+            stmt.setTimestamp(3, new Timestamp(session.getEndTime().getTime()));
+            stmt.setString(4, metadataMapToJsonString(session.getMetadata()));
+
+            stmt.setString(5, sessionId.toString());
+            stmt.setString(6, eventId.toString());
+
+            stmt.executeUpdate();
+            if (stmt.getUpdateCount() < 1)
+                throw new SQLException("Not successfully modified", "304");
+        }
+    }
+
+    public void deleteSession(UUID eventId, UUID sessionId) throws SQLException {
+        String sql = "DELETE FROM TKT.Sessions WHERE id = ? AND eventId = ?";
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setString(1, sessionId.toString());
+            stmt.setString(2, eventId.toString());
+
+            stmt.executeUpdate();
+            if (stmt.getUpdateCount() < 1)
+                throw new SQLException("Not successfully modified", "304");
+        }
+    }
+
+    public List<Session> loadSessions(UUID eventId) throws SQLException {
+        String sql = "SELECT id, eventId, name, startTime, endTime, metadata FROM TKT.Sessions WHERE eventId = ?";
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            List<Session> sessions = new LinkedList<>();
+            stmt.setString(1, eventId.toString());
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    sessions.add(new Session().id(UUID.fromString(rs.getString("id")))
+                            .eventId(UUID.fromString(rs.getString("eventId")))
+                            .name(rs.getString("name"))
+                            .startTime(rs.getDate("startTime"))
+                            .endTime(rs.getDate("endDate"))
+                            .metadata(parseMetadata(rs.getString("metadata")))
+                    );
+                }
+            }
+            return sessions;
+        }
+    }
+
+    public Session loadSession(UUID eventId, UUID sessionId) throws SQLException {
+        String sql = "SELECT id, eventId, name, startTime, endTime, metadata FROM TKT.Sessions WHERE id = ? AND eventId = ?";
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setString(1, eventId.toString());
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    return new Session().id(UUID.fromString(rs.getString("id")))
+                            .eventId(UUID.fromString(rs.getString("eventId")))
+                            .name(rs.getString("name"))
+                            .startTime(rs.getDate("startTime"))
+                            .endTime(rs.getDate("endDate"))
+                            .metadata(parseMetadata(rs.getString("metadata")));
+                } else
+                    return null;
             }
         }
     }
