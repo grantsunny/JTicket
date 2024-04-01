@@ -898,8 +898,8 @@ public class JdbcHelper {
     public List<Seat> loadSeatsInAreaOfEvent(UUID eventId, UUID areaId) throws SQLException {
 
         String sql =
-                "SELECT seatId, areaId, venueId, row, col, available, metadata, price, priceName, orderId FROM " +
-                "TKT.SKU WHERE eventId = ? AND areaId = ?";
+                "SELECT id, areaId, venueId, row, col, available, metadata, price, priceName, NULL AS orderId FROM " +
+                "TKT.SEATSINEVENT WHERE eventId = ? AND areaId = ?";
 
         List<Seat> seats = new LinkedList<>();
 

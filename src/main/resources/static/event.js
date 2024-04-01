@@ -1,22 +1,93 @@
-
-import {cleanUpContainer, enforceNumericInput, drawEventVenueEx, drawSeats} from "./common.js";
+import {cleanUpContainer, drawEventVenueEx, drawSeats, enforceNumericInput} from "./common.js";
 
 window.stoneticket = {
     ...window.stoneticket,
     setupEventMetadata,
     setupEventPricing,
+    setupEventSessions,
     enforceNumericInput,
     submitNewPricingForm,
     changeEventVenue,
     updateEventVenue,
     deleteEvent,
+    updateSession,
+    deleteSession,
     setAreaPrice,
     setSeatPrice,
     addNewEvent,
+    addNewSession,
     refreshFormEventCopyFromList,
     refreshFormEventVenueList,
-    submitEventMetadata
+    submitEventMetadata,
 }
+
+function updateSession(container, eventId, sessionId) {
+    if ((!sessionId) || (!eventId)) return;
+
+    fetch(`/api/events/${eventId}/sessions/${sessionId}`, {
+        method: 'GET',
+        headers: {
+            'Accept': 'application/json',
+        }
+    })
+        .then(response => response.json())
+        .then(session => {
+            const selectedSession = container.querySelector('input[name=\'selectedSession[]\']:checked');
+            if (selectedSession !== null) {
+                const selectedIndex= Array.from(container.querySelectorAll('input[name=\'selectedSession[]\']')).indexOf(selectedSession);
+                if (selectedIndex !== -1) {
+                    const sessionName = selectedSession.value;
+                    const sessionStartTime = formatDateTime(new Date(container.querySelectorAll('input[name="selectedSessionStartTime[]"]')[selectedIndex].value));
+                    const sessionEndTime = formatDateTime(new Date(container.querySelectorAll('input[name="selectedSessionEndTime[]"]')[selectedIndex].value));
+
+                    session.name = sessionName;
+                    session.startTime = sessionStartTime;
+                    session.sessionEndTime = sessionEndTime;
+                } else
+                    return;
+            } else
+                return;
+
+            fetch(`/api/events/${eventId}/sessions/${sessionId}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(session)
+            })
+                .then(response => {
+                    if (response.ok) {
+                        refreshEventSessions(container, eventId);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error updating session:', error);
+                });
+        })
+        .catch(error => {
+            console.error('Error loading session:', error);
+        });
+}
+
+function deleteSession(container, eventId, sessionId) {
+    if ((!sessionId) || (!eventId)) return;
+
+    fetch(`/api/events/${eventId}/sessions/${sessionId}`, {
+        method: 'DELETE'
+    })
+        .then(response => {
+            if (response.status === 204) {
+                // Event deleted successfully, refresh the event list
+                refreshEventSessions(container, eventId);
+            } else {
+                console.error('Error deleting session. Status:', response.status);
+            }
+        })
+        .catch(error => {
+            console.error('Error deleting session:', error);
+        });
+}
+
 
 function refreshFormEventCopyFromList(selectContainer, venueId) {
     if (venueId) {
@@ -67,11 +138,10 @@ function fetchEvents() {
                 row.innerHTML = `
                     <td>${event.name}</td>
                     <td><a href="#" onclick="stoneticket.changeEventVenue('${event.name}','${event.id}', '${event.venueId}')">${venueName || 'Unknown Venue'}</td> <!-- Display venue name or 'Unknown Venue' if not found -->
-                    <td>${event.startTime}</td>
-                    <td>${event.endTime}</td>
-                    <td><button onclick="stoneticket.deleteEvent('${event.id}')">Delete</button></td>
                     <td><button onclick="stoneticket.setupEventPricing('${event.name}','${event.id}')">Pricing</button></td>
+                    <td><button onclick="stoneticket.setupEventSessions('${event.name}','${event.id}')">Sessions</button></td>
                     <td><button onclick="stoneticket.setupEventMetadata('${event.id}')">Metadata</button></td>
+                    <td><button onclick="stoneticket.deleteEvent('${event.id}')">Delete</button></td>
                 `;
                 eventList.appendChild(row);
             });
@@ -253,6 +323,77 @@ function setupEventPricing(eventName, eventId) {
     modal.style.display = "block";
 }
 
+function refreshEventSessions(container, eventId) {
+    let tableSessions = container.querySelector("#tableEventSessions");
+    cleanUpContainer(tableSessions);
+
+    fetch(`/api/events/${eventId}/sessions`, {
+        method: 'GET',
+        headers: {
+            'Accept': 'application/json',
+        }
+    })
+        .then(response => response.json())
+        .then(data => {
+            let sessionNameWidth = 65;
+            if (data.length > 0) {
+                container.querySelector("#editSessionButtons").style.display = "block";
+                data.forEach(session => {
+                    let row = tableSessions.appendChild(document.createElement("tr"));
+                    let radioSelectedSession = document.createElement("input");
+                    radioSelectedSession.type = 'radio';
+                    radioSelectedSession.id = session.id;
+                    radioSelectedSession.name = 'selectedSession[]';
+                    radioSelectedSession.value = session.name;
+
+                    row.appendChild(document.createElement("td")).append(radioSelectedSession);
+                    let labelSession = document.createElement("label");
+                    labelSession.textContent = session.name;
+                    row.appendChild(document.createElement("td")).append(labelSession);
+
+                    sessionNameWidth = Math.max(
+                        sessionNameWidth,
+                        radioSelectedSession.offsetWidth + labelSession.offsetWidth);
+
+                    let inputSessionFrom = document.createElement("input");
+                    inputSessionFrom.type = 'datetime-local';
+                    inputSessionFrom.id = 'selectedSessionStartTime';
+                    inputSessionFrom.name = "selectedSessionStartTime[]";
+                    inputSessionFrom.value = session.startTime;
+                    row.appendChild(document.createElement("td")).append(inputSessionFrom);
+
+                    let inputSessionTo = document.createElement("input");
+                    inputSessionTo.type = 'datetime-local';
+                    inputSessionTo.id = 'selectedSessionEndTime';
+                    inputSessionTo.name = "selectedSessionEndTime[]";
+                    inputSessionTo.value = session.endTime;
+                    row.appendChild(document.createElement("td")).append(inputSessionTo);
+                });
+            } else
+                container.querySelector("#editSessionButtons").style.display = "none";
+
+            container.querySelector("#newSessionName").style.width = `${sessionNameWidth}px`;
+            container.querySelector("#newSessionName").value = "";
+            container.querySelector("#newSessionStartTime").value = new Date().toISOString().slice(0,19);
+            container.querySelector("#newSessionEndTime").value = new Date().toISOString().slice(0,19);
+
+        })
+        .catch(error => {
+            console.error('Error updating sessions:', error);
+            // Error handling for network issues
+        });
+
+}
+
+function setupEventSessions(eventName, eventId) {
+    let modal = document.getElementById("modalSetupEventSessions");
+    modal.querySelector("#modalSetupEventSessionsTitle").textContent = "Sessions of Event: " + eventName;
+    modal.style.display = "inline-block";
+    modal.dataset.eventId = eventId;
+
+    refreshEventSessions(modal, eventId);
+}
+
 function setupEventMetadata(eventId) {
     let modal = document.getElementById("modalSetupEventMetadata");
     let jsonEditorContainer = modal.querySelector("#jsonEditor");
@@ -397,22 +538,49 @@ function deleteEvent(eventId) {
     }
 }
 
+function addNewSession(form) {
+    const modal = form.closest("#modalSetupEventSessions");
+    const eventId = modal.dataset.eventId;
+    const sessionName = form.querySelector("#newSessionName").value;
+    const sessionStartTime = formatDateTime(new Date(form.querySelector("#newSessionStartTime").value));
+    const sessionEndTime = formatDateTime(new Date(form.querySelector("#newSessionEndTime").value));
+
+    const sessionPayload = {
+        name: sessionName,
+        eventId: eventId,
+        startTime: sessionStartTime,
+        endTime: sessionEndTime
+    };
+
+    fetch(`/api/events/${eventId}/sessions`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(sessionPayload)
+    })
+        .then(response => {
+            if (response.status === 201) {
+                refreshEventSessions(modal, eventId);
+            } else {
+                console.error('Error creating session. Status:', response.status);
+            }
+        })
+        .catch(error => {
+            console.error('Error creating session:', error);
+        });
+}
+
 // Function to handle the form submission
 function addNewEvent(form) {
 
     // Get input values
     const eventName = form.querySelector("#eventName").value;
     const venueId = form.querySelector("#venueId").value;
-    const startTime = formatDateTime(new Date(form.querySelector("#startTime").value));
-    const endTime = formatDateTime(new Date(form.querySelector("#endTime").value));
     const copyEventFrom = form.querySelector("#copyEventFromVenue").value;
 
     // Create event data object
     const eventData = {
         name: eventName,
         venueId: venueId,
-        startTime: startTime,
-        endTime: endTime
     };
 
     // Call the submitEvent function with the event data
@@ -421,8 +589,6 @@ function addNewEvent(form) {
     // Clear the form inputs
     document.getElementById("eventName").value = "";
     document.getElementById("venueId").value = "";
-    document.getElementById("startTime").value = "";
-    document.getElementById("endTime").value = "";
 }
 
 function formatDateTime(date) {

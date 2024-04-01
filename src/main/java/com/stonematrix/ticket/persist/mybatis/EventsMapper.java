@@ -37,8 +37,8 @@ public interface EventsMapper {
     @Results({@Result(property = "metadata", column = "metadata", typeHandler = MetadataHandler.class)})
     List<Area> loadAllAreasInEvent(@Param("eventId") UUID eventId);
 
-    @Select("SELECT seatId AS id, areaId, venueId, row, col, available, metadata, (price / 100.0) AS price, priceName, orderId FROM "+
-            "TKT.SKU WHERE eventId = #{eventId} AND areaId = #{areaId}")
+    @Select("SELECT id, areaId, venueId, row, col, available, metadata, (price / 100.0) AS price, priceName FROM "+
+            "TKT.SEATSINEVENT WHERE eventId = #{eventId} AND areaId = #{areaId}")
     @Results({@Result(property = "metadata", column = "metadata", typeHandler = MetadataHandler.class)})
     List<Seat> loadSeatsInAreaOfEvent(@Param("eventId") UUID eventId, @Param("areaId") UUID areaId);
 
@@ -272,11 +272,11 @@ public interface EventsMapper {
     @Delete("DELETE FROM TKT.Sessions WHERE id = #{id} AND eventId = #{eventid}")
     void deleteSession(@Param("eventId") UUID eventId, @Param("sessionId") UUID sessionId);
 
-    @Select("SELECT id, eventId, name, startTime, endTime, metadata FROM TKT.Sessions WHERE eventId = ?")
+    @Select("SELECT id, eventId, name, startTime, endTime, metadata FROM TKT.Sessions WHERE eventId = #{eventId}")
     @Results({@Result(property = "metadata", column = "metadata", typeHandler = MetadataHandler.class)})
     List<Session> loadSessions(@Param("eventId") UUID eventId);
 
-    @Select("SELECT id, eventId, name, startTime, endTime, metadata FROM TKT.Sessions WHERE id = ? AND eventId = ?")
+    @Select("SELECT id, eventId, name, startTime, endTime, metadata FROM TKT.Sessions WHERE id = #{sessionId} AND eventId = #{eventId}")
     @Results({@Result(property = "metadata", column = "metadata", typeHandler = MetadataHandler.class)})
-    Session loadSession(@Param("eventId") UUID eventId, @Param("eventId") UUID sessionId);
+    Session loadSession(@Param("eventId") UUID eventId, @Param("sessionId") UUID sessionId);
 }
