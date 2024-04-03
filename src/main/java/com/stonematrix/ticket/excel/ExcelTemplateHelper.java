@@ -128,7 +128,7 @@ public class ExcelTemplateHelper {
                 seats.add(new Seat().id(UUID.randomUUID())
                         .areaId(area.getId())
                         .row(iRow)
-                        .column(iCol)
+                        .col(iCol)
                         .available(available));
             }
         }

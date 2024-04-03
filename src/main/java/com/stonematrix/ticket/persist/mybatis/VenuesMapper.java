@@ -13,31 +13,31 @@ import java.util.UUID;
 @Mapper
 public interface VenuesMapper {
 
-    @Select("SELECT id, name, metadata FROM TKT.Venues")
+    @Select("SELECT id, name, metadata FROM Venues")
     @Results({@Result(property = "metadata", column = "metadata", typeHandler = MetadataHandler.class)})
     List<Venue> loadAllVenues();
 
-    @Select("SELECT id, name, metadata FROM TKT.Venues WHERE id = #{id}")
+    @Select("SELECT id, name, metadata FROM Venues WHERE id = #{id}")
     @Results({@Result(property = "metadata", column = "metadata", typeHandler = MetadataHandler.class)})
     Venue loadVenue(@Param("id") UUID venueId);
 
-    @Select("SELECT svg FROM TKT.Venues WHERE id = #{id}")
+    @Select("SELECT svg FROM Venues WHERE id = #{id}")
     File loadVenueSvg(@Param("id") UUID venueId);
 
-    @Select("SELECT id, name, metadata FROM TKT.Areas WHERE venueId = #{venueId}")
+    @Select("SELECT id, name, metadata FROM Areas WHERE venueId = #{venueId}")
     @Results({@Result(property = "metadata", column = "metadata", typeHandler = MetadataHandler.class)})
     List<Area> loadAreas(@Param("venueId") String venueId);
 
-    @Select("SELECT id, areaId, venueId, row, col, available, metadata FROM TKT.SeatDetails WHERE venueId = #{venueId} AND areaId = #{areaId}")
+    @Select("SELECT id, areaId, venueId, row, col, available, metadata FROM ${SEATDETAILS} WHERE venueId = #{venueId} AND areaId = #{areaId}")
     @Results({@Result(property = "metadata", column = "metadata", typeHandler = MetadataHandler.class)})
     List<Seat> loadSeats(@Param("venueId") UUID venueId, @Param("areaId") UUID areaId);
 
-    @Select("SELECT venueId, name, metadata FROM TKT.Areas WHERE id = #{areaId}")
+    @Select("SELECT venueId, name, metadata FROM Areas WHERE id = #{areaId}")
     @Results({@Result(property = "metadata", column = "metadata", typeHandler = MetadataHandler.class)})
     Area loadArea(@Param("areaId") String areaId);
 
     @Insert("<script>" +
-            "INSERT INTO TKT.Areas (id, venueId, name, metadata) VALUES " +
+            "INSERT INTO Areas (id, venueId, name, metadata) VALUES " +
             "<foreach collection='areas' item='area' separator=','> " +
             "(#{area.id}, #{area.venueId}, #{area.name}, " +
             "#{area.metadata, typeHandler=com.stonematrix.ticket.persist.mybatis.handlers.MetadataHandler}) " +
@@ -45,7 +45,7 @@ public interface VenuesMapper {
             "</script>")
     void saveAreas(@Param("areas") List<Area> areas);
 
-    @Insert("INSERT INTO TKT.Venues (id, name, metadata, svg) VALUES ( #{venue.id}, #{venue.name}, " +
+    @Insert("INSERT INTO Venues (id, name, metadata, svg) VALUES ( #{venue.id}, #{venue.name}, " +
             "#{venue.metadata, typeHandler=com.stonematrix.ticket.persist.mybatis.handlers.MetadataHandler}, #{svg})")
     void saveVenue(@Param("venue") Venue venue, @Param("svg") String svg);
 }

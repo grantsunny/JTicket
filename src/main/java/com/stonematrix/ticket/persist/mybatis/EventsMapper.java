@@ -16,80 +16,80 @@ import java.util.UUID;
 @Mapper
 public interface EventsMapper {
 
-    @Select("SELECT TKT.Prices.id, name, (price / 100.0) AS price, eventId FROM TKT.PricesDistribution " +
-            "INNER JOIN TKT.Prices ON TKT.Prices.id = TKT.PricesDistribution.priceId " +
+    @Select("SELECT Prices.id, name, (price / 100.0) AS price, eventId FROM PricesDistribution " +
+            "INNER JOIN Prices ON Prices.id = PricesDistribution.priceId " +
             "AND eventId = #{eventId} " +
             "AND seatId = #{seatId}")
     Price loadSeatLevelPricingOfEvent(@Param("eventId") UUID eventId, @Param("seatId") UUID seatId);
 
-    @Select("SELECT id, name, (price / 100.0) AS price, eventId FROM TKT.Prices Where eventId = #{eventId}")
+    @Select("SELECT id, name, (price / 100.0) AS price, eventId FROM Prices Where eventId = #{eventId}")
     List<Price> loadPrices(@Param("eventId") UUID eventId);
 
     @Select("SELECT seatId AS id, areaId, venueId, row, col, available, metadata, (price / 100.0) AS price, priceName, orderId FROM " +
-            "TKT.SKU WHERE seatId = #{seatId} AND eventId = #{eventId}")
+            "${SKU} WHERE seatId = #{seatId} AND eventId = #{eventId}")
     @Results({@Result(property = "metadata", column = "metadata", typeHandler = MetadataHandler.class)})
     Seat loadSeatInEvent(@Param("eventId") UUID eventId, @Param("seatId") UUID seatId);
 
-    @Select("SELECT TKT.Areas.id, TKT.Areas.venueId, TKT.Areas.name, TKT.Areas.metadata FROM TKT.Areas " +
-            "INNER JOIN TKT.Venues ON TKT.Areas.venueId = TKT.Venues.id " +
-            "INNER JOIN TKT.Events ON TKT.Events.venueId = TKT.Venues.id " +
-            "AND TKT.Events.id = #{eventId}")
+    @Select("SELECT Areas.id, Areas.venueId, Areas.name, Areas.metadata FROM Areas " +
+            "INNER JOIN Venues ON Areas.venueId = Venues.id " +
+            "INNER JOIN Events ON Events.venueId = Venues.id " +
+            "AND Events.id = #{eventId}")
     @Results({@Result(property = "metadata", column = "metadata", typeHandler = MetadataHandler.class)})
     List<Area> loadAllAreasInEvent(@Param("eventId") UUID eventId);
 
     @Select("SELECT id, areaId, venueId, row, col, available, metadata, (price / 100.0) AS price, priceName FROM "+
-            "TKT.SEATSINEVENT WHERE eventId = #{eventId} AND areaId = #{areaId}")
+            "${SEATSINEVENT} WHERE eventId = #{eventId} AND areaId = #{areaId}")
     @Results({@Result(property = "metadata", column = "metadata", typeHandler = MetadataHandler.class)})
     List<Seat> loadSeatsInAreaOfEvent(@Param("eventId") UUID eventId, @Param("areaId") UUID areaId);
 
-    @Select("SELECT TKT.Areas.id, TKT.Areas.venueId, TKT.Areas.name, TKT.Areas.metadata FROM TKT.Areas " +
-            "INNER JOIN TKT.Venues ON TKT.Areas.venueId = TKT.Venues.id " +
-            "INNER JOIN TKT.Events ON TKT.Events.venueId = TKT.Venues.id " +
-            "AND TKT.Events.id = #{eventId} AND TKT.Areas.id = #{areaId}")
+    @Select("SELECT Areas.id, Areas.venueId, Areas.name, Areas.metadata FROM Areas " +
+            "INNER JOIN Venues ON Areas.venueId = Venues.id " +
+            "INNER JOIN Events ON Events.venueId = Venues.id " +
+            "AND Events.id = #{eventId} AND Areas.id = #{areaId}")
     @Results({@Result(property = "metadata", column = "metadata", typeHandler = MetadataHandler.class)})
     Area loadAreaInEvent(@Param("eventId") UUID eventId, @Param("areaId") UUID areaId);
 
-    @Select("SELECT TKT.Prices.id, name, (price / 100.0) AS price, eventId FROM TKT.PricesDistribution " +
-            "INNER JOIN TKT.Prices ON TKT.Prices.id = TKT.PricesDistribution.priceId " +
+    @Select("SELECT Prices.id, name, (price / 100.0) AS price, eventId FROM PricesDistribution " +
+            "INNER JOIN Prices ON Prices.id = PricesDistribution.priceId " +
             "AND eventId = #{eventId} " +
             "AND areaId = #{areaId}")
     Price loadAreaLevelPricingOfEvent(@Param("eventId") UUID eventId, @Param("areaId") UUID areaId);
 
-    @Select("SELECT TKT.Prices.id, TKT.Prices.name, (price / 100.0) AS price, TKT.Events.id AS eventId FROM TKT.PricesDistribution " +
-            "INNER JOIN TKT.Prices ON TKT.Prices.id = TKT.PricesDistribution.priceId " +
-            "INNER JOIN TKT.Events ON TKT.Events.venueId = TKT.PricesDistribution.venueId " +
-            "AND TKT.Events.id = TKT.Prices.eventId " +
-            "AND TKT.Events.id = #{eventId}")
+    @Select("SELECT Prices.id, Prices.name, (price / 100.0) AS price, Events.id AS eventId FROM PricesDistribution " +
+            "INNER JOIN Prices ON Prices.id = PricesDistribution.priceId " +
+            "INNER JOIN Events ON Events.venueId = PricesDistribution.venueId " +
+            "AND Events.id = Prices.eventId " +
+            "AND Events.id = #{eventId}")
     Price loadDefaultPricingOfEvent(@Param("eventId") UUID eventId);
 
-    @Select("SELECT id, eventId, name, (price / 100.0) AS price FROM TKT.Prices WHERE id = #{priceId} AND eventId = #{eventId}")
+    @Select("SELECT id, eventId, name, (price / 100.0) AS price FROM Prices WHERE id = #{priceId} AND eventId = #{eventId}")
     Price loadPriceOfEventById(@Param("eventId") UUID eventId, @Param("priceId") UUID priceId);
 
-    @Select("SELECT id, venueId, name, metadata FROM TKT.Events WHERE id = #{eventId}")
+    @Select("SELECT id, venueId, name, metadata FROM Events WHERE id = #{eventId}")
     @Results({@Result(property = "metadata", column = "metadata", typeHandler = MetadataHandler.class)})
     Event loadEvent(@Param("eventId") UUID eventId);
 
-    @Select("SELECT id, venueId, name, metadata FROM TKT.Events WHERE venueId = #{venueId}")
+    @Select("SELECT id, venueId, name, metadata FROM Events WHERE venueId = #{venueId}")
     @Results({@Result(property = "metadata", column = "metadata", typeHandler = MetadataHandler.class)})
     List<Event> loadEventsByVenue(@Param("venueId") String venueId);
 
-    @Select("SELECT id, venueId, name, metadata FROM TKT.Events")
+    @Select("SELECT id, venueId, name, metadata FROM Events")
     @Results({@Result(property = "metadata", column = "metadata", typeHandler = MetadataHandler.class)})
     List<Event> loadAllEvents();
 
-    @Select("SELECT venueId AS id, TKT.Venues.name, TKT.Venues.metadata " +
-            "FROM TKT.Events " +
-            "INNER JOIN TKT.Venues ON venueId = TKT.Venues.id " +
-            "AND TKT.Events.id = #{eventId}")
+    @Select("SELECT venueId AS id, Venues.name, Venues.metadata " +
+            "FROM Events " +
+            "INNER JOIN Venues ON venueId = Venues.id " +
+            "AND Events.id = #{eventId}")
     @Results({@Result(property = "metadata", column = "metadata", typeHandler = MetadataHandler.class)})
     Venue loadVenueByEvent(@Param("eventId") UUID eventId);
 
-    @Select("SELECT svg FROM TKT.Events " +
-            "INNER JOIN TKT.Venues ON venueId = TKT.Venues.id " +
-            "AND TKT.Events.id = #{eventId}")
+    @Select("SELECT svg FROM Events " +
+            "INNER JOIN Venues ON venueId = Venues.id " +
+            "AND Events.id = #{eventId}")
     File loadEventVenueSvg(@Param("eventId") UUID eventId);
 
-    @Insert("INSERT INTO TKT.Prices (id, eventId, name, price) VALUES (#{price.id}, #{eventId}, #{price.name}, #{price.price} * 100)")
+    @Insert("INSERT INTO Prices (id, eventId, name, price) VALUES (#{price.id}, #{eventId}, #{price.name}, #{price.price} * 100)")
     int _saveTicketPriceOfEvent(@Param("eventId") UUID eventId, @Param("price") Price price);
 
     default void saveTicketPriceOfEvent(UUID eventId, Price price) throws PersistenceException {
@@ -99,13 +99,13 @@ public interface EventsMapper {
             );
     }
 
-    @Delete("DELETE FROM TKT.PricesDistribution WHERE priceId IN (SELECT id FROM TKT.Prices WHERE eventId = #{eventId})")
+    @Delete("DELETE FROM PricesDistribution WHERE priceId IN (SELECT id FROM Prices WHERE eventId = #{eventId})")
     void _deletePriceDistributionByEvent(@Param("eventId") UUID eventId);
 
-    @Delete("DELETE FROM TKT.Prices WHERE eventId = #{eventId}")
+    @Delete("DELETE FROM Prices WHERE eventId = #{eventId}")
     void _deletePriceByEvent(@Param("eventId") UUID eventId);
 
-    @Delete("DELETE FROM TKT.Events WHERE id = #{eventId}")
+    @Delete("DELETE FROM Events WHERE id = #{eventId}")
     void _deleteEvent(@Param("eventId") UUID eventId);
 
     @Transactional
@@ -115,7 +115,7 @@ public interface EventsMapper {
         _deleteEvent(eventId);
     }
 
-    @Delete("DELETE FROM TKT.Prices WHERE id = #{priceId} AND eventId = #{eventId}")
+    @Delete("DELETE FROM Prices WHERE id = #{priceId} AND eventId = #{eventId}")
     int _deleteTicketPriceOfEvent(@Param("eventId") UUID eventId, @Param("priceId") UUID priceId);
 
     default void deleteTicketPriceOfEvent(UUID eventId, UUID priceId) throws PersistenceException {
@@ -125,18 +125,18 @@ public interface EventsMapper {
             );
     }
 
-    @Update("UPDATE TKT.PricesDistribution " +
+    @Update("UPDATE PricesDistribution " +
             "SET priceId = #{priceId} " +
-            "WHERE priceId IN (SELECT id FROM TKT.Prices WHERE eventId = #{eventId}) " +
+            "WHERE priceId IN (SELECT id FROM Prices WHERE eventId = #{eventId}) " +
             "AND seatId IS NULL " +
             "AND areaId IS NULL " +
-            "AND venueId IN (SELECT venueId FROM TKT.Events WHERE id = #{eventId}) ")
+            "AND venueId IN (SELECT venueId FROM Events WHERE id = #{eventId}) ")
     int _updateDefaultPricingOfEvent(@Param("eventId") UUID eventId, @Param("priceId") UUID priceId);
 
-    @Insert("INSERT INTO TKT.PricesDistribution (id, priceId, seatId, areaId, venueId) " +
-            "SELECT #{newId}, #{priceId}, NULL, NULL, TKT.Events.venueId FROM TKT.Prices " +
-            "INNER JOIN TKT.Events ON TKT.Events.id = TKT.Prices.eventId " +
-            "AND TKT.Events.id = #{eventId}")
+    @Insert("INSERT INTO PricesDistribution (id, priceId, seatId, areaId, venueId) " +
+            "SELECT #{newId}, #{priceId}, NULL, NULL, Events.venueId FROM Prices " +
+            "INNER JOIN Events ON Events.id = Prices.eventId " +
+            "AND Events.id = #{eventId}")
     int _saveDefaultPricingOfEvent(@Param("newId") UUID newId, @Param("eventId") UUID eventId, @Param("priceId") UUID priceId);
 
     @Transactional
@@ -148,15 +148,15 @@ public interface EventsMapper {
                 );
     }
 
-    @Update("UPDATE TKT.PricesDistribution " +
+    @Update("UPDATE PricesDistribution " +
             "SET priceId = #{priceId} " +
-            "WHERE priceId IN (SELECT TKT.Prices.id FROM TKT.Prices WHERE eventId = #{eventId}) " +
+            "WHERE priceId IN (SELECT Prices.id FROM Prices WHERE eventId = #{eventId}) " +
             "AND seatId = #{seatId} " +
             "AND areaId IS NULL " +
             "AND venueId IS NULL ")
     int _updateSeatLevelPricingOfEvent(@Param("eventId") UUID eventId, @Param("seatId") UUID seatId, @Param("priceId") UUID priceId);
 
-    @Insert("INSERT INTO TKT.PricesDistribution (id, priceId, seatId, areaId, venueId) " +
+    @Insert("INSERT INTO PricesDistribution (id, priceId, seatId, areaId, venueId) " +
             "VALUES (#{newId}, #{priceId}, #{seatId}, NULL, NULL)")
     int _saveSeatLevelPricingOfEvent(@Param("newId") UUID newId, @Param("eventId") UUID eventId, @Param("seatId") UUID seatId, @Param("priceId") UUID priceId);
 
@@ -169,15 +169,15 @@ public interface EventsMapper {
                 );
     }
 
-    @Update("UPDATE TKT.PricesDistribution " +
+    @Update("UPDATE PricesDistribution " +
             "SET priceId = #{priceId} " +
-            "WHERE priceId IN (SELECT TKT.Prices.id FROM TKT.Prices WHERE eventId = #{eventId}) " +
+            "WHERE priceId IN (SELECT Prices.id FROM Prices WHERE eventId = #{eventId}) " +
             "AND seatId IS NULL " +
             "AND areaId = #{areaId} " +
             "AND venueId IS NULL ")
     int _updateAreaLevelPricingOfEvent(@Param("eventId") UUID eventId, @Param("areaId") UUID areaId, @Param("priceId") UUID priceId);
 
-    @Insert("INSERT INTO TKT.PricesDistribution (id, priceId, seatId, areaId, venueId) " +
+    @Insert("INSERT INTO PricesDistribution (id, priceId, seatId, areaId, venueId) " +
             "VALUES (#{newId}, #{priceId}, NULL, #{areaId}, NULL)")
     int _saveAreaLevelPricingOfEvent(@Param("newId") UUID newId, @Param("eventId") UUID eventId, @Param("areaId") UUID areaId, @Param("priceId") UUID priceId);
 
@@ -190,12 +190,12 @@ public interface EventsMapper {
                 );
     }
 
-    @Insert("INSERT INTO TKT.Events (id, name, venueId, metadata) " +
+    @Insert("INSERT INTO Events (id, name, venueId, metadata) " +
             "VALUES (#{event.id}, #{event.name}, #{event.venueId}, " +
             "#{event.metadata, typeHandler=com.stonematrix.ticket.persist.mybatis.handlers.MetadataHandler})")
     void saveEvent(@Param("event") Event event);
 
-    @Update("UPDATE TKT.Events SET venueId = #{venueId} WHERE id = #{eventId}")
+    @Update("UPDATE Events SET venueId = #{venueId} WHERE id = #{eventId}")
     int _updateVenueOfEvent(@Param("eventId") UUID eventId, @Param("venueId") UUID venueId);
 
     default void updateVenueOfEvent(UUID eventId, UUID venueId) throws PersistenceException {
@@ -205,7 +205,7 @@ public interface EventsMapper {
             );
     }
 
-    @Update("UPDATE TKT.Events SET " +
+    @Update("UPDATE Events SET " +
             "venueId = #{event.venueId}, " +
             "name = #{event.name}, " +
             "metadata = #{event.metadata, typeHandler=com.stonematrix.ticket.persist.mybatis.handlers.MetadataHandler} " +
@@ -219,12 +219,12 @@ public interface EventsMapper {
             );
     }
 
-    @Select("SELECT priceId, seatId, areaId, venueId FROM TKT.PricesDistribution " +
-            "INNER JOIN TKT.Prices ON TKT.Prices.id = TKT.PricesDistribution.priceId " +
-            "AND TKT.Prices.eventId = #{eventId}")
+    @Select("SELECT priceId, seatId, areaId, venueId FROM PricesDistribution " +
+            "INNER JOIN Prices ON Prices.id = PricesDistribution.priceId " +
+            "AND Prices.eventId = #{eventId}")
     List<Map<String, Object>> _loadAllPricingOfEvent(@Param("eventId") UUID eventId);
 
-    @Insert("<script>INSERT INTO TKT.PricesDistribution VALUES " +
+    @Insert("<script>INSERT INTO PricesDistribution VALUES " +
             "<foreach collection='pricings' item='pricing' separator=','> " +
             "(#{pricing.ID, jdbcType=VARCHAR}, #{pricing.PRICEID, jdbcType=VARCHAR}, " +
             "#{pricing.SEATID, jdbcType=VARCHAR}, #{pricing.AREAID, jdbcType=VARCHAR}, " +
@@ -256,12 +256,12 @@ public interface EventsMapper {
         _saveAllPricingOfEvent(pricings);
     }
 
-    @Insert("INSERT INTO TKT.SESSIONS (id, name, eventId, startTime, endTime, metadata) " +
+    @Insert("INSERT INTO SESSIONS (id, name, eventId, startTime, endTime, metadata) " +
             "VALUES (#{session.id}, #{session.name}, #{eventId}, #{session.startTime}, #{session.endTime}, " +
             "#{session.metadata, typeHandler=com.stonematrix.ticket.persist.mybatis.handlers.MetadataHandler})")
     void saveSession(@Param("eventId") UUID eventId, @Param("session") Session session);
 
-    @Update("UPDATE TKT.Sessions SET " +
+    @Update("UPDATE Sessions SET " +
             "name = #{session.name}, " +
             "startTime = #{session.startTime}, " +
             "endTime = #{session.endTime}, " +
@@ -269,14 +269,14 @@ public interface EventsMapper {
             "WHERE id = #{sessionId} AND eventId = #{eventId}")
     void updateSession(@Param("eventId") UUID eventId, @Param("sessionId") UUID sessionId, @Param("session") Session session);
 
-    @Delete("DELETE FROM TKT.Sessions WHERE id = #{id} AND eventId = #{eventid}")
+    @Delete("DELETE FROM Sessions WHERE id = #{id} AND eventId = #{eventid}")
     void deleteSession(@Param("eventId") UUID eventId, @Param("sessionId") UUID sessionId);
 
-    @Select("SELECT id, eventId, name, startTime, endTime, metadata FROM TKT.Sessions WHERE eventId = #{eventId}")
+    @Select("SELECT id, eventId, name, startTime, endTime, metadata FROM Sessions WHERE eventId = #{eventId}")
     @Results({@Result(property = "metadata", column = "metadata", typeHandler = MetadataHandler.class)})
     List<Session> loadSessions(@Param("eventId") UUID eventId);
 
-    @Select("SELECT id, eventId, name, startTime, endTime, metadata FROM TKT.Sessions WHERE id = #{sessionId} AND eventId = #{eventId}")
+    @Select("SELECT id, eventId, name, startTime, endTime, metadata FROM Sessions WHERE id = #{sessionId} AND eventId = #{eventId}")
     @Results({@Result(property = "metadata", column = "metadata", typeHandler = MetadataHandler.class)})
     Session loadSession(@Param("eventId") UUID eventId, @Param("sessionId") UUID sessionId);
 }

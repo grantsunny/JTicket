@@ -17,3 +17,8 @@ crowd:
     url: https://crowd.intra.tontix.io/crowd
   session:
     validationinterval: 30
+ticket:
+  user-token:
+    required: true
+    path: /api/orders
+    name: x-ticket-userId

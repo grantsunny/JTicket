@@ -1207,7 +1207,7 @@ components:
         - areaId
         - name
         - row
-        - column
+        - col
         - available
       properties:
         id:
@@ -1223,7 +1223,7 @@ components:
           description: Unique ID of the area to which this seat belongs
         row:
           type: integer
-        column:
+        col:
           type: integer
         available:
           type: boolean

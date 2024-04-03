@@ -11,10 +11,14 @@ spring:
   sql:
     init:
       mode: embedded
-      schema-locations: classpath:database.sql
+      schema-locations: classpath:derby.sql
       continue-on-error: true
 ticket:
   user-token:
     required: false
     path: /api/order
     name: x-ticket-userId
+  sqlParams:
+    SEATDETAILS: SEATDETAILS
+    SEATSINEVENT: SEATSINEVENT
+    SKU: SKU

@@ -1,0 +1,80 @@
+spring:
+  datasource:
+    url: jdbc:ignite:thin://127.0.0.1/TKT?distributedJoins=true
+    driverClassName: org.apache.ignite.IgniteJdbcThinDriver
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 5
+      idle-timeout: 3000
+      max-lifetime: 180000
+      connection-timeout: 3000
+  sql:
+    init:
+      mode: always
+      schema-locations: classpath:ignite.sql
+      continue-on-error: false
+ticket:
+  user-token:
+    required: true
+    path: /api/orders
+    name: x-ticket-userId
+  sqlParams:
+    SEATDETAILS: |
+      (SELECT TKT.Seats.id, areaId, TKT.Areas.venueId, row, col, available, TKT.Seats.metadata
+      FROM TKT.Seats
+      INNER JOIN TKT.Areas ON TKT.Areas.id = TKT.Seats.areaId) SeatDetails
+    SEATSINEVENT: |
+      (SELECT SEATS.ID, AREAID, EVENTS.ID AS EVENTID, AREAS.VENUEID, ROW, COL, AVAILABLE, SEATS.METADATA,
+      PRICES.PRICE, PRICES.NAME AS PRICENAME
+      FROM SEATS
+      INNER JOIN AREAS ON AREAS.ID = SEATS.AREAID
+      INNER JOIN EVENTS ON EVENTS.VENUEID = AREAS.VENUEID
+      LEFT OUTER JOIN PRICES ON PRICES.EVENTID = EVENTS.ID
+      AND PRICES.ID IN (
+      SELECT PRICEID FROM PRICESDISTRIBUTION
+      WHERE PRICESDISTRIBUTION.SEATID = SEATS.ID)) SeatsInEvent
+    SKU: |
+      (SELECT T.*,
+      Seats.ROW,
+      Seats.COL,
+      Seats.AVAILABLE,
+      Seats.METADATA,
+      PRICES.NAME        AS priceName,
+      PRICES.PRICE       AS price,
+      ORDERSEATS.ORDERID AS orderId
+      FROM (SELECT EVENTS.ID   AS eventId,
+      SESSIONS.ID AS sessionId,
+      VENUES.ID   AS venueId,
+      AREAS.ID    AS areaId,
+      SEATS.ID    AS seatId,
+      COALESCE(
+      (SELECT priceId
+      FROM PRICESDISTRIBUTION
+      INNER JOIN PRICES
+      ON PRICESDISTRIBUTION.PRICEID = PRICES.ID
+      WHERE PRICESDISTRIBUTION.SEATID = SEATS.ID
+      AND PRICES.EVENTID = EVENTS.ID),
+      (SELECT priceId
+      FROM PRICESDISTRIBUTION
+      INNER JOIN PRICES
+      ON PRICESDISTRIBUTION.PRICEID = PRICES.ID
+      WHERE PRICESDISTRIBUTION.AREAID = AREAS.ID
+      AND PRICES.EVENTID = EVENTS.ID),
+      (SELECT priceId
+      FROM PRICESDISTRIBUTION
+      INNER JOIN PRICES
+      ON PRICESDISTRIBUTION.PRICEID = PRICES.ID
+      WHERE PRICESDISTRIBUTION.VENUEID = VENUES.ID
+      AND PRICES.EVENTID = EVENTS.ID)
+      ) AS priceId
+      FROM SESSIONS
+      INNER JOIN EVENTS ON SESSIONS.eventId = Events.id
+      INNER JOIN VENUES ON VENUES.ID = EVENTS.VENUEID
+      INNER JOIN AREAS ON AREAS.VENUEID = VENUES.ID
+      INNER JOIN SEATS ON SEATS.AREAID = AREAS.ID) T
+      INNER JOIN PRICES ON PRICES.ID = T.priceId
+      INNER JOIN SEATS ON SEATS.ID = T.seatId
+      LEFT JOIN ORDERSEATS ON
+      ORDERSEATS.EVENTID = T.eventId
+      AND OrderSeats.sessionId = T.sessionId
+      AND ORDERSEATS.SEATID = T.seatId) SKU

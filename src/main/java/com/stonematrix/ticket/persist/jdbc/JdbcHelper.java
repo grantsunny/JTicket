@@ -309,7 +309,7 @@ public class JdbcHelper {
                 pstmt.setString(1, seat.getId().toString());
                 pstmt.setString(2, seat.getAreaId().toString());
                 pstmt.setInt(3, seat.getRow());
-                pstmt.setInt(4, seat.getColumn());
+                pstmt.setInt(4, seat.getCol());
                 pstmt.setBoolean(5, seat.getAvailable());
 
                 String metadataJson;
@@ -356,7 +356,7 @@ public class JdbcHelper {
                             .venueId(venueId)
                             .areaId(UUID.fromString(areaId))
                             .row(row)
-                            .column(col)
+                            .col(col)
                             .available(available)
                             .metadata(metadata));
                 }
@@ -402,7 +402,7 @@ public class JdbcHelper {
                                     .venueId(venueId)
                                     .areaId(areaId)
                                     .row(row)
-                                    .column(col)
+                                    .col(col)
                                     .available(available)
                                     .metadata(metadata));
                 }
@@ -441,7 +441,7 @@ public class JdbcHelper {
                             .areaId(UUID.fromString(areaId))
                             .venueId(UUID.fromString(venueId))
                             .row(row)
-                            .column(col)
+                            .col(col)
                             .available(available)
                             .metadata(metadata);
                 }
@@ -870,7 +870,7 @@ public class JdbcHelper {
                 .areaId(UUID.fromString(areaId))
                 .venueId(UUID.fromString(venueId))
                 .row(row)
-                .column(col)
+                .col(col)
                 .available(available)
                 .metadata(metadata);
     }
