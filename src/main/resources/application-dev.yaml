@@ -1,6 +1,7 @@
 spring:
   datasource:
-    url: jdbc:derby:stoneticket;create=true
+    url: jdbc:derby:stoneticket;user=TKT;create=true
+#    url: jdbc:derby:memory:stoneticket;create=true
     driverClassName: org.apache.derby.jdbc.EmbeddedDriver
     hikari:
       maximum-pool-size: 10

@@ -20,7 +20,6 @@ import java.util.HashSet;
 import java.util.Set;
 
 @Configuration
-@Profile({"ignite", "production"})
 public class MybatisPersistConfiguration {
     @Inject
     private VenuesMapper venuesMapper;

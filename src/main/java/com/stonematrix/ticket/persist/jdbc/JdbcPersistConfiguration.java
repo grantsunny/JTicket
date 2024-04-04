@@ -20,7 +20,7 @@ import java.util.HashSet;
 import java.util.Set;
 
 @Configuration
-@Profile({"dev"})
+@Profile("jdbc")
 public class JdbcPersistConfiguration {
 
     @Inject

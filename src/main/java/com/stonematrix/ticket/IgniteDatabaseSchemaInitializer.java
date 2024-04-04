@@ -15,7 +15,7 @@ import javax.sql.DataSource;
 import java.util.Arrays;
 
 
-@Profile("ignite")
+@Profile("production")
 @Configuration
 public class IgniteDatabaseSchemaInitializer implements ApplicationContextInitializer<ConfigurableApplicationContext> {
 
@@ -39,7 +39,7 @@ public class IgniteDatabaseSchemaInitializer implements ApplicationContextInitia
 
     @Override
     public void initialize(ConfigurableApplicationContext context) {
-        if (!Arrays.asList(context.getEnvironment().getActiveProfiles()).contains("ignite"))
+        if (!Arrays.asList(context.getEnvironment().getActiveProfiles()).contains("production"))
             return;
         else {
             System.out.println("OpenTicketing: Starting Ignite Data Grid");

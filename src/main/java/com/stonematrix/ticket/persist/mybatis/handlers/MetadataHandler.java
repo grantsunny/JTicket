@@ -14,7 +14,7 @@ import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
-//@Component
+
 @MappedTypes({Map.class, HashMap.class, LinkedHashMap.class})
 @MappedJdbcTypes(JdbcType.CLOB)
 public class MetadataHandler extends BaseTypeHandler<Map<String, Object>> {
