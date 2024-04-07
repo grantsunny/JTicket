@@ -66,7 +66,7 @@ CREATE INDEX IF NOT EXISTS idx_sessions_eventId_name ON Sessions (eventId, `name
 --     LANGUAGE JAVA
 --     PARAMETER STYLE JAVA
 --     NO SQL
---     EXTERNAL NAME 'com.stonematrix.ticket.persist.SpExceptionRaiser.error'
+--     EXTERNAL NAME 'persist.com.jticket.SpExceptionRaiser.error'
 -- ;
 --
 -- CREATE TRIGGER TKT.PreventEventTimeOverLap

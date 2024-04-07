@@ -56,7 +56,7 @@ CREATE PROCEDURE TKT.RaiseException(IN error VARCHAR(100))
     LANGUAGE JAVA
     PARAMETER STYLE JAVA
     NO SQL
-    EXTERNAL NAME 'com.stonematrix.ticket.persist.SpExceptionRaiser.error'
+    EXTERNAL NAME 'persist.com.jticket.SpExceptionRaiser.error'
 ;
 
 CREATE TRIGGER TKT.PreventEventTimeOverLap
