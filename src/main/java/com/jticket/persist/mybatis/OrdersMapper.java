@@ -96,14 +96,14 @@ public interface OrdersMapper {
     @Insert("<script>INSERT INTO ORDERSEATS(ORDERID, EVENTID, SESSIONID, SEATID, METADATA) VALUES " +
             "<foreach collection='seats' item='seat' separator=','> " +
             "(#{orderId}, #{eventId}, #{sessionId}, #{seat.seatId}, " +
-            "#{seat.metadata, typeHandler=com.stonematrix.ticket.persist.mybatis.handlers.MetadataHandler}) " +
+            "#{seat.metadata, typeHandler=com.jticket.persist.mybatis.handlers.MetadataHandler}) " +
             "</foreach>" +
             "</script>")
     int _saveOrderSeats(UUID orderId, UUID eventId, UUID sessionId, List<OrderSeatsInner> seats);
 
     @Insert("INSERT INTO ORDERS(ID, EVENTID, SESSIONID, USERID, TIMESTAMP, METADATA) " +
             "VALUES (#{order.Id}, #{order.eventId}, #{order.sessionId}, #{order.userId}, CURRENT_TIMESTAMP, " +
-            "#{order.metadata, typeHandler=com.stonematrix.ticket.persist.mybatis.handlers.MetadataHandler})")
+            "#{order.metadata, typeHandler=com.jticket.persist.mybatis.handlers.MetadataHandler})")
     int _saveNewOrder(Order order);
 
     @Transactional
@@ -122,11 +122,11 @@ public interface OrdersMapper {
     @Update("UPDATE ORDERS SET PAIDAMOUNT = PAIDAMOUNT + (#{paidAmount} / 100.0) WHERE ID = #{orderId}")
     void updateOrderPayAmount(@Param("orderId") UUID orderId, @Param("paidAmount") Integer paidAmount);
 
-    @Update("UPDATE ORDERS SET METADATA = #{order.metadata, typeHandler=com.stonematrix.ticket.persist.mybatis.handlers.MetadataHandler} WHERE ID = #{order.order}")
+    @Update("UPDATE ORDERS SET METADATA = #{order.metadata, typeHandler=com.jticket.persist.mybatis.handlers.MetadataHandler} WHERE ID = #{order.order}")
     void _updateOrderMetadata(@Param("order") Order order);
 
     @Update("UPDATE ORDERSEATS SET METADATA = " +
-            "#{orderSeat.metadata, typeHandler=com.stonematrix.ticket.persist.mybatis.handlers.MetadataHandler} WHERE ORDERID = #{orderId} AND EVENTID = #{eventId} AND SEATID = #{orderSeat.seatId}")
+            "#{orderSeat.metadata, typeHandler=com.jticket.persist.mybatis.handlers.MetadataHandler} WHERE ORDERID = #{orderId} AND EVENTID = #{eventId} AND SEATID = #{orderSeat.seatId}")
     void _updateOrderSeatsMetadata(@Param("orderId") UUID orderId, @Param("eventId") UUID eventId, @Param("orderSeat") OrderSeatsInner orderSeat);
 
     @Transactional

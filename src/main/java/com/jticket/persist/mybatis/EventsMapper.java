@@ -192,7 +192,7 @@ public interface EventsMapper {
 
     @Insert("INSERT INTO Events (id, name, venueId, metadata) " +
             "VALUES (#{event.id}, #{event.name}, #{event.venueId}, " +
-            "#{event.metadata, typeHandler=com.stonematrix.ticket.persist.mybatis.handlers.MetadataHandler})")
+            "#{event.metadata, typeHandler=com.jticket.persist.mybatis.handlers.MetadataHandler})")
     void saveEvent(@Param("event") Event event);
 
     @Update("UPDATE Events SET venueId = #{venueId} WHERE id = #{eventId}")
@@ -208,7 +208,7 @@ public interface EventsMapper {
     @Update("UPDATE Events SET " +
             "venueId = #{event.venueId}, " +
             "name = #{event.name}, " +
-            "metadata = #{event.metadata, typeHandler=com.stonematrix.ticket.persist.mybatis.handlers.MetadataHandler} " +
+            "metadata = #{event.metadata, typeHandler=com.jticket.persist.mybatis.handlers.MetadataHandler} " +
             "WHERE id = #{eventId}")
     int _updateEvent(@Param("eventId") UUID eventId, @Param("event") Event event);
 
@@ -258,14 +258,14 @@ public interface EventsMapper {
 
     @Insert("INSERT INTO SESSIONS (id, name, eventId, startTime, endTime, metadata) " +
             "VALUES (#{session.id}, #{session.name}, #{eventId}, #{session.startTime}, #{session.endTime}, " +
-            "#{session.metadata, typeHandler=com.stonematrix.ticket.persist.mybatis.handlers.MetadataHandler})")
+            "#{session.metadata, typeHandler=com.jticket.persist.mybatis.handlers.MetadataHandler})")
     void saveSession(@Param("eventId") UUID eventId, @Param("session") Session session);
 
     @Update("UPDATE Sessions SET " +
             "name = #{session.name}, " +
             "startTime = #{session.startTime}, " +
             "endTime = #{session.endTime}, " +
-            "metadata = #{session.metadata, typeHandler=com.stonematrix.ticket.persist.mybatis.handlers.MetadataHandler} " +
+            "metadata = #{session.metadata, typeHandler=com.jticket.persist.mybatis.handlers.MetadataHandler} " +
             "WHERE id = #{sessionId} AND eventId = #{eventId}")
     void updateSession(@Param("eventId") UUID eventId, @Param("sessionId") UUID sessionId, @Param("session") Session session);
 

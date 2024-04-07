@@ -40,12 +40,12 @@ public interface VenuesMapper {
             "INSERT INTO Areas (id, venueId, name, metadata) VALUES " +
             "<foreach collection='areas' item='area' separator=','> " +
             "(#{area.id}, #{area.venueId}, #{area.name}, " +
-            "#{area.metadata, typeHandler=com.stonematrix.ticket.persist.mybatis.handlers.MetadataHandler}) " +
+            "#{area.metadata, typeHandler=com.jticket.persist.mybatis.handlers.MetadataHandler}) " +
             "</foreach>" +
             "</script>")
     void saveAreas(@Param("areas") List<Area> areas);
 
     @Insert("INSERT INTO Venues (id, name, metadata, svg) VALUES ( #{venue.id}, #{venue.name}, " +
-            "#{venue.metadata, typeHandler=com.stonematrix.ticket.persist.mybatis.handlers.MetadataHandler}, #{svg})")
+            "#{venue.metadata, typeHandler=com.jticket.persist.mybatis.handlers.MetadataHandler}, #{svg})")
     void saveVenue(@Param("venue") Venue venue, @Param("svg") String svg);
 }

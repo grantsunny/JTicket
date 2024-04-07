@@ -28,7 +28,7 @@ public interface SeatsMapper {
             "INSERT INTO Seats (id, areaId, row, col, available, metadata) VALUES " +
             "<foreach collection='seats' item='seat' separator=','> " +
             "(#{seat.id}, #{seat.areaId}, #{seat.row}, #{seat.col}, #{seat.available}, " +
-            "#{seat.metadata, typeHandler=com.stonematrix.ticket.persist.mybatis.handlers.MetadataHandler})" +
+            "#{seat.metadata, typeHandler=com.jticket.persist.mybatis.handlers.MetadataHandler})" +
             "</foreach>" +
             "</script>")
     void saveSeats(List<Seat> seats);

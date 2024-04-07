@@ -37,6 +37,6 @@ ENV JAVA_OPTS="-XX:MinRAMPercentage=50 \
 --add-opens=java.desktop/java.awt.font=ALL-UNNAMED"
 WORKDIR /
 COPY --from=service-build /target/*.jar service.jar
-ENV SPRING_PROFILES_ACTIVE=ignite
+ENV SPRING_PROFILES_ACTIVE=production
 EXPOSE 8080
 ENTRYPOINT java $JAVA_OPTS -jar /service.jar

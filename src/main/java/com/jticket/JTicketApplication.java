@@ -9,11 +9,11 @@ import org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfi
 		SecurityAutoConfiguration.class
 })
 
-public class StoneTicketApplication {
+public class JTicketApplication {
 
 	public static void main(String[] args) {
 
-		SpringApplication app = new SpringApplication(StoneTicketApplication.class);
+		SpringApplication app = new SpringApplication(JTicketApplication.class);
 		app.addInitializers(new IgniteDatabaseSchemaInitializer());
 		app.run(args);
 	}
