@@ -146,8 +146,13 @@
             <version>5.2.3</version>
         </dependency>
 
-    </dependencies>
+        <dependency>
+            <groupId>io.swagger.core.v3</groupId>
+            <artifactId>swagger-jaxrs2-jakarta</artifactId>
+            <version>2.2.21</version>
+        </dependency>
 
+    </dependencies>
     <build>
         <plugins>
             <plugin>

@@ -26,8 +26,19 @@ docker build
 Using `java -jar` or `docker run` to start the ticketing system.
 
 The back office UI will be listening at port of %HOST%/8080 and APIs will be available at %HOST/api. 
+Specified to API, you can download the swagger spec (OpenAPI v3) via endpoint of /api/swagger.
 There are two profiles for development and production, the development profile uses Apache Derby as persistence layer,
-whereas the production profile uses Apache Ignite. They are both in-memory SQL database and we could feel the power 
+whereas the production profile uses Apache Ignite.
+
+Development mode (with Derby as in memory database, swagger enabled, security disabled)
+```
+java -Dspring.profiles.active=dev -jar jticket-VERSION.jar
+```
+Production mode (Ignite as in memory database, swagger disabled, security enabled)
+```
+java -Dspring.profiles.active=production -jar jticket-VERSION.jar
+```
+As they are both in-memory SQL database, we could feel the power 
 of database without adding too much redundant cache and way to keep consistence in application logic. This is the right 
 way to use technologies I believe! 
 

@@ -12,6 +12,7 @@ public class EndpointsConfig extends ResourceConfig {
         registerClasses(
                 UserTokenFilter.class,
                 DateObjectMapperProvider.class,
+                ApiDocResource.class,
                 AuthResource.class,
                 TemplateResource.class,
                 EventsApiResource.class,
