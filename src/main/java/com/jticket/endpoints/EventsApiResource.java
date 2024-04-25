@@ -23,6 +23,14 @@ public class EventsApiResource implements EventsApi {
     @Inject
     private EventsRepository repository;
 
+    @Override
+    public Response checkInSeat(String token, String eventId) {
+
+        //TODO: checkin seat
+        // expected to update the status in OrderSeats table if success
+        // and return right seat object.
+        return null;
+    }
 
     @Override
     public Response listTicketPricesOfEvent(UUID eventId) {

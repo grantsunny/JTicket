@@ -109,6 +109,7 @@ CREATE TABLE TKT.OrderSeats (
                                 eventId VARCHAR(36) NOT NULL,
                                 sessionId VARCHAR (36) NOT NULL,
                                 seatId VARCHAR(36) NOT NULL,
+                                checkin BOOLEAN,
                                 metadata VARCHAR(4096),
                                 PRIMARY KEY (orderId, eventId, seatId)
 --                                 FOREIGN KEY (orderId) REFERENCES TKT.Orders(id),

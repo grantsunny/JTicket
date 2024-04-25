@@ -1,5 +1,6 @@
 package com.jticket.endpoints;
 
+import com.jticket.api.model.LinkSeat;
 import com.jticket.integration.OrderPluginHelper;
 import com.jticket.persist.OrdersRepository;
 import com.jticket.api.OrdersApi;
@@ -39,6 +40,20 @@ public class OrdersApiResource implements OrdersApi {
     }
 
     @Override
+    public Response generateTicketJwtToken(
+            UUID orderId, LinkSeat linkSeat, String userIdCookie, String userIdHeader) {
+
+        String userId = userIdHeader != null ? userIdHeader : userIdCookie;
+        if (userId == null)
+            throw new WebApplicationException("Cannot get ticket token w/o user information", Response.Status.BAD_REQUEST);
+
+        //TODO: generateTicketJwtToken according JWT spec.
+        // shall leverage the configuration in application.yaml or
+        // TICKET_JWT_PRIVATE_KEY or TICKET_JWT_PUBLIC_KEY
+        return null;
+    }
+
+    @Override
     public Response createOrder(Order order, String userIdCookie, String userIdHeader) {
         String userId = userIdHeader != null ? userIdHeader : userIdCookie;
         if (userId != null)
@@ -62,6 +77,8 @@ public class OrdersApiResource implements OrdersApi {
             throw new BadRequestException(e);
         }
     }
+
+
 
     @Override
     public Response getAllOrders(String userIdCookie, String userIdHeader, Date startTime, Date endTime) {

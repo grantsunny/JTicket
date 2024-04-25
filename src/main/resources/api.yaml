@@ -58,6 +58,33 @@ paths:
         '409':
           description: Venue is already booked for the selected time or venue not found
   /events/{eventId}:
+    post:
+      summary: check-in a seat
+      operationId: checkInSeat
+      parameters:
+        - name: token
+          in: header
+          required: true
+          schema:
+            type: string
+        - name: eventId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: jwt
+      responses:
+        '200':
+          description: > 
+            this endpoint will make seat check-in via ticket token. 
+            system will do the validation of the ticket and update seat check-in status
+            accordingly. useful for use case case of redemption or check-in.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Seat'
+        '400':
+          description: check-in fail for any reason, this could be caused by invalid ticket token, etc.
     get:
       summary: Get a specific event by UUID
       operationId: getEventById
@@ -1111,8 +1138,89 @@ paths:
         '500':
           description: Internal server error
 
+  /orders/{orderId}/ticket:
+    post:
+      summary: GenerateOrderTicketJwtToken
+      operationId: GenerateTicketJwtToken
+      description: > 
+        Create corresponding ticket object (for QR code) in JWT token format by supplying one seatId, 
+        with signature.
+      parameters:
+        - name: x-ticket-userId
+          in: cookie
+          schema:
+            type: string
+          required: false
+          description: If there is userId in cookie, cancel order does not belong to user will fail with 404.
+        - name: x-ticket-userId
+          in: header
+          schema:
+            type: string
+          required: false
+          description: If there is userId in cookie, will return orders under given user
+        - name: orderId
+          in: path
+          required: true
+          description: Unique UUID of the order to cancel
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              title: linkSeat
+              properties:
+                seatId:
+                  type: string
+                  format: uuid
+      responses:
+        '200':
+          description: Created a token for a ticket, valid for 5 minutes by default
+          content:
+            text/plain:
+              schema:
+                $ref: '#/components/schemas/Ticket'
+        '404':
+          description: No such seat or order
+        '400':
+          description: Client error, for example, the order is not paid
+        '500':
+          description: Internal server error
+
 components:
   schemas:
+
+    Ticket:
+      type: object
+      description: >
+        JWT (JSON Web Token) used for authentication and access control. The JWT is
+        provided as a Base64 URL-encoded string consisting of three parts: header,
+        payload, and signature. Here is example payload before encoded as base64:
+        
+        {
+          "sub": "user123456",
+          "exp": 1692995200,  // Represents an expiration time in Unix time (e.g., Thu, 24 Sep 2023 00:00:00 GMT)
+          "iat": 1692918800,  // Represents the time the JWT was issued (Unix time)
+          "event": "evt123",
+          "session": "sess456",
+          "venue": "ven789",
+          "seat": "seat001",
+          "area": "area321",
+          "row": "12",
+          "col": "34",
+          "price_name": "VIP"
+        }
+
+      example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"
+      required:
+        - token
+      properties:
+        token:
+          type: string
+
     Event:
       type: object
       required:
@@ -1226,6 +1334,8 @@ components:
         col:
           type: integer
         available:
+          type: boolean
+        checkin:
           type: boolean
         metadata:
           type: object
