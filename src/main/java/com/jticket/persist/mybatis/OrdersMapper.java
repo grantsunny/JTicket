@@ -1,26 +1,36 @@
 package com.jticket.persist.mybatis;
 
-import com.jticket.api.model.Order;
-import com.jticket.api.model.OrderSeatsInner;
-import com.jticket.persist.PersistenceException;
-import com.jticket.persist.mybatis.handlers.MetadataHandler;
-import org.apache.ibatis.annotations.*;
-import org.springframework.transaction.annotation.Transactional;
-
 import java.sql.SQLException;
 import java.util.Date;
 import java.util.List;
 import java.util.UUID;
+
+import org.apache.ibatis.annotations.Delete;
+import org.apache.ibatis.annotations.Insert;
+import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Param;
+import org.apache.ibatis.annotations.Result;
+import org.apache.ibatis.annotations.Results;
+import org.apache.ibatis.annotations.Select;
+import org.apache.ibatis.annotations.Update;
+import org.springframework.transaction.annotation.Transactional;
+
+import com.jticket.api.model.Order;
+import com.jticket.api.model.Seat;
+import com.jticket.persist.PersistenceException;
+import com.jticket.persist.mybatis.handlers.MetadataHandler;
 
 @Mapper
 public interface OrdersMapper {
     @Select("SELECT CASE WHEN (COUNT(*) > 0) THEN TRUE ELSE FALSE END FROM ORDERS WHERE USERID = #{userId} AND ID = #{orderId}")
     @Results({@Result(property = "metadata", column = "metadata", typeHandler = MetadataHandler.class)})
     boolean isUserOrderExist(@Param("userId") String userId, @Param("orderId") UUID orderId);
-
-    @Select("SELECT ORDERID, EVENTID, SEATID, METADATA FROM ORDERSEATS WHERE ORDERID = #{orderId}")
+    
+    @Select("SELECT SEATDETAILS.ID, SEATDETAILS.AREAID, SEATDETAILS.VENUEID, SEATDETAILS.ROW, SEATDETAILS.COL, SEATDETAILS.AVAILABLE, "
+    		+ "ORDERSEATS.checkedInTimestamp, ORDERSEATS.METADATA FROM ${SEATDETAILS} "
+    		+ "INNER JOIN ORDERSEATS ON ORDERSEATS.ORDERID = #{orderId} AND ORDERSEATS.SEATID = SEATDETAILS.ID")
     @Results({@Result(property = "metadata", column = "metadata", typeHandler = MetadataHandler.class)})
-    List<OrderSeatsInner> _loadOrderSeats(@Param("orderId") UUID orderId);
+    List<Seat> _loadOrderSeats(@Param("orderId") UUID orderId);
 
     @Select("SELECT ID, EVENTID, USERID, TIMESTAMP, (PAIDAMOUNT * 100) AS PAIDAMOUNT, METADATA FROM ORDERS " +
             "WHERE USERID = #{userId} AND TIMESTAMP BETWEEN #{startTime} AND #{endTime}")
@@ -99,7 +109,7 @@ public interface OrdersMapper {
             "#{seat.metadata, typeHandler=com.jticket.persist.mybatis.handlers.MetadataHandler}) " +
             "</foreach>" +
             "</script>")
-    int _saveOrderSeats(UUID orderId, UUID eventId, UUID sessionId, List<OrderSeatsInner> seats);
+    int _saveOrderSeats(UUID orderId, UUID eventId, UUID sessionId, List<Seat> seats);
 
     @Insert("INSERT INTO ORDERS(ID, EVENTID, SESSIONID, USERID, TIMESTAMP, METADATA) " +
             "VALUES (#{order.Id}, #{order.eventId}, #{order.sessionId}, #{order.userId}, CURRENT_TIMESTAMP, " +
@@ -126,15 +136,20 @@ public interface OrdersMapper {
     void _updateOrderMetadata(@Param("order") Order order);
 
     @Update("UPDATE ORDERSEATS SET METADATA = " +
-            "#{orderSeat.metadata, typeHandler=com.jticket.persist.mybatis.handlers.MetadataHandler} WHERE ORDERID = #{orderId} AND EVENTID = #{eventId} AND SEATID = #{orderSeat.seatId}")
-    void _updateOrderSeatsMetadata(@Param("orderId") UUID orderId, @Param("eventId") UUID eventId, @Param("orderSeat") OrderSeatsInner orderSeat);
+            "#{seat.metadata, typeHandler=com.jticket.persist.mybatis.handlers.MetadataHandler} WHERE ORDERID = #{orderId} AND EVENTID = #{eventId} AND SEATID = #{seat.id}")
+    void _updateOrderSeatsMetadata(@Param("orderId") UUID orderId, @Param("eventId") UUID eventId, @Param("seat") Seat seat);
 
+    
+    
+    
+    
+    
     @Transactional
     @ExecutorType(org.apache.ibatis.session.ExecutorType.BATCH)
     default void updateOrderMetadata(Order order) {
         _updateOrderMetadata(order);
-        for (OrderSeatsInner orderSeat: order.getSeats()) {
-            _updateOrderSeatsMetadata(order.getId(), order.getEventId(), orderSeat);
+        for (Seat seat: order.getSeats()) {
+            _updateOrderSeatsMetadata(order.getId(), order.getEventId(), seat);
         }
     }
 

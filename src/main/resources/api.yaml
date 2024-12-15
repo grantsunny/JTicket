@@ -58,33 +58,7 @@ paths:
         '409':
           description: Venue is already booked for the selected time or venue not found
   /events/{eventId}:
-    post:
-      summary: check-in a seat
-      operationId: checkInSeat
-      parameters:
-        - name: token
-          in: header
-          required: true
-          schema:
-            type: string
-        - name: eventId
-          in: path
-          required: true
-          schema:
-            type: string
-            format: jwt
-      responses:
-        '200':
-          description: > 
-            this endpoint will make seat check-in via ticket token. 
-            system will do the validation of the ticket and update seat check-in status
-            accordingly. useful for use case case of redemption or check-in.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Seat'
-        '400':
-          description: check-in fail for any reason, this could be caused by invalid ticket token, etc.
+
     get:
       summary: Get a specific event by UUID
       operationId: getEventById
@@ -224,6 +198,39 @@ paths:
         '409':
           description: Duplicated session (name) found
   /events/{eventId}/sessions/{sessionId}:
+    post:
+      summary: Call the API prior to enter the gateway and redempt the ticket. 
+      operationId: _checkIn
+      parameters:
+        - name: token
+          in: header
+          required: true
+          schema:
+            type: string
+            format: jwt
+        - name: eventId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: sessionId
+          in: path
+          required: true
+          schema:
+            type: string        
+      responses:
+        '200':
+          description: > 
+            this endpoint will make seat check-in via ticket token. 
+            system will do the validation of the ticket and update seat check-in status
+            accordingly. useful for use case case of redemption or check-in.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Seat'
+        '400':
+          description: check-in fail for any reason, this could be caused by invalid ticket token, etc.    
+    
     get:
       operationId: getSession
       parameters:
@@ -298,6 +305,7 @@ paths:
           description: invalid input
         '404':
           description: session not found
+
   /events/{eventId}/prices:
     get:
       summary: Get a list of prices available under given event
@@ -1138,10 +1146,10 @@ paths:
         '500':
           description: Internal server error
 
-  /orders/{orderId}/ticket:
+  /orders/{orderId}/token:
     post:
-      summary: GenerateOrderTicketJwtToken
-      operationId: GenerateTicketJwtToken
+      summary: generateOrderTicketJwtToken
+      operationId: _createCheckInToken
       description: > 
         Create corresponding ticket object (for QR code) in JWT token format by supplying one seatId, 
         with signature.
@@ -1312,11 +1320,7 @@ components:
     Seat:
       type: object
       required:
-        - areaId
-        - name
-        - row
-        - col
-        - available
+        - id
       properties:
         id:
           type: string
@@ -1335,8 +1339,10 @@ components:
           type: integer
         available:
           type: boolean
-        checkin:
-          type: boolean
+        checkedInTimestamp:
+          type: string
+          format: date-time
+          description: Only used when correlated with order. Not appliable for seat layout design within venue. 
         metadata:
           type: object
           additionalProperties: true
@@ -1365,15 +1371,8 @@ components:
         seats:
           type: array
           items:
-            type: object
-            properties:
-              seatId:
-                type: string
-                format: uuid
-              metadata:
-                type: object
-                additionalProperties: true
-          description: An array of seats with metadata (perhaps QR code, etc) booked in the order. (Required)
+            $ref: '#/components/schemas/Seat'
+          description: An array of seats with metadata booked in the order. (Required)
         paidAmount:
           type: integer
           description: The total amount of the order to pay. (in *cents*)

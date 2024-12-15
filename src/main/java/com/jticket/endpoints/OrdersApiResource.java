@@ -1,23 +1,39 @@
 package com.jticket.endpoints;
 
-import com.jticket.api.model.LinkSeat;
-import com.jticket.integration.OrderPluginHelper;
-import com.jticket.persist.OrdersRepository;
+import java.security.KeyFactory;
+import java.security.NoSuchAlgorithmException;
+import java.security.PrivateKey;
+import java.security.spec.InvalidKeySpecException;
+import java.security.spec.PKCS8EncodedKeySpec;
+import java.sql.SQLException;
+import java.util.Base64;
+import java.util.Date;
+import java.util.List;
+import java.util.UUID;
+import java.util.function.Predicate;
+import java.util.function.Supplier;
+
+import org.springframework.beans.factory.annotation.Value;
+
 import com.jticket.api.OrdersApi;
+import com.jticket.api.model.LinkSeat;
 import com.jticket.api.model.Order;
 import com.jticket.api.model.Payment;
+import com.jticket.api.model.Seat;
+import com.jticket.api.model.Ticket;
+import com.jticket.integration.OrderPluginHelper;
+import com.jticket.persist.OrdersRepository;
+import com.jticket.persist.PersistenceException;
+
+import io.jsonwebtoken.Jwts;
 import jakarta.inject.Inject;
+import jakarta.validation.Valid;
 import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.WebApplicationException;
 import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.UriBuilder;
 import jakarta.ws.rs.core.UriInfo;
-
-import java.sql.SQLException;
-import java.util.Date;
-import java.util.List;
-import java.util.UUID;
 
 public class OrdersApiResource implements OrdersApi {
 
@@ -29,28 +45,141 @@ public class OrdersApiResource implements OrdersApi {
 
     @Inject
     private OrderPluginHelper plugin;
+    
+    @Value("${ticket.jwt.private-key}")
+    private String privateKeyPem;
+    
+    @Value("${ticket.jwt.algorithm:RSA}")
+    private String keyAlgorithm;
+    
+    private PrivateKey privateKey;
+    
+    private PrivateKey parsePrivateKey() throws InvalidKeySpecException, NoSuchAlgorithmException {
+    	
+    	if (privateKey != null)
+    		return privateKey;
+    	
+        byte[] privateKeyBytes = Base64.getDecoder().decode(
+        	privateKeyPem
+                .replace("-----BEGIN PRIVATE KEY-----", "")
+                .replace("-----END PRIVATE KEY-----", "")
+                .replaceAll("\\s", "")
+        );
 
+        // Generate RSA private key
+        PKCS8EncodedKeySpec keySpec = new PKCS8EncodedKeySpec(privateKeyBytes);
+        PrivateKey privateKey = KeyFactory.getInstance(keyAlgorithm).generatePrivate(keySpec);
+        
+        this.privateKey = privateKey;
+        return privateKey;
+    }
+    
     private void verifyOrderAndUser(String userId, UUID orderId) {
+        if ((userId == null) || (userId.isEmpty()))
+            throw new WebApplicationException("Cannot handle order with empty user information", Response.Status.BAD_REQUEST);
+
         try {
             if (!repository.isUserOrderExist(userId, orderId))
-                throw new WebApplicationException("UserId is not the owner of specified order", Response.Status.NOT_FOUND);
+                throw new WebApplicationException("UserId is not the owner of given order", Response.Status.NOT_FOUND);
         } catch (SQLException e) {
             throw new BadRequestException(e);
         }
     }
-
+    
+    /**
+     *  JWT (JSON Web Token) used for authentication and access control. The JWT is
+        provided as a Base64 URL-encoded string consisting of three parts: header,
+        payload, and signature. Here is example payload before encoded as base64:
+        
+        {
+          "sub": "user123456",
+          "exp": 1692995200,  // Represents an expiration time in Unix time (e.g., Thu, 24 Sep 2023 00:00:00 GMT)
+          "iat": 1692918800,  // Represents the time the JWT was issued (Unix time)
+          "event": "evt123",
+          "session": "sess456",
+          "venue": "ven789",
+          "seat": "seat001",
+          "area": "area321",
+          "row": "12",
+          "col": "34",
+          "price_name": "VIP"
+        }
+     * 
+     * Unpaid order shall be rejected with 402 payment required (RFC 9110)
+     */
+    
     @Override
-    public Response generateTicketJwtToken(
+    public Response createCheckInToken(
             UUID orderId, LinkSeat linkSeat, String userIdCookie, String userIdHeader) {
-
+    	
         String userId = userIdHeader != null ? userIdHeader : userIdCookie;
-        if (userId == null)
-            throw new WebApplicationException("Cannot get ticket token w/o user information", Response.Status.BAD_REQUEST);
+        verifyOrderAndUser(userId, orderId);
+        
+        Order order;
+		try {
+			order = repository.loadOrder(orderId);
+		} catch (PersistenceException e) {
+			throw new WebApplicationException(e.getMessage(), e);
+		}
+		
+        if (order.getPaidAmount() <= 0)
+            throw new WebApplicationException("Cannot get ticket token for unpaid order", Response.Status.PAYMENT_REQUIRED);
 
-        //TODO: generateTicketJwtToken according JWT spec.
-        // shall leverage the configuration in application.yaml or
-        // TICKET_JWT_PRIVATE_KEY or TICKET_JWT_PUBLIC_KEY
-        return null;
+        Seat seat = order.getSeats().stream()
+        		.filter(new Predicate<> () {
+					@Override
+					public boolean test(@Valid Seat t) {
+						return t.getId().equals(linkSeat.getSeatId());
+					}
+        			
+        		}).findFirst().orElseThrow(new Supplier<WebApplicationException> () {
+					@Override
+					public WebApplicationException get() {
+						return new WebApplicationException("Cannot find specified seat in given order", Response.Status.BAD_REQUEST);
+					}
+        		});
+        
+        //construct JWT token accordingly. 
+        
+        PrivateKey privateKey;
+		try {
+			privateKey = parsePrivateKey();
+		} catch (InvalidKeySpecException | NoSuchAlgorithmException e) {
+			throw new WebApplicationException(e.getMessage(), e);
+		}
+        
+        String sub = userId;
+        UUID eventId = order.getEventId();
+        UUID sessionId = order.getSessionId();
+        UUID venueId = seat.getVenueId();
+        UUID areaId = seat.getAreaId();
+        UUID seatId = seat.getId();
+        Integer col = seat.getCol();
+        Integer row = seat.getRow();
+        
+        long nowMillis = System.currentTimeMillis();
+        Date now = new Date(nowMillis);
+        Date expiration = new Date(nowMillis + 5 * 60 * 1000); // The token will be valid for 5 minutes
+        
+        // Generate the signed JWT token
+        String jwtToken = Jwts.builder()
+                .subject(sub)                       	// Subject (e.g., user ID)
+                .issuer("JTicket")                   	// Issuer
+                .issuedAt(now)                          // Issued at timestamp
+                .expiration(expiration)                 // Expiration timestamp
+                .claim("event", eventId)
+                .claim("session", sessionId)
+                .claim("venue", venueId)                 
+                .claim("area", areaId) 
+                .claim("seat", seatId)
+                .claim("col", col)
+                .claim("row", row)
+                .claims(order.getMetadata())
+                .claims(seat.getMetadata())
+                .signWith(privateKey) 					
+                .compact();                             // Serialize to a compact JWT string
+
+        return Response.ok(new Ticket().token(jwtToken)).build();
     }
 
     @Override

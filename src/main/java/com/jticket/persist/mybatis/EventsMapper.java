@@ -16,6 +16,10 @@ import java.util.UUID;
 @Mapper
 public interface EventsMapper {
 
+    @Update("UPDATE OrderSeats SET checkedInTimestamp = CURRENT_TIMESTAMP " +
+            "WHERE eventId = #{eventId} AND sessionId = #{sessionId} AND seatId = #{seatId}")	
+	void checkInSeat(@Param("eventId") UUID eventId, @Param("sessionId") UUID sessionId, @Param("seatId") UUID seatId); 
+	
     @Select("SELECT Prices.id, name, (price / 100.0) AS price, eventId FROM PricesDistribution " +
             "INNER JOIN Prices ON Prices.id = PricesDistribution.priceId " +
             "AND eventId = #{eventId} " +

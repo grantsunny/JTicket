@@ -84,7 +84,7 @@ CREATE TABLE TKT.Orders (
                     eventId VARCHAR(36) NOT NULL,
                     sessionId VARCHAR(36) NOT NULL,
                     userId VARCHAR(36) NOT NULL,
-                    timestamp TIMESTAMP,
+                    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     paidAmount DECIMAL(10, 2) DEFAULT 0,
                     metadata CLOB,
                     FOREIGN KEY (eventId) REFERENCES TKT.Events(id),
@@ -96,9 +96,9 @@ CREATE TABLE TKT.OrderSeats (
                     eventId VARCHAR(36) NOT NULL,
                     sessionId VARCHAR (36) NOT NULL,
                     seatId VARCHAR(36) NOT NULL,
-                    checkin BOOLEAN,
+                    checkedInTimestamp TIMESTAMP DEFAULT NULL, 
                     metadata CLOB,
-                    PRIMARY KEY (orderId, eventId, seatId),
+                    PRIMARY KEY (eventId, sessionId, seatId),
                     FOREIGN KEY (orderId) REFERENCES TKT.Orders(id),
                     FOREIGN KEY (eventId) REFERENCES TKT.Events(id),
                     FOREIGN KEY (sessionId) REFERENCES TKT.Sessions(id),
@@ -136,8 +136,17 @@ CREATE VIEW TKT.SeatDetails AS
 ;
 
 CREATE VIEW TKT.SeatsInEvent AS
-SELECT SEATS.ID, AREAID, EVENTS.ID AS EVENTID, AREAS.VENUEID, ROW, COL, AVAILABLE, SEATS.METADATA,
-       PRICES.PRICE, PRICES.NAME AS PRICENAME
+	SELECT 
+	SEATS.ID, 
+	AREAID, 
+	EVENTS.ID AS EVENTID
+	AREAS.VENUEID, 
+	ROW, 
+	COL, 
+	AVAILABLE,
+	SEATS.METADATA,
+	PRICES.PRICE, 
+	PRICES.NAME AS PRICENAME
 FROM SEATS
          INNER JOIN AREAS ON AREAS.ID = SEATS.AREAID
          INNER JOIN EVENTS ON EVENTS.VENUEID = AREAS.VENUEID
@@ -146,7 +155,6 @@ FROM SEATS
         SELECT PRICEID FROM PRICESDISTRIBUTION
         WHERE PRICESDISTRIBUTION.SEATID = SEATS.ID)
 ;
-
 
 CREATE VIEW TKT.SKU AS
 SELECT

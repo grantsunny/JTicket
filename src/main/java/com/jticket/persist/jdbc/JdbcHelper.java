@@ -1,23 +1,41 @@
 package com.jticket.persist.jdbc;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.jticket.api.model.*;
-import jakarta.inject.Inject;
-import org.springframework.context.annotation.Profile;
-import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
-
-import javax.sql.DataSource;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
-import java.sql.*;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Timestamp;
+import java.sql.Types;
 import java.util.Date;
-import java.util.*;
+import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+
+import javax.sql.DataSource;
+
+import org.springframework.context.annotation.Profile;
+import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.jticket.api.model.Area;
+import com.jticket.api.model.Event;
+import com.jticket.api.model.Order;
+import com.jticket.api.model.Price;
+import com.jticket.api.model.Seat;
+import com.jticket.api.model.Session;
+import com.jticket.api.model.Venue;
+
+import jakarta.inject.Inject;
 
 @Component
 @Profile("jdbc")
@@ -1104,6 +1122,22 @@ public class JdbcHelper {
         }
     }
 
+    
+	public void checkInSeat(UUID eventId, UUID sessionId, UUID seatId) throws SQLException {
+    	
+        try (Connection conn = dataSource.getConnection()) {
+            String sqlCheckinSeat = "UPDATE OrderSeats SET checkedInTimestamp = CURRENT_TIMESTAMP " +
+                    "WHERE eventId = ? AND sessionId = ? AND seatId = ?";
+            
+            try (PreparedStatement stmt = conn.prepareStatement(sqlCheckinSeat)) {
+                stmt.setString(1, eventId.toString());
+                stmt.setString(2, sessionId.toString());
+                stmt.setString(3, seatId.toString());
+                stmt.executeUpdate();
+            }
+        }
+    }
+    
     @Transactional(rollbackFor = SQLException.class)
     public void saveNewOrder(Order order) throws SQLException {
 
@@ -1119,10 +1153,10 @@ public class JdbcHelper {
 
             String sqlNewOrderSeat = "INSERT INTO TKT.ORDERSEATS(ORDERID, EVENTID, SEATID, METADATA) VALUES (?, ?, ?, ?)";
             try (PreparedStatement stmt = conn.prepareStatement(sqlNewOrderSeat)) {
-                for (OrderSeatsInner seatEntry: order.getSeats()) {
+                for (Seat seatEntry: order.getSeats()) {
                     stmt.setString(1, order.getId().toString());
                     stmt.setString(2, order.getEventId().toString());
-                    stmt.setString(3, seatEntry.getSeatId().toString());
+                    stmt.setString(3, seatEntry.getId().toString());
                     stmt.setString(4, metadataMapToJsonString(seatEntry.getMetadata()));
                     stmt.addBatch();
                 }
@@ -1142,17 +1176,24 @@ public class JdbcHelper {
                     .paidAmount(rsOrders.getBigDecimal("paidAmount").multiply(BigDecimal.valueOf(100L)).intValue())
                     .metadata(parseMetadata(rsOrders.getString("metadata")));
 
-            String sqlSeats = "SELECT ORDERID, EVENTID, SEATID, METADATA FROM TKT.ORDERSEATS " +
-                    "WHERE ORDERID = ?";
-
+            String sqlSeats = "SELECT SEATDETAILS.ID, SEATDETAILS.AREAID, SEATDETAILS.VENUEID, SEATDETAILS.ROW, SEATDETAILS.COL, SEATDETAILS.AVAILABLE, "
+            		+ "ORDERSEATS.checkedInTimestamp, ORDERSEATS.METADATA FROM ${SEATDETAILS} "
+            		+ "INNER JOIN ORDERSEATS ON ORDERSEATS.ORDERID = #{orderId} AND ORDERSEATS.SEATID = SEATDETAILS.ID";
+            
             try (PreparedStatement stmtSeat = conn.prepareStatement(sqlSeats)) {
                 stmtSeat.setString(1, order.getId().toString());
                 ResultSet rsSeats = stmtSeat.executeQuery();
 
                 while (rsSeats.next()) {
                     order.getSeats().add(
-                            new OrderSeatsInner()
-                                    .seatId(UUID.fromString(rsSeats.getString("seatId")))
+                            new Seat()
+                                    .id(UUID.fromString(rsSeats.getString("seatId")))
+                                    .areaId(UUID.fromString(rsSeats.getString("areaId")))
+                                    .venueId(UUID.fromString(rsSeats.getString("venueId")))
+                    				.row(rsSeats.getInt("row"))
+                    				.col(rsSeats.getInt("col"))
+                    				.available(rsSeats.getBoolean("available"))
+                    				.checkedInTimestamp(rsSeats.getDate("checkInTimestamp"))
                                     .metadata(parseMetadata(rsSeats.getString("metadata"))));
                 }
             }
@@ -1259,11 +1300,11 @@ public class JdbcHelper {
             String sqlUpdateSeat = "UPDATE TKT.ORDERSEATS SET METADATA = ? " +
                     "WHERE ORDERID = ? AND EVENTID = ? AND SEATID = ?";
             try (PreparedStatement stmt = conn.prepareStatement(sqlUpdateSeat)) {
-                for (OrderSeatsInner seatEntry: order.getSeats()) {
+                for (Seat seatEntry: order.getSeats()) {
                     stmt.setString(1, metadataMapToJsonString(seatEntry.getMetadata()));
                     stmt.setString(2, order.getId().toString());
                     stmt.setString(3, order.getEventId().toString());
-                    stmt.setString(4, seatEntry.getSeatId().toString());
+                    stmt.setString(4, seatEntry.getId().toString());
                     stmt.addBatch();
                 }
                 stmt.executeBatch();

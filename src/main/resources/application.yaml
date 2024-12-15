@@ -23,6 +23,7 @@ ticket:
     path: /api/orders
     name: x-ticket-userId
   jwt:
+    algorithm: RSA
     private-key: |
       -----BEGIN PRIVATE KEY-----
       MIIJQwIBADANBgkqhkiG9w0BAQEFAASCCS0wggkpAgEAAoICAQDbZXedEyQZ1kMo
