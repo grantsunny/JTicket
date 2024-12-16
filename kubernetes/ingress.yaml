@@ -1,8 +1,8 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: stoneticket
-  namespace: tontix
+  name: jticket
+  namespace: jticket
   annotations:
     nginx.ingress.kubernetes.io/ssl-redirect: "true"
     nginx.ingress.kubernetes.io/backend-protocol: "http"
@@ -10,17 +10,17 @@ spec:
   ingressClassName: nginx-ingress-intranet
   tls:
     - hosts:
-        - "intra.tontix.io"
-        - "*.intra.tontix.io"
-    - secretName: intra.tontix.io
+        - "intra.jticket.io"
+        - "*.intra.jticket.io"
+    - secretName: intra.jticket.io
   rules:
-    - host: service.intra.tontix.io
+    - host: service.intra.jticket.io
       http:
         paths:
           - path: /
             pathType: Prefix
             backend:
               service:
-                name: stoneticket
+                name: jticket
                 port:
                   number: 80

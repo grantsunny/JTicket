@@ -1,6 +1,6 @@
 kind: Namespace
 apiVersion: v1
 metadata:
-  name: tontix
+  name: jticket
   labels:
-    name: tontix
+    name: jticket
