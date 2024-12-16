@@ -1,12 +1,12 @@
 spring:
   datasource:
-    url: jdbc:derby:jticketdb;user=TKT;create=true
-#    url: jdbc:derby:memory:jticketdb;create=true
-    driverClassName: org.apache.derby.jdbc.EmbeddedDriver
+#    url: jdbc:derby:jticketdb;user=TKT;create=true
+    url: jdbc:derby:memory:jticketdb;create=true
+    driver-class-name: org.apache.derby.jdbc.EmbeddedDriver
     hikari:
       maximum-pool-size: 10
       minimum-idle: 5
-      idle-timeout: 3000
+      idle-timeout: 10000
       max-lifetime: 180000
       connection-timeout: 3000
   sql:
@@ -14,6 +14,7 @@ spring:
       mode: embedded
       schema-locations: classpath:derby.sql
       continue-on-error: true
+
 springdoc:
   swagger-ui:
     path: api-doc

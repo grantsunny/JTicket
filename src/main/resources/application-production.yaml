@@ -1,7 +1,10 @@
 spring:
+  h2:
+    console:
+      enabled: false
   datasource:
     url: jdbc:ignite:thin://127.0.0.1/TKT?distributedJoins=true
-    driverClassName: org.apache.ignite.IgniteJdbcThinDriver
+    driver-class-name: org.apache.ignite.IgniteJdbcThinDriver
     hikari:
       maximum-pool-size: 10
       minimum-idle: 5

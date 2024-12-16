@@ -7,7 +7,9 @@ import java.util.Iterator;
 public class PersistenceException extends SQLException {
 
 
-    private SQLException getSQLException() {
+    private static final long serialVersionUID = 5271552121697249901L;
+
+	private SQLException getSQLException() {
         Throwable cause = getCause();
         while (cause != null) {
             if (cause instanceof SQLException)

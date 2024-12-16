@@ -83,11 +83,14 @@ public class EventsApiResource implements EventsApi {
 		}
 
         // Extract standard claims
-        String subject = claims.getSubject(); 		// "sub" field
+        // String subject = claims.getSubject(); 		// "sub" field
         String issuer = claims.getIssuer(); 		// "iss" field
         Date expiration = claims.getExpiration(); 	// "exp" field
         
         Date now = new Date();
+        
+        if (!issuer.equals("JTicket"))
+        	throw new NotAuthorizedException("Not recognized token - invalid issuer");
         
         if (expiration.before(now)) 
         	throw new NotAuthorizedException("Ticket token expired");

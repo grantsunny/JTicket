@@ -29,7 +29,7 @@ public class IgniteDatabaseSchemaInitializer implements ApplicationContextInitia
     }
 
     @Bean
-    public DatabaseStartupValidator initDatabaseStartupValidator(DataSource dataSource) {
+    DatabaseStartupValidator initDatabaseStartupValidator(DataSource dataSource) {
         DatabaseStartupValidator dsv = new DatabaseStartupValidator();
         dsv.setDataSource(dataSource);
         dsv.setInterval(5);  // Check every 5 seconds
@@ -43,7 +43,7 @@ public class IgniteDatabaseSchemaInitializer implements ApplicationContextInitia
             return;
         else {
             System.out.println("OpenTicketing: Starting Ignite Data Grid");
-            Ignite ignite = startIgnite();
+            startIgnite();
         }
     }
 }
