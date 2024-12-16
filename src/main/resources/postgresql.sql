@@ -1,12 +1,12 @@
 CREATE SCHEMA TKT;
-SET SCHEMA TKT;
+SET search_path TO TKT;
 
 -- Create the Venue table
 CREATE TABLE TKT.Venues (
                     id VARCHAR(36) PRIMARY KEY NOT NULL,
                     name VARCHAR(255) NOT NULL,
-                    metadata CLOB,
-                    svg CLOB,
+                    metadata TEXT,
+                    svg TEXT,
                     UNIQUE (name)
 );
 
@@ -15,7 +15,7 @@ CREATE TABLE TKT.Areas (
                     id VARCHAR(36) PRIMARY KEY NOT NULL,
                     venueId VARCHAR(36) NOT NULL,
                     name VARCHAR(255) NOT NULL,
-                    metadata CLOB,
+                    metadata TEXT,
                     FOREIGN KEY (venueId) REFERENCES TKT.Venues(id),
                     UNIQUE (venueId, name)
 );
@@ -27,7 +27,7 @@ CREATE TABLE TKT.Seats (
                     row INT,
                     col INT,
                     available BOOLEAN,
-                    metadata CLOB,
+                    metadata TEXT,
                     FOREIGN KEY (areaId) REFERENCES TKT.Areas(id),
                     UNIQUE (areaId, row, col)
 );
@@ -36,7 +36,7 @@ CREATE TABLE TKT.Events (
                     id VARCHAR(36) PRIMARY KEY NOT NULL,
                     name VARCHAR(255) NOT NULL,
                     venueId VARCHAR(36),
-                    metadata CLOB,
+                    metadata TEXT,
                     FOREIGN KEY (venueId) REFERENCES TKT.Venues(id),
                     UNIQUE(name)
 );
@@ -47,36 +47,48 @@ CREATE TABLE TKT.Sessions (
                     eventId VARCHAR (36) NOT NULL,
                     startTime TIMESTAMP NOT NULL,
                     endTime TIMESTAMP NOT NULL,
-                    metadata CLOB,
+                    metadata TEXT,
                     FOREIGN KEY (eventId) REFERENCES TKT.Events(id),
                     UNIQUE(name, eventId)
 );
 
-CREATE PROCEDURE TKT.RaiseException(IN error VARCHAR(100))
-    LANGUAGE JAVA
-    PARAMETER STYLE JAVA
-    NO SQL
-    EXTERNAL NAME 'persist.com.jticket.SpExceptionRaiser.error'
-;
 
-CREATE TRIGGER TKT.PreventEventTimeOverLap
-    NO CASCADE BEFORE INSERT ON TKT.Sessions
-REFERENCING NEW ROW AS newRow
-FOR EACH ROW MODE DB2SQL
-WHEN (EXISTS (
+CREATE FUNCTION prevent_event_time_overlap()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF EXISTS (
         SELECT * FROM Sessions INNER JOIN Events ON Sessions.eventId = Events.id
-            AND Events.venueId IN (SELECT venueId FROM Events WHERE eventId = newRow.eventid)
-            AND NOT (startTime >= newRow.endTime OR endTime <= newRow.startTime)))
-CALL RaiseException('Session time overlapping encountered within a given event')
+            AND Events.venueId IN (SELECT venueId FROM Events WHERE id = NEW.eventid)
+            AND NOT (startTime >= NEW.endTime OR endTime <= NEW.startTime)
+    ) THEN
+        RAISE EXCEPTION 'Session time overlapping encountered within a given event';
+    END IF;
+    RETURN NEW; -- Allow the insert/update
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER prevent_event_time_overlap_trigger
+BEFORE INSERT ON TKT.Sessions
+FOR EACH ROW
+EXECUTE FUNCTION prevent_event_time_overlap()
 ;
 
 --Trigger to prevent removal of paiAmount > 0 (paid order)
-CREATE TRIGGER TKT.PreventPaidOrderRemoval
-    NO CASCADE BEFORE DELETE ON TKT.ORDERS
-REFERENCING OLD ROW AS deletedRow
-FOR EACH ROW MODE DB2SQL
-WHEN (deletedRow.paidAmount > 0)
-    CALL RaiseException('Paid order cannot be deleted')
+CREATE FUNCTION prevent_paid_order_removal()
+RETURNS TRIGGER AS $$
+BEGIN
+    -- Check if the paidAmount is greater than 0
+    IF OLD.paidAmount > 0 THEN
+        RAISE EXCEPTION 'Paid order cannot be deleted';
+    END IF;
+    RETURN OLD;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER prevent_paid_order_removal_trigger
+BEFORE DELETE ON TKT.Orders
+FOR EACH ROW
+EXECUTE FUNCTION prevent_paid_order_removal()
 ;
 
 CREATE TABLE TKT.Orders (
@@ -86,7 +98,7 @@ CREATE TABLE TKT.Orders (
                     userId VARCHAR(36) NOT NULL,
                     timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     paidAmount DECIMAL(10, 2) DEFAULT 0,
-                    metadata CLOB,
+                    metadata TEXT,
                     FOREIGN KEY (eventId) REFERENCES TKT.Events(id),
                     FOREIGN KEY (sessionId) REFERENCES TKT.Sessions(id)
 );
@@ -97,7 +109,7 @@ CREATE TABLE TKT.OrderSeats (
                     sessionId VARCHAR (36) NOT NULL,
                     seatId VARCHAR(36) NOT NULL,
                     checkedInTimestamp TIMESTAMP DEFAULT NULL, 
-                    metadata CLOB,
+                    metadata TEXT,
                     PRIMARY KEY (eventId, sessionId, seatId),
                     FOREIGN KEY (orderId) REFERENCES TKT.Orders(id),
                     FOREIGN KEY (eventId) REFERENCES TKT.Events(id),
@@ -139,7 +151,7 @@ CREATE VIEW TKT.SeatsInEvent AS
     SELECT 
     SEATS.ID, 
     AREAID, 
-    EVENTS.ID AS EVENTID
+    EVENTS.ID AS EVENTID,
     AREAS.VENUEID, 
     ROW, 
     COL, 

@@ -65,7 +65,7 @@ REFERENCING NEW ROW AS newRow
 FOR EACH ROW MODE DB2SQL
 WHEN (EXISTS (
         SELECT * FROM Sessions INNER JOIN Events ON Sessions.eventId = Events.id
-            AND Events.venueId IN (SELECT venueId FROM Events WHERE eventId = newRow.eventid)
+            AND Events.venueId IN (SELECT venueId FROM Events WHERE id = newRow.eventid)
             AND NOT (startTime >= newRow.endTime OR endTime <= newRow.startTime)))
 CALL RaiseException('Session time overlapping encountered within a given event')
 ;
