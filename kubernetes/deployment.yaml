@@ -4,7 +4,7 @@ metadata:
   name: jticket
   namespace: jticket
 spec:
-  replicas: 1
+  replicas: 3
   selector:
     matchLabels:
       app: jticket
@@ -14,10 +14,39 @@ spec:
       labels:
         app: jticket
     spec:
+      initContainers:
+        - name: init-database
+          image: cockroachdb/cockroach:v24.3.1  
+          command:
+            - /bin/bash
+            - -c
+            - |
+              echo -n "Waiting for CockroachDB to become ready..."
+              until cockroach sql --insecure --host=localhost --execute="SHOW DATABASES;" >/dev/null 2>&1; do
+                echo -n "."
+                sleep 2
+              done
+              echo
+              echo "CockroachDB is ready. Initializing database..."
+              cockroach sql --insecure --host=localhost --execute="
+                CREATE DATABASE IF NOT EXISTS TKT;
+                ALTER RANGE default CONFIGURE ZONE USING num_replicas = 3;
+              "
+              echo "Database initialized successfully."
       containers:
         - name: jticket
           image: jticket/jticket-service:latest
           ports:
             - containerPort: 8080
           imagePullPolicy: Always
+        - name: cockroachdb
+          image: cockroachdb/cockroach:v24.3.1  
+          ports:
+            - containerPort: 26257  # CockroachDB SQL port
+            - containerPort: 8080   # CockroachDB Admin UI port
+          args:
+            - start
+            - --insecure
+            - --store=type=mem,size=512Mi   # In-memory configuration
+            - --join=jticket-db             # Use the headless service for node discovery    
       restartPolicy: Always

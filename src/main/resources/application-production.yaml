@@ -3,8 +3,9 @@ spring:
     console:
       enabled: false
   datasource:
-    url: jdbc:ignite:thin://127.0.0.1/TKT?distributedJoins=true
-    driver-class-name: org.apache.ignite.IgniteJdbcThinDriver
+    url: jdbc:postgresql://localhost:26257/TKT
+    driver-class-name: new org.postgresql.Driver
+    username: root
     hikari:
       maximum-pool-size: 10
       minimum-idle: 5

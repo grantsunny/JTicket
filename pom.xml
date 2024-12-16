@@ -9,7 +9,7 @@
     </parent>
     <groupId>com.jticket</groupId>
     <artifactId>jticket</artifactId>
-    <version>0.9.2-SNAPSHOT</version>
+    <version>0.9.3-SNAPSHOT</version>
     <name>Java-Open-Source-Ticketing</name>
     <description>A Java based open source ticketing system</description>
     <properties>
@@ -75,6 +75,12 @@
         </dependency>
 
         <dependency>
+            <groupId>org.postgresql</groupId>
+            <artifactId>postgresql</artifactId>
+        </dependency>
+
+<!--
+        <dependency>
             <groupId>com.h2database</groupId>
             <artifactId>h2</artifactId>
         </dependency>
@@ -102,6 +108,7 @@
                 </exclusion>
             </exclusions>
         </dependency>
+-->
 
         <dependency>
             <groupId>jakarta.xml.bind</groupId>
@@ -111,7 +118,6 @@
         <dependency>
             <groupId>org.glassfish.jaxb</groupId>
             <artifactId>jaxb-runtime</artifactId>
-            <version>2.3.9</version>
         </dependency>
 
         <dependency>
