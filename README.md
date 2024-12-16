@@ -53,12 +53,11 @@ work great accordingly.
 
 ## What's next
 Considering the strategy of the open-source project Apache Ignite might move to another approach, we are considering to switch
-to another longer term strategy to build our in-memory cache. Now tarantool is becoming a candidate. Whereas it is not JVM 
+to another longer term strategy to build our in-memory cache. Now CockroachDB is becoming a candidate. Whereas it is not JVM 
 based implementation some side-car based implementation might needed. 
 
 The current design is to introduce side-car mechanism and deploy the ticketing service and data grid within one Pod, but two containers. 
-Key technologies is to have tarantool container becoming headless service (clusterIP: None) in kubernetes. 
+Key technologies is to have CockroachDB container becoming headless service (clusterIP: None) in kubernetes. 
 
-* https://github.com/tarantool/cartridge-java
-* https://github.com/tarantool/tarantool
-* https://hub.docker.com/r/tarantool/tarantool/
+* https://github.com/cockroachdb/cockroach
+* https://hub.docker.com/r/cockroachdb/cockroach
