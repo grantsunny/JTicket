@@ -56,27 +56,18 @@ CREATE PROCEDURE TKT.RaiseException(IN error VARCHAR(100))
     LANGUAGE JAVA
     PARAMETER STYLE JAVA
     NO SQL
-    EXTERNAL NAME 'persist.com.jticket.SpExceptionRaiser.error'
+    EXTERNAL NAME 'com.jticket.persist.SpExceptionRaiser.error'
 ;
 
 CREATE TRIGGER TKT.PreventEventTimeOverLap
     NO CASCADE BEFORE INSERT ON TKT.Sessions
-REFERENCING NEW ROW AS newRow
+REFERENCING NEW AS newRow
 FOR EACH ROW MODE DB2SQL
 WHEN (EXISTS (
         SELECT * FROM Sessions INNER JOIN Events ON Sessions.eventId = Events.id
             AND Events.venueId IN (SELECT venueId FROM Events WHERE id = newRow.eventid)
             AND NOT (startTime >= newRow.endTime OR endTime <= newRow.startTime)))
-CALL RaiseException('Session time overlapping encountered within a given event')
-;
-
---Trigger to prevent removal of paiAmount > 0 (paid order)
-CREATE TRIGGER TKT.PreventPaidOrderRemoval
-    NO CASCADE BEFORE DELETE ON TKT.ORDERS
-REFERENCING OLD ROW AS deletedRow
-FOR EACH ROW MODE DB2SQL
-WHEN (deletedRow.paidAmount > 0)
-    CALL RaiseException('Paid order cannot be deleted')
+CALL TKT.RaiseException('Session time overlapping encountered within a given event')
 ;
 
 CREATE TABLE TKT.Orders (
@@ -90,6 +81,15 @@ CREATE TABLE TKT.Orders (
                     FOREIGN KEY (eventId) REFERENCES TKT.Events(id),
                     FOREIGN KEY (sessionId) REFERENCES TKT.Sessions(id)
 );
+
+--Trigger to prevent removal of paiAmount > 0 (paid order)
+CREATE TRIGGER TKT.PreventPaidOrderRemoval
+    NO CASCADE BEFORE DELETE ON TKT.ORDERS
+REFERENCING OLD AS deletedRow
+FOR EACH ROW MODE DB2SQL
+WHEN (deletedRow.paidAmount > 0)
+    CALL TKT.RaiseException('Paid order cannot be deleted')
+;
 
 CREATE TABLE TKT.OrderSeats (
                     orderId VARCHAR(36) NOT NULL,
