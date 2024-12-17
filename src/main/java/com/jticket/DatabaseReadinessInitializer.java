@@ -14,7 +14,7 @@ public class DatabaseReadinessInitializer implements ApplicationContextInitializ
 	@Override
 	public void initialize(ConfigurableApplicationContext context) {
 
-		System.out.print("OpenTicketing: Verifying database for readiness ...");
+		System.out.print("JTicket: Verifying database for readiness ...");
 		
 		//FIXME: to suppress strange warning during startup: 
 		//Registered driver with driverClassName=org.apache.derby.jdbc.EmbeddedDriver was not found, trying direct instantiation.
