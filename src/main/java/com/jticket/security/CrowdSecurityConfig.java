@@ -51,7 +51,7 @@ public class CrowdSecurityConfig {
 
 
     @Bean
-    public SecurityFilterChain filterChainBackOffice(HttpSecurity http) throws Exception {
+    SecurityFilterChain filterChainBackOffice(HttpSecurity http) throws Exception {
 
             http.authorizeHttpRequests(authorizeRequests -> authorizeRequests
                 .requestMatchers("/login", "/login?error", "/login?logout").permitAll()
@@ -82,7 +82,7 @@ public class CrowdSecurityConfig {
     }
 
     @Bean
-    public CrowdClientFactory crowdClientFactory() {
+    CrowdClientFactory crowdClientFactory() {
         if (crowdClientFactory != null)
             return crowdClientFactory;
 
@@ -91,7 +91,7 @@ public class CrowdSecurityConfig {
     }
 
     @Bean
-    public CrowdClient crowdClient() {
+    CrowdClient crowdClient() {
         if (crowdClient != null)
             return crowdClient;
 
@@ -100,7 +100,7 @@ public class CrowdSecurityConfig {
     }
 
     @Bean
-    public CrowdHttpValidationFactorExtractor validationFactorExtractor() {
+    CrowdHttpValidationFactorExtractor validationFactorExtractor() {
         if (validationFactorExtractor != null)
             return validationFactorExtractor;
 
@@ -109,7 +109,7 @@ public class CrowdSecurityConfig {
     }
 
     @Bean
-    public CrowdHttpTokenHelper tokenHelper() {
+    CrowdHttpTokenHelper tokenHelper() {
         if (tokenHelper != null)
             return tokenHelper;
 
@@ -118,7 +118,7 @@ public class CrowdSecurityConfig {
     }
 
     @Bean
-    public CrowdHttpAuthenticator crowdHttpAuthenticator() {
+    CrowdHttpAuthenticator crowdHttpAuthenticator() {
         if (crowdHttpAuthenticator != null)
             return crowdHttpAuthenticator;
 
@@ -127,7 +127,7 @@ public class CrowdSecurityConfig {
     }
 
     @Bean
-    public CrowdUserDetailsService crowdUserDetailsService() {
+    CrowdUserDetailsService crowdUserDetailsService() {
         if (crowdUserDetailsService != null)
             return crowdUserDetailsService;
 
@@ -140,7 +140,7 @@ public class CrowdSecurityConfig {
     }
 
     @Bean
-    public CrowdAuthenticationProvider crowdAuthenticationProvider() {
+    CrowdAuthenticationProvider crowdAuthenticationProvider() {
         if (crowdAuthenticationProvider != null)
             return crowdAuthenticationProvider;
 

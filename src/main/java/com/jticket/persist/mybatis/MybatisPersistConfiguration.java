@@ -32,7 +32,7 @@ public class MybatisPersistConfiguration {
     private SqlSessionFactory sqlSessionFactory;
 
     @Bean
-    public VenuesRepository getVenuesRepository() {
+    VenuesRepository getVenuesRepository() {
         return (VenuesRepository) Proxy.newProxyInstance(
                 VenuesRepository.class.getClassLoader(),
                 new Class<?>[]{VenuesRepository.class},
@@ -40,7 +40,7 @@ public class MybatisPersistConfiguration {
     }
 
     @Bean
-    public EventsRepository getEventsRepository() {
+    EventsRepository getEventsRepository() {
         return (EventsRepository) Proxy.newProxyInstance(
                 EventsRepository.class.getClassLoader(),
                 new Class<?>[]{EventsRepository.class},
@@ -48,7 +48,7 @@ public class MybatisPersistConfiguration {
     }
 
     @Bean
-    public SeatsRepository getSeatsRepository() {
+    SeatsRepository getSeatsRepository() {
         return (SeatsRepository) Proxy.newProxyInstance(
                 SeatsRepository.class.getClassLoader(),
                 new Class<?>[]{SeatsRepository.class},
@@ -56,7 +56,7 @@ public class MybatisPersistConfiguration {
     }
 
     @Bean
-    public OrdersRepository getOrdersRepository() {
+    OrdersRepository getOrdersRepository() {
         return (OrdersRepository) Proxy.newProxyInstance(
                 OrdersRepository.class.getClassLoader(),
                 new Class<?>[]{OrdersRepository.class},

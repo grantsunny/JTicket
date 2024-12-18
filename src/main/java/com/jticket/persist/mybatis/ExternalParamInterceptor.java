@@ -1,5 +1,7 @@
 package com.jticket.persist.mybatis;
 
+import java.util.Map;
+
 import org.apache.ibatis.executor.Executor;
 import org.apache.ibatis.mapping.MappedStatement;
 import org.apache.ibatis.plugin.Interceptor;
@@ -11,10 +13,8 @@ import org.apache.ibatis.session.RowBounds;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
 
-import java.util.Map;
-
 /**
- * This is to workaround (or enhance) the situation that Ignite does not support view.
+ * This is to workaround (or enhance) the situation that some DB system (such as Ignite) does not support view.
  * So we are using the way of embedded table to simulate this
  */
 @Component
@@ -29,13 +29,15 @@ public class ExternalParamInterceptor implements Interceptor {
     public void setSqlParams(Map<String, String> setSqlParams) {
         this.sqlParams = setSqlParams;
     }
+    
 
     @Override
     public Object intercept(Invocation invocation) throws Throwable {
         Object paramsRaw = invocation.getArgs()[1];
         if (paramsRaw != null)
             if (paramsRaw instanceof Map) {
-                Map<String, Object> params = (Map<String, Object>) paramsRaw;
+                @SuppressWarnings("unchecked")
+				Map<String, Object> params = (Map<String, Object>) paramsRaw;
                 params.putAll(sqlParams);
             }
 

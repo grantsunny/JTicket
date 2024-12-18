@@ -29,7 +29,8 @@ public class MetadataHandler extends BaseTypeHandler<Map<String, Object>> {
         return metadataJson;
     }
 
-    private Map<String, Object> parseMetadata(String rawMetadata) {
+    @SuppressWarnings("unchecked")
+	private Map<String, Object> parseMetadata(String rawMetadata) {
         Map<String, Object> metadata;
         try {
             metadata = new ObjectMapper().readValue(

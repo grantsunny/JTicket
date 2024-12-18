@@ -54,7 +54,8 @@ public class JdbcHelper {
         return metadataJson;
     }
 
-    private Map<String, Object> parseMetadata(String rawMetadata) {
+    @SuppressWarnings("unchecked")
+	private Map<String, Object> parseMetadata(String rawMetadata) {
         Map<String, Object> metadata;
         try {
             metadata = new ObjectMapper().readValue(
@@ -78,14 +79,7 @@ public class JdbcHelper {
             while (rs.next()) {
                 String id = rs.getString("id");
                 String name = rs.getString("name");
-                Map<String, Object> metadata;
-                try {
-                    metadata = new ObjectMapper().readValue(
-                            rs.getString("metadata"),
-                            Map.class);
-                } catch (JsonProcessingException ex) {
-                    metadata = new HashMap<>();
-                }
+                Map<String, Object> metadata = parseMetadata(rs.getString("metadata"));
 
                 venues.add(new Venue().id(UUID.fromString(id))
                         .name(name)
@@ -110,14 +104,7 @@ public class JdbcHelper {
                 if (rs.next()) {
                     String venueId = rs.getString("venueId");
                     String name = rs.getString("name");
-                    Map<String, Object> metadata;
-                    try {
-                        metadata = new ObjectMapper().readValue(
-                                rs.getString("metadata"),
-                                Map.class);
-                    } catch (JsonProcessingException ex) {
-                        metadata = new HashMap<>();
-                    }
+                    Map<String, Object> metadata = parseMetadata(rs.getString("metadata"));
 
                     return new Venue().id(UUID.fromString(venueId))
                             .name(name)
@@ -140,13 +127,7 @@ public class JdbcHelper {
             try (ResultSet rs = pstmt.executeQuery()) {
                 if (rs.next()) {
                     name = rs.getString("name");
-                    try {
-                        metadata = new ObjectMapper().readValue(
-                                rs.getString("metadata"),
-                                Map.class);
-                    } catch (JsonProcessingException ex) {
-                        metadata = new HashMap<>();
-                    }
+                    metadata = parseMetadata(rs.getString("metadata"));
                     return new Venue().id(venueId)
                             .name(name)
                             .metadata(metadata);
@@ -247,14 +228,7 @@ public class JdbcHelper {
                     String id = rs.getString("id");
                     String name = rs.getString("name");
 
-                    Map<String, Object> metadata;
-                    try {
-                        metadata = new ObjectMapper().readValue(
-                                rs.getString("metadata"),
-                                Map.class);
-                    } catch (JsonProcessingException ex) {
-                        metadata = new HashMap<>();
-                    }
+                    Map<String, Object> metadata = parseMetadata(rs.getString("metadata"));
 
                     areas.add(new Area().id(UUID.fromString(id))
                             .name(name)
@@ -276,14 +250,7 @@ public class JdbcHelper {
                 if (rs.next()) {
                     String venueId = rs.getString("venueId");
                     String name = rs.getString("name");
-                    Map<String, Object> metadata;
-                    try {
-                        metadata = new ObjectMapper().readValue(
-                                rs.getString("metadata"),
-                                Map.class);
-                    } catch (JsonProcessingException ex) {
-                        metadata = new HashMap<>();
-                    }
+                    Map<String, Object> metadata = parseMetadata(rs.getString("metadata"));
 
                     return new Area().id(UUID.fromString(areaId))
                             .name(name)
@@ -363,14 +330,7 @@ public class JdbcHelper {
                     boolean available = rs.getBoolean("available");
                     String areaId = rs.getString("areaId");
 
-                    Map<String, Object> metadata;
-                    try {
-                        metadata = new ObjectMapper().readValue(
-                                rs.getString("metadata"),
-                                Map.class);
-                    } catch (JsonProcessingException ex) {
-                        metadata = new HashMap<>();
-                    }
+                    Map<String, Object> metadata = parseMetadata(rs.getString("metadata"));
 
                     seats.add(new Seat().id(UUID.fromString(id))
                             .venueId(venueId)
@@ -409,14 +369,7 @@ public class JdbcHelper {
                     int col = rs.getInt("col");
                     boolean available = rs.getBoolean("available");
 
-                    Map<String, Object> metadata;
-                    try {
-                        metadata = new ObjectMapper().readValue(
-                                rs.getString("metadata"),
-                                Map.class);
-                    } catch (JsonProcessingException ex) {
-                        metadata = new HashMap<>();
-                    }
+                    Map<String, Object> metadata = parseMetadata(rs.getString("metadata"));
 
                     seats.add(new Seat().id(UUID.fromString(id))
                                     .venueId(venueId)
@@ -448,14 +401,7 @@ public class JdbcHelper {
                     int col = rs.getInt("col");
                     boolean available = rs.getBoolean("available");
 
-                    Map<String, Object> metadata;
-                    try {
-                        metadata = new ObjectMapper().readValue(
-                                rs.getString("metadata"),
-                                Map.class);
-                    } catch (JsonProcessingException ex) {
-                        metadata = new HashMap<>();
-                    }
+                    Map<String, Object> metadata = parseMetadata(rs.getString("metadata"));
 
                     return new Seat().id(seatId)
                             .areaId(UUID.fromString(areaId))
@@ -568,14 +514,7 @@ public class JdbcHelper {
                     String venueId = rs.getString("venueId");
                     String name = rs.getString("name");
 
-                    Map<String, Object> metadata;
-                    try {
-                        metadata = new ObjectMapper().readValue(
-                                rs.getString("metadata"),
-                                Map.class);
-                    } catch (JsonProcessingException ex) {
-                        metadata = new HashMap<>();
-                    }
+                    Map<String, Object> metadata = parseMetadata(rs.getString("metadata"));
 
                     return new Event()
                             .id(eventId)
@@ -596,14 +535,7 @@ public class JdbcHelper {
                 String venueId = rs.getString("venueId");
                 String name = rs.getString("name");
 
-                Map<String, Object> metadata;
-                try {
-                    metadata = new ObjectMapper().readValue(
-                            rs.getString("metadata"),
-                            Map.class);
-                } catch (JsonProcessingException ex) {
-                    metadata = new HashMap<>();
-                }
+                Map<String, Object> metadata = parseMetadata(rs.getString("metadata"));
 
                 events.add(new Event()
                         .id(id == null ? null : UUID.fromString(id))
