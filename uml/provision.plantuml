@@ -1,0 +1,37 @@
+@startuml
+mainframe Use case: Provision
+
+actor Operator
+Participant templateEndpoint
+Participant venueEndpoint
+Participant eventEndpoint
+
+
+Operator --> templateEndpoint: GET /template
+note over Operator, templateEndpoint
+edit the excel template to fill event
+end note
+Operator --> templateEndpoint: POST /template
+Operator --> venueEndpoint: GET /venues
+Operator --> venueEndpoint: GET /venues/{venueId}
+Operator --> venueEndpoint: GET /venues/{venueId}/svg
+Operator --> venueEndpoint: GET /venues/{venueId}/areas
+Operator --> venueEndpoint: GET /venues/{venueId}/areas/{areaId}
+Operator --> venueEndpoint: GET /venues/{venueId}/areas/{areaId}/seats
+Operator --> venueEndpoint: GET /venues/{venueId}/seats
+Operator --> venueEndpoint: GET /venues/{venueId}/seats?areaId={areaId}
+Operator --> venueEndpoint: GET /venues/{venueId}/seats/{seatId}
+
+Operator --> eventEndpoint: POST /events
+Operator --> eventEndpoint: GET /events/{eventId}
+Operator --> eventEndpoint: POST /events/{eventId}/prices
+Operator --> eventEndpoint: PATCH /events/{eventId}/pricing
+Operator --> eventEndpoint: PATCH /events/{eventId}/areas/{areaId}/pricing
+Operator --> eventEndpoint: PATCH /events/{eventId}/seats/{seatId}/pricing
+
+Operator --> eventEndpoint: POST /events/{eventId}/sessions
+Operator --> eventEndpoint: GET /events/{eventId}/sessions/{sessionId}
+
+
+@enduml
+
