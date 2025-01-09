@@ -1,0 +1,46 @@
+@startuml
+mainframe ticketing checkin at entry of venue
+
+actor Customer
+actor Attendance
+participant orderEndpoint
+participant eventEndpoint
+
+group display the ticket token (QR code)  [token is in JWT format]
+Customer --> orderEndpoint: GET /orders
+Customer --> orderEndpoint: GET /orders/{orderId}
+Customer --> orderEndpoint: POST /orders/{orderId}/token
+note over Customer, orderEndpoint
+seatId shall be supplied when applying token, 
+as one order can contain multiple seats
+end note
+
+
+end
+
+group checkin for specified event and session
+Attendance --> eventEndpoint: GET /events/{eventId}
+Attendance --> eventEndpoint: GET /events/{eventId}/sessions
+Attendance --> eventEndpoint: GET /events/{eventId}/sessions/{sessionId}
+Attendance --> Customer: Scan the QR code for token
+
+
+Attendance --> eventEndpoint: POST /events/{eventId}/sessions/{sessionId}
+note over Attendance, eventEndpoint
+Supply token, event and session to the service for checkin
+System will check the JWT timestamp for token expiration
+Upon successful checking in, checkinTimestamp of corresponding seat will be updated.
+end note
+
+
+Customer --> orderEndpoint: GET /orders/{orderId}
+note over Customer, orderEndpoint
+refer to Order.seats.checkinTimeStamp in returned payload
+end note
+
+end
+
+
+
+
+@enduml

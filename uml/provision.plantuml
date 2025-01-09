@@ -1,5 +1,5 @@
 @startuml
-mainframe Use case: Provision
+mainframe Provision of event for ticketing 
 
 actor Operator
 Participant templateEndpoint
@@ -9,7 +9,8 @@ Participant eventEndpoint
 
 Operator --> templateEndpoint: GET /template
 note over Operator, templateEndpoint
-edit the excel template to fill event
+Edit the excel template to setup event, 
+design venue and seat layout
 end note
 Operator --> templateEndpoint: POST /template
 Operator --> venueEndpoint: GET /venues
@@ -22,16 +23,22 @@ Operator --> venueEndpoint: GET /venues/{venueId}/seats
 Operator --> venueEndpoint: GET /venues/{venueId}/seats?areaId={areaId}
 Operator --> venueEndpoint: GET /venues/{venueId}/seats/{seatId}
 
+group create event w/ venue [copy pricing from existing event via X-Copy-From-Id]
 Operator --> eventEndpoint: POST /events
 Operator --> eventEndpoint: GET /events/{eventId}
+end
+
+group configure pricing at global, area or seat level
 Operator --> eventEndpoint: POST /events/{eventId}/prices
 Operator --> eventEndpoint: PATCH /events/{eventId}/pricing
 Operator --> eventEndpoint: PATCH /events/{eventId}/areas/{areaId}/pricing
 Operator --> eventEndpoint: PATCH /events/{eventId}/seats/{seatId}/pricing
+end 
 
+group add a session with timeframe to given event
 Operator --> eventEndpoint: POST /events/{eventId}/sessions
 Operator --> eventEndpoint: GET /events/{eventId}/sessions/{sessionId}
-
+end
 
 @enduml
 
