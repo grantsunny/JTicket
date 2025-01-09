@@ -384,6 +384,41 @@ public class JdbcHelper {
         return seats;
     }
 
+    
+    public Seat loadSeat(UUID venueId, UUID seatId) throws SQLException {
+    	
+        String sql = "SELECT areaId, TKT.Areas.venueId, row, col, available, TKT.Seats.metadata FROM TKT.Seats " +
+                "INNER JOIN TKT.Areas ON TKT.Areas.id = TKT.Seats.areaId " +
+                "AND TKT.Seats.id = ? AND TKT.Areas.venueId = ?";
+
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            pstmt.setString(1, venueId.toString());
+            pstmt.setString(2, seatId.toString());
+            
+            try (ResultSet rs = pstmt.executeQuery()) {
+                if (rs.next()) {
+                    String areaId = rs.getString("areaId");
+                    int row = rs.getInt("row");
+                    int col = rs.getInt("col");
+                    boolean available = rs.getBoolean("available");
+
+                    Map<String, Object> metadata = parseMetadata(rs.getString("metadata"));
+
+                    return new Seat().id(seatId)
+                            .areaId(UUID.fromString(areaId))
+                            .venueId(venueId)
+                            .row(row)
+                            .col(col)
+                            .available(available)
+                            .metadata(metadata);
+                }
+            }
+        }
+        return null;
+    }
+    
     public Seat loadSeat(UUID seatId) throws SQLException {
         String sql = "SELECT areaId, TKT.Areas.venueId, row, col, available, TKT.Seats.metadata FROM TKT.Seats " +
                 "INNER JOIN TKT.Areas ON TKT.Areas.id = TKT.Seats.areaId " +

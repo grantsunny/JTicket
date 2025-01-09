@@ -1,11 +1,17 @@
 package com.jticket.persist.mybatis;
 
-import com.jticket.api.model.Seat;
-import com.jticket.persist.mybatis.handlers.MetadataHandler;
-import org.apache.ibatis.annotations.*;
-
 import java.util.List;
 import java.util.UUID;
+
+import org.apache.ibatis.annotations.Insert;
+import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Param;
+import org.apache.ibatis.annotations.Result;
+import org.apache.ibatis.annotations.Results;
+import org.apache.ibatis.annotations.Select;
+
+import com.jticket.api.model.Seat;
+import com.jticket.persist.mybatis.handlers.MetadataHandler;
 
 @Mapper
 public interface SeatsMapper {
@@ -18,6 +24,12 @@ public interface SeatsMapper {
             "AND Seats.id = #{seatId}")
     @Results({@Result(property = "metadata", column = "metadata", typeHandler = MetadataHandler.class)})
     Seat loadSeat(@Param("seatId") UUID seatId);
+    
+    @Select("SELECT areaId, Areas.venueId, row, col, available, Seats.metadata FROM Seats " +
+            "INNER JOIN Areas ON Areas.id = Seats.areaId " +
+            "AND Seats.id = #{seatId} AND Areas.venueId = #{venueId}")
+    @Results({@Result(property = "metadata", column = "metadata", typeHandler = MetadataHandler.class)})    
+    Seat loadSeat(@Param("venueId") UUID venueId, @Param("seatId") UUID seatId);
 
     @Select("SELECT id, areaId, venueId, row, col, available, metadata " +
             "FROM ${SEATDETAILS} WHERE venueId = #{venueId}")

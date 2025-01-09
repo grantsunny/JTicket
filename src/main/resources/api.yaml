@@ -876,6 +876,68 @@ paths:
         404:
           description: Area not found
 
+  /venues/{venueId}/seats:
+    get: 
+      summary: List all seats of venue
+      operationId: getSeatsInVenue
+      description: Retrieve a list of seats within a venue. 
+      parameters:
+        - name: venueId
+          in: path
+          required: true
+          description: Unique ID of the venue
+          schema:
+            type: string
+            format: uuid
+        - name: areaId
+          in: query
+          required: false
+          description: Unique ID of the area
+          schema:
+            type: string
+            format: uuid
+      responses:
+        200:
+          description: A list of seats within the venue or area (if query param specified)
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Seat'
+        404:
+          description: Area or Venue not found
+                    
+  /venues/{venueId}/seats/{seatId}:  
+    get:
+      summary: Get a specific seat within Venue
+      operationId: getSeatInVenue
+      description: Retrieve details of a specific seat within Venue by its UUID.
+      parameters:
+        - name: venueId
+          in: path
+          required: true
+          description: Unique ID of the venue
+          schema:
+            type: string
+            format: uuid        
+        - name: seatId
+          in: path
+          required: true
+          description: Unique UUID of the seat
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Details of a specific seat
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Seat'
+        '404':
+          description: Seat not found
+          
   /venues/{venueId}/areas/{areaId}/seats:
     get:
       summary: List seats in an area of a venue

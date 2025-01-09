@@ -1,17 +1,30 @@
 package com.jticket.persist.mybatis;
 
-import com.jticket.api.model.*;
-import com.jticket.persist.PersistenceException;
-import com.jticket.persist.mybatis.handlers.MetadataHandler;
-import org.apache.ibatis.annotations.*;
-import org.springframework.transaction.annotation.Transactional;
-
 import java.io.File;
 import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+
+import org.apache.ibatis.annotations.Delete;
+import org.apache.ibatis.annotations.Insert;
+import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Param;
+import org.apache.ibatis.annotations.Result;
+import org.apache.ibatis.annotations.Results;
+import org.apache.ibatis.annotations.Select;
+import org.apache.ibatis.annotations.Update;
+import org.springframework.transaction.annotation.Transactional;
+
+import com.jticket.api.model.Area;
+import com.jticket.api.model.Event;
+import com.jticket.api.model.Price;
+import com.jticket.api.model.Seat;
+import com.jticket.api.model.Session;
+import com.jticket.api.model.Venue;
+import com.jticket.persist.PersistenceException;
+import com.jticket.persist.mybatis.handlers.MetadataHandler;
 
 @Mapper
 public interface EventsMapper {
