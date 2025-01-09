@@ -42,6 +42,17 @@ As they are both in-memory SQL database, we could feel the power
 of database without adding too much redundant cache and way to keep consistence in application logic. This is the right 
 way to use technologies I believe! 
 
+## How it works (API flow)
+
+### Ticket provision
+![Provision of event](https://www.plantuml.com/plantuml/proxy?cache=no&src=https://raw.githubusercontent.com/grantsunny/JTicket/refs/heads/main/uml/provision.plantuml)
+
+### Ticket purchase
+![Provision of event](https://www.plantuml.com/plantuml/proxy?cache=no&src=https://raw.githubusercontent.com/grantsunny/JTicket/refs/heads/main/uml/order.plantuml)
+
+### Ticket checkin
+![Provision of event](https://www.plantuml.com/plantuml/proxy?cache=no&src=https://raw.githubusercontent.com/grantsunny/JTicket/refs/heads/main/uml/checkin.plantuml)
+
 ## Authentication
 There is build-in mechanism based on crowd in production environment. 
 The back-office will therefore require authentication to function, whereas API require HTTP-BASIC auth to be used as well.
