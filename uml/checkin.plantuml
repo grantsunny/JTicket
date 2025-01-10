@@ -2,7 +2,7 @@
 mainframe ticketing checkin at entry of venue
 
 actor Customer
-actor Attendance
+actor Attendant
 participant orderEndpoint
 participant eventEndpoint
 
@@ -19,13 +19,13 @@ end note
 end
 
 group checkin for specified event and session
-Attendance --> eventEndpoint: GET /events/{eventId}
-Attendance --> eventEndpoint: GET /events/{eventId}/sessions
-Attendance --> eventEndpoint: GET /events/{eventId}/sessions/{sessionId}
-Attendance --> Customer: Scan the QR code for token
+Attendant --> eventEndpoint: GET /events/{eventId}
+Attendant --> eventEndpoint: GET /events/{eventId}/sessions
+Attendant --> eventEndpoint: GET /events/{eventId}/sessions/{sessionId}
+Attendant --> Customer: Scan the QR code for token
 
 
-Attendance --> eventEndpoint: POST /events/{eventId}/sessions/{sessionId}
+Attendant --> eventEndpoint: POST /events/{eventId}/sessions/{sessionId}
 note over Attendance, eventEndpoint
 Supply token, event and session to the service for checkin
 System will check the JWT timestamp for token expiration

@@ -28,13 +28,13 @@ Using `java -jar` or `docker run` to start the ticketing system.
 The back office UI will be listening at port of %HOST%/8080 and APIs will be available at %HOST/api. 
 Specified to API, you can download the swagger spec (OpenAPI v3) via endpoint of /api/swagger.
 There are two profiles for development and production, the development profile uses Apache Derby as persistence layer,
-whereas the production profile uses Apache Ignite.
+whereas the production profile uses CockroachDB (compliance with PostgreSQL).
 
-Development mode (with Derby as in memory database, swagger enabled, security disabled)
+Development mode (Derby as in memory database, swagger enabled, security disabled)
 ```
 java -Dspring.profiles.active=dev -jar jticket-VERSION.jar
 ```
-Production mode (Ignite as in memory database, swagger disabled, security enabled)
+Production mode (CockroachDB as in memory database, swagger disabled, security enabled)
 ```
 java -Dspring.profiles.active=production -jar jticket-VERSION.jar
 ```
@@ -43,6 +43,12 @@ of database without adding too much redundant cache and way to keep consistence 
 way to use technologies I believe! 
 
 ## How it works (API flow)
+
+We assume following roles in the context of JTicket. 
+* **Operator**: On behalf the event organizer, maintain and design the venue and seat layout, supply the metadata of event and session, define the pricing of a given seat at venue, area or seat level.  
+* **Customer**: The audience of the event, will check the overview and make seat selection and then place order to buy a ticket for one or more seats. 
+* **Attendant**: Could be a human or a gateway equipment. Check the evidence of attendance (mostly a QR code) on a ticket before approving the ticket holder to enter the venue for a event.  
+* **PaymentAgent**: A system handles the payment and cash-in from customer, expect to trigger API of JTicket upon a successful payment for a given order. Out of the scope of JTicket. 
 
 ### Ticket provision
 ![Provision of event](https://www.plantuml.com/plantuml/proxy?cache=no&src=https://raw.githubusercontent.com/grantsunny/JTicket/refs/heads/main/uml/provision.plantuml)
@@ -63,12 +69,4 @@ the only sharing points among working nodes. So as long as we can make Ignite cl
 work great accordingly. 
 
 ## What's next
-Considering the strategy of the open-source project Apache Ignite might move to another approach, we are considering to switch
-to another longer term strategy to build our in-memory cache. Now CockroachDB is becoming a candidate. Whereas it is not JVM 
-based implementation some side-car based implementation might needed. 
-
-The current design is to introduce side-car mechanism and deploy the ticketing service and data grid within one Pod, but two containers. 
-Key technologies is to have CockroachDB container becoming headless service (clusterIP: None) in kubernetes. 
-
-* https://github.com/cockroachdb/cockroach
-* https://hub.docker.com/r/cockroachdb/cockroach
+De-couple from atlassian crowd which has concerns on working together with Apache license. Instead, integrating with standard OIDC with one example integration of auth0. 

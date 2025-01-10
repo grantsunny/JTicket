@@ -2,6 +2,7 @@
 mainframe Purchasing of event ticket
 
 actor customer
+boundary paymentAgent
 participant eventEndpoint
 participant orderEndpoint
 
@@ -23,7 +24,8 @@ group create order and accomplish payment [x-ticket-userId in cookie or header t
 customer --> orderEndpoint: GET /orders
 customer --> orderEndpoint: POST /orders
 customer --> orderEndpoint: GET /orders/{orderId}
-customer --> orderEndpoint: PATCH /orders/{orderId}
+customer --> paymentAgent: Initialize Customer Payment
+paymentAgent --> orderEndpoint: PATCH /orders/{orderId}
 end
 
 @enduml
