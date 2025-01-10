@@ -16,7 +16,7 @@ spring:
     init:
       mode: always
       schema-locations: classpath:postgresql.sql
-      continue-on-error: false
+      continue-on-error: true
 ticket:
   user-token:
     required: true

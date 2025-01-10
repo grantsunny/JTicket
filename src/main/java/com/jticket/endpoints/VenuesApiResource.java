@@ -91,7 +91,7 @@ public class VenuesApiResource implements VenuesApi {
 	@Override
 	public Response getSeatInVenue(UUID venueId, UUID seatId) {
 		try {
-			Seat seat = seatsRepository.loadSeat(venueId, seatId);
+			Seat seat = seatsRepository.loadSeatInVenue(venueId, seatId);
 			if (seat != null)
 				return Response.ok(seat).build();
 			else

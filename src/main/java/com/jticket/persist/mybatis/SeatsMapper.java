@@ -29,7 +29,7 @@ public interface SeatsMapper {
             "INNER JOIN Areas ON Areas.id = Seats.areaId " +
             "AND Seats.id = #{seatId} AND Areas.venueId = #{venueId}")
     @Results({@Result(property = "metadata", column = "metadata", typeHandler = MetadataHandler.class)})    
-    Seat loadSeat(@Param("venueId") UUID venueId, @Param("seatId") UUID seatId);
+    Seat loadSeatInVenue(@Param("venueId") UUID venueId, @Param("seatId") UUID seatId);
 
     @Select("SELECT id, areaId, venueId, row, col, available, metadata " +
             "FROM ${SEATDETAILS} WHERE venueId = #{venueId}")

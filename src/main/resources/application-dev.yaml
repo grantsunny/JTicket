@@ -13,7 +13,7 @@ spring:
     init:
       mode: embedded
       schema-locations: classpath:derby.sql
-      continue-on-error: false
+      continue-on-error: true
 
 springdoc:
   swagger-ui:

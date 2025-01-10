@@ -385,7 +385,7 @@ public class JdbcHelper {
     }
 
     
-    public Seat loadSeat(UUID venueId, UUID seatId) throws SQLException {
+    public Seat loadSeatInVenue(UUID venueId, UUID seatId) throws SQLException {
     	
         String sql = "SELECT areaId, TKT.Areas.venueId, row, col, available, TKT.Seats.metadata FROM TKT.Seats " +
                 "INNER JOIN TKT.Areas ON TKT.Areas.id = TKT.Seats.areaId " +
