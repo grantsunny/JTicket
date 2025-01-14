@@ -9,6 +9,33 @@ spring:
       static-locations: classpath:/static/
   jersey:
     application-path: /api/
+
+  security:
+    oauth2:
+      client:
+        registration:
+          jticket-auth0-demo:
+            client-id: 
+            client-secret: 
+            client-authentication-method: 
+            authorization-grant-type: authorization_code
+            redirect-uri: http://127.0.0.1:8080/login/oauth2/code/auth0
+            scope: openid profile email
+            provider: auth0
+        provider:
+          auth0:
+            authorization-uri: https://grantsunny.auth0.com/authorize
+            token-uri: https://grantsunny.auth0.com/oauth/token
+            user-name-attribute: sub
+            
+            #To evaluate the signature of the JWT token via public key
+            jwk-set-uri: https://grantsunny.auth0.com/.well-known/jwks.json
+            
+            #UserInfo endpoint can be saved in context of JWT token. 
+            user-info-uri: https://grantsunny.auth0.com/userinfo
+
+    
+    
 crowd:
   application:
     name: stoneticket

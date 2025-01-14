@@ -44,11 +44,21 @@ way to use technologies I believe!
 
 ## How it works (API flow)
 
+### Roles 
 We assume following roles in the context of JTicket. 
 * **Operator**: On behalf the event organizer, maintain and design the venue and seat layout, supply the metadata of event and session, define the pricing of a given seat at venue, area or seat level.  
 * **Customer**: The audience of the event, will check the overview and make seat selection and then place order to buy a ticket for one or more seats. 
 * **Attendant**: Could be a human or a gateway equipment. Check the evidence of attendance (mostly a QR code) on a ticket before approving the ticket holder to enter the venue for a event.  
 * **PaymentAgent**: A system handles the payment and cash-in from customer, expect to trigger API of JTicket upon a successful payment for a given order. Out of the scope of JTicket. 
+
+#### Permissions mapping with OAuth2 scope
+
+| Name          | OAuth2 Scope                                       |
+|---------------|----------------------------------------------------|
+| Operator      | template:write, event:write, venue:read, seat:read |
+| Customer      | event:read, order:write                            |
+| Attendant     | event:write                                        |
+| PaymentAgent  | order:write                                        |
 
 ### Ticket provision
 ![Provision of event](https://www.plantuml.com/plantuml/proxy?cache=no&src=https://raw.githubusercontent.com/grantsunny/JTicket/refs/heads/main/uml/provision.plantuml)
