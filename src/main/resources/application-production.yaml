@@ -3,20 +3,20 @@ spring:
     oauth2:
       resourceserver:
         jwt:
-          issuer-uri: https://grantsunny.auth0.com/
-          audiences: jticket-auth0-demo
+          issuer-uri: ${JTICKET_AUTH0_ISSUER:https://grantsunny.auth0.com/}
+          audiences: ${JTICKET_AUTH0_AUDIENCE:jticket-auth0-demo}
       client:
         registration:
           jticket:
             provider: auth0
-            client-id: sGIuOL9U1DtpD39kofVqAEdSW7BaLdRb
-            client-secret: pJeoD-UJQ559icUZHA15J96-rsza8Xao4i8HU6oKzwrdhCEtfTXZXxRUkfHIK3xa
+            client-id: ${JTICKET_AUTH0_CLIENT_ID:sGIuOL9U1DtpD39kofVqAEdSW7BaLdRb}
+            client-secret: ${JTICKET_AUTH0_CLIENT_SECRET:pJeoD-UJQ559icUZHA15J96-rsza8Xao4i8HU6oKzwrdhCEtfTXZXxRUkfHIK3xa}
             authorization-grant-type: authorization_code
             redirect-uri: "{baseUrl}/login/oauth2/code/{registrationId}"
             scope: openid,profile,email
         provider:
           auth0:
-            issuer-uri: https://grantsunny.auth0.com/
+            issuer-uri: ${JTICKET_AUTH0_ISSUER:https://grantsunny.auth0.com/}
   h2:
     console:
       enabled: false
@@ -37,7 +37,7 @@ spring:
       continue-on-error: true
 ticket:
   oauth2:
-    audience: jticket-auth0-demo
+    audience: ${JTICKET_AUTH0_AUDIENCE:jticket-auth0-demo}
   user-token:
     required: true
     path: /api/orders
