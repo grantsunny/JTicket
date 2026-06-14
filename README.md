@@ -70,21 +70,25 @@ We assume following roles in the context of JTicket.
 ![Provision of event](https://www.plantuml.com/plantuml/proxy?cache=no&src=https://raw.githubusercontent.com/grantsunny/JTicket/refs/heads/main/uml/checkin.plantuml)
 
 ## Authentication
-Production uses standard OAuth 2.0 and OpenID Connect with Auth0 as the example provider.
+Production uses standard OAuth 2.0 and OpenID Connect. Any compatible OIDC provider can be used; Auth0 is the
+illustrated OIDC provider in this guide.
 The back-office signs users in through the authorization-code flow and keeps the authenticated user in an HTTP session.
 API clients can authenticate independently with JWT bearer access tokens. Browser requests to the API can use the
 same authenticated session as the back-office.
 
-## Configure Auth0
+## Configure an OIDC provider
 
-JTicket uses Auth0 for both browser login and API access:
+JTicket uses an OIDC provider for both browser login and API access:
 
 * Back-office users sign in through OpenID Connect and use an HTTP session.
 * API clients send an OAuth2 JWT access token.
 
-### 1. Create an Auth0 application
+The steps below use Auth0 as the illustrated OIDC provider. Equivalent application, API, user, role, and permission
+settings can be configured in another compatible provider, although dashboard names and permission mapping may differ.
 
-Under **Applications > Applications**, create a **Regular Web Application** and add:
+### 1. Create an OIDC application
+
+In Auth0, under **Applications > Applications**, create a **Regular Web Application** and add:
 
 ```text
 http://127.0.0.1:8080/login/oauth2/code/jticket
@@ -92,9 +96,9 @@ http://127.0.0.1:8080/login/oauth2/code/jticket
 
 to **Allowed Callback URLs**. Add the equivalent HTTPS URL for each deployed environment.
 
-### 2. Create the JTicket API
+### 2. Create an API
 
-Under **Applications > APIs**, create an API with:
+In Auth0, under **Applications > APIs**, create an API with:
 
 * Identifier: `jticket-auth0-demo`
 * Signing algorithm: `RS256`
@@ -106,29 +110,29 @@ The API identifier is the audience used by JTicket.
 
 ### 3. Configure users and roles
 
-Create users under **User Management > Users**, create the roles described above, and assign each role its matching API
-permissions. Assign roles to the human users who access JTicket through Universal Login.
+In Auth0, create users under **User Management > Users**, create the roles described above, and assign each role its
+matching API permissions. Assign roles to the human users who access JTicket through Universal Login.
 
 For `PaymentAgent`, use a **Machine to Machine Application** with the Client Credentials flow and grant only
 `order:write`.
 
 ### 4. Configure JTicket
 
-Provide the Auth0 tenant, application credentials, and API identifier through environment variables:
+Provide the OIDC issuer, application credentials, and API audience through environment variables:
 
 ```bash
-export JTICKET_AUTH0_ISSUER=https://YOUR_TENANT.auth0.com/
-export JTICKET_AUTH0_CLIENT_ID=YOUR_CLIENT_ID
-export JTICKET_AUTH0_CLIENT_SECRET=YOUR_CLIENT_SECRET
-export JTICKET_AUTH0_AUDIENCE=YOUR_API_IDENTIFIER
+export JTICKET_OIDC_ISSUER=https://YOUR_OIDC_PROVIDER/
+export JTICKET_OIDC_CLIENT_ID=YOUR_CLIENT_ID
+export JTICKET_OIDC_CLIENT_SECRET=YOUR_CLIENT_SECRET
+export JTICKET_OIDC_AUDIENCE=YOUR_API_AUDIENCE
 ```
 
-`JTICKET_AUTH0_AUDIENCE` must match the Auth0 API identifier.
+For the illustrated Auth0 setup, `JTICKET_OIDC_AUDIENCE` must match the Auth0 API identifier.
 
 ### 5. Verify both login modes
 
 1. Start JTicket with the `production` profile and open the back-office UI.
-2. Sign in through Auth0 and confirm that the UI and its `/api/**` requests use the same session.
+2. Sign in through the configured OIDC provider and confirm that the UI and its `/api/**` requests use the same session.
 3. Call `/api/**` with a JWT access token whose audience is the JTicket API.
 4. Confirm that an API request without a session or token returns `401`.
 

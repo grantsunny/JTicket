@@ -12,16 +12,16 @@ import org.springframework.core.env.MutablePropertySources;
 import org.springframework.core.env.PropertySourcesPropertyResolver;
 import org.springframework.core.io.ClassPathResource;
 
-class Auth0ConfigurationTest {
+class OidcConfigurationTest {
 
     @Test
     void mapsShortEnvironmentVariablesToOAuth2Configuration() throws IOException {
         MutablePropertySources sources = new MutablePropertySources();
         sources.addFirst(new MapPropertySource("environment", Map.of(
-                "JTICKET_AUTH0_ISSUER", "https://test-tenant.auth0.com/",
-                "JTICKET_AUTH0_CLIENT_ID", "test-client",
-                "JTICKET_AUTH0_CLIENT_SECRET", "test-secret",
-                "JTICKET_AUTH0_AUDIENCE", "https://api.jticket.test")));
+                "JTICKET_OIDC_ISSUER", "https://identity.example/",
+                "JTICKET_OIDC_CLIENT_ID", "test-client",
+                "JTICKET_OIDC_CLIENT_SECRET", "test-secret",
+                "JTICKET_OIDC_AUDIENCE", "https://api.jticket.test")));
 
         new YamlPropertySourceLoader()
                 .load("production", new ClassPathResource("application-production.yaml"))
@@ -31,11 +31,14 @@ class Auth0ConfigurationTest {
                 new PropertySourcesPropertyResolver(sources);
 
         assertThat(resolver.getProperty(
-                "spring.security.oauth2.client.provider.auth0.issuer-uri"))
-                .isEqualTo("https://test-tenant.auth0.com/");
+                "spring.security.oauth2.client.provider.oidc.issuer-uri"))
+                .isEqualTo("https://identity.example/");
         assertThat(resolver.getProperty(
                 "spring.security.oauth2.resourceserver.jwt.issuer-uri"))
-                .isEqualTo("https://test-tenant.auth0.com/");
+                .isEqualTo("https://identity.example/");
+        assertThat(resolver.getProperty(
+                "spring.security.oauth2.client.registration.jticket.provider"))
+                .isEqualTo("oidc");
         assertThat(resolver.getProperty(
                 "spring.security.oauth2.client.registration.jticket.client-id"))
                 .isEqualTo("test-client");
