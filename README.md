@@ -75,6 +75,155 @@ The back-office signs users in through the authorization-code flow and keeps the
 API clients can authenticate independently with JWT bearer access tokens. Browser requests to the API can use the
 same authenticated session as the back-office.
 
+## Configure Auth0
+
+JTicket uses Auth0 in two ways:
+
+* The back-office UI uses OpenID Connect authorization-code login. After Auth0 authenticates the user, JTicket creates
+  an HTTP session that also authorizes browser requests to `/api/**`.
+* External API clients use OAuth2 JWT bearer access tokens. Unauthenticated API requests receive HTTP `401` instead of
+  being redirected to the login page.
+
+### Create the back-office application
+
+In the Auth0 Dashboard, go to **Applications > Applications**, create an application, and select
+**Regular Web Application**.
+
+Configure the application as follows:
+
+| Setting | Value |
+|---------|-------|
+| Application type | Regular Web Application |
+| Allowed grant type | Authorization Code |
+| Token endpoint authentication | Client Secret Basic or Client Secret Post |
+| ID token signing algorithm | RS256 |
+| OIDC conformant | Enabled |
+
+Add every JTicket callback URL to **Allowed Callback URLs**. The callback follows Spring Security's standard pattern:
+
+```text
+{baseUrl}/login/oauth2/code/jticket
+```
+
+For example:
+
+```text
+http://127.0.0.1:8080/login/oauth2/code/jticket
+https://jticket.example.com/login/oauth2/code/jticket
+```
+
+Do not use localhost, wildcard, or development callback URLs in a production deployment.
+
+Copy the Auth0 domain, Client ID, and Client Secret into the production configuration. Prefer environment variables or
+a deployment secret rather than changing the committed demonstration values:
+
+```bash
+export SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_AUTH0_ISSUER_URI=https://YOUR_TENANT.auth0.com/
+export SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_JTICKET_CLIENT_ID=YOUR_CLIENT_ID
+export SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_JTICKET_CLIENT_SECRET=YOUR_CLIENT_SECRET
+export SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI=https://YOUR_TENANT.auth0.com/
+```
+
+The `jticket` registration name is significant because it determines both the login route
+`/oauth2/authorization/jticket` and the callback route `/login/oauth2/code/jticket`.
+
+### Configure user accounts
+
+Users are resource owners and are managed by Auth0, not by JTicket. For a simple demonstration, enable an Auth0 database
+connection and create users under **User Management > Users**. The application can also use social, enterprise,
+Active Directory, SAML, or custom database connections supported by Auth0.
+
+Enable the selected connection for the JTicket Regular Web Application. Human **Operator**, **Customer**, and
+**Attendant** users authenticate through Auth0 Universal Login. Their Auth0 session becomes a JTicket HTTP session after
+the authorization-code callback.
+
+### Create the JTicket API
+
+In **Applications > APIs**, create an API with these settings:
+
+| Setting | Demonstration value |
+|---------|---------------------|
+| Name | JTicket API |
+| Identifier | `jticket-auth0-demo` |
+| Signing algorithm | RS256 |
+
+The API Identifier is the OAuth2 audience. It must be identical in both locations:
+
+```yaml
+spring:
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          audiences: jticket-auth0-demo
+
+ticket:
+  oauth2:
+    audience: jticket-auth0-demo
+```
+
+For another Auth0 API identifier, override both values:
+
+```bash
+export SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_AUDIENCES=YOUR_API_IDENTIFIER
+export TICKET_OAUTH2_AUDIENCE=YOUR_API_IDENTIFIER
+```
+
+JTicket adds this audience to browser authorization requests and validates it on bearer access tokens.
+
+### Define permissions and roles
+
+Add the following permissions to the JTicket API:
+
+```text
+template:write
+event:read
+event:write
+venue:read
+seat:read
+order:write
+```
+
+In the API's **RBAC Settings**:
+
+1. Enable **RBAC**.
+2. Enable **Add Permissions in the Access Token**.
+
+The second option adds Auth0's `permissions` claim to access tokens. For bearer-authenticated API requests, JTicket maps
+both OAuth2 `scope` values and Auth0 `permissions` values to Spring Security authorities with the `SCOPE_` prefix. For
+example, `event:write` becomes `SCOPE_event:write`.
+
+Create the following Auth0 roles and assign the listed API permissions:
+
+| Auth0 role | API permissions |
+|------------|-----------------|
+| Operator | `template:write`, `event:write`, `venue:read`, `seat:read` |
+| Customer | `event:read`, `order:write` |
+| Attendant | `event:write` |
+| PaymentAgent | `order:write` |
+
+Assign one or more roles to each user under **User Management > Users > Roles**. Auth0 role permissions are additive.
+
+`PaymentAgent` normally represents another system rather than a human user. For production integration, create a
+separate **Machine to Machine Application**, authorize it for the JTicket API, and grant only `order:write`. It should
+use the Client Credentials flow and call JTicket with the resulting bearer access token.
+
+The current security configuration requires authentication for production pages and APIs but does not yet restrict
+individual endpoints by these authorities. Fine-grained endpoint authorization using the documented permissions is a
+separate follow-up.
+
+### Verify the configuration
+
+1. Start JTicket with the `production` profile.
+2. Open the back-office root URL. JTicket should redirect to Auth0 Universal Login.
+3. Sign in with an Auth0 user. Auth0 should return to `/login/oauth2/code/jticket`.
+4. Confirm that the back-office pages and browser calls to `/api/**` work with the same session.
+5. Request an access token whose audience is the JTicket API identifier.
+6. Call an API with `Authorization: Bearer ACCESS_TOKEN`.
+7. Confirm that a request without a session or bearer token receives `401` for `/api/**`.
+
+The development profile intentionally permits unauthenticated access and does not exercise the Auth0 configuration.
+
 ## Scaling
 There is no complex clustering configuration of scaling out the system as we are leveraging the in-memory database as 
 the only sharing points among working nodes. So as long as we can make Ignite cluster running good, JTicket cluster will 
