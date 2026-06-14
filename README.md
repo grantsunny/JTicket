@@ -70,8 +70,10 @@ We assume following roles in the context of JTicket.
 ![Provision of event](https://www.plantuml.com/plantuml/proxy?cache=no&src=https://raw.githubusercontent.com/grantsunny/JTicket/refs/heads/main/uml/checkin.plantuml)
 
 ## Authentication
-There is build-in mechanism based on crowd in production environment. 
-The back-office will therefore require authentication to function, whereas API require HTTP-BASIC auth to be used as well.
+Production uses standard OAuth 2.0 and OpenID Connect with Auth0 as the example provider.
+The back-office signs users in through the authorization-code flow and keeps the authenticated user in an HTTP session.
+API clients can authenticate independently with JWT bearer access tokens. Browser requests to the API can use the
+same authenticated session as the back-office.
 
 ## Scaling
 There is no complex clustering configuration of scaling out the system as we are leveraging the in-memory database as 
@@ -79,4 +81,4 @@ the only sharing points among working nodes. So as long as we can make Ignite cl
 work great accordingly. 
 
 ## What's next
-De-couple from atlassian crowd which has concerns on working together with Apache license. Instead, integrating with standard OIDC with one example integration of auth0. 
+Add and verify fine-grained endpoint authorization using the documented OAuth2 scopes.

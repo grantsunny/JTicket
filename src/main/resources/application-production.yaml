@@ -1,4 +1,22 @@
 spring:
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: https://grantsunny.auth0.com/
+          audiences: jticket-auth0-demo
+      client:
+        registration:
+          jticket:
+            provider: auth0
+            client-id: sGIuOL9U1DtpD39kofVqAEdSW7BaLdRb
+            client-secret: pJeoD-UJQ559icUZHA15J96-rsza8Xao4i8HU6oKzwrdhCEtfTXZXxRUkfHIK3xa
+            authorization-grant-type: authorization_code
+            redirect-uri: "{baseUrl}/login/oauth2/code/{registrationId}"
+            scope: openid,profile,email
+        provider:
+          auth0:
+            issuer-uri: https://grantsunny.auth0.com/
   h2:
     console:
       enabled: false
@@ -18,6 +36,8 @@ spring:
       schema-locations: classpath:postgresql.sql
       continue-on-error: true
 ticket:
+  oauth2:
+    audience: jticket-auth0-demo
   user-token:
     required: true
     path: /api/orders
