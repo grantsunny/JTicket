@@ -99,7 +99,8 @@ public interface OrdersMapper {
     @Transactional
     default Order loadOrder(UUID orderId) {
         Order order = _loadOrder(orderId);
-        order.setSeats(_loadOrderSeats(orderId));
+        if (order != null)
+            order.setSeats(_loadOrderSeats(orderId));
         return order;
     }
 
@@ -132,7 +133,7 @@ public interface OrdersMapper {
     @Update("UPDATE ORDERS SET PAIDAMOUNT = PAIDAMOUNT + (#{paidAmount} / 100.0) WHERE ID = #{orderId}")
     void updateOrderPayAmount(@Param("orderId") UUID orderId, @Param("paidAmount") Integer paidAmount);
 
-    @Update("UPDATE ORDERS SET METADATA = #{order.metadata, typeHandler=com.jticket.persist.mybatis.handlers.MetadataHandler} WHERE ID = #{order.order}")
+    @Update("UPDATE ORDERS SET METADATA = #{order.metadata, typeHandler=com.jticket.persist.mybatis.handlers.MetadataHandler} WHERE ID = #{order.id}")
     void _updateOrderMetadata(@Param("order") Order order);
 
     @Update("UPDATE ORDERSEATS SET METADATA = " +

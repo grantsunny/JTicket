@@ -15,7 +15,7 @@ import com.jticket.persist.mybatis.handlers.MetadataHandler;
 
 @Mapper
 public interface SeatsMapper {
-    @Select("SELECT id, areaId, venueId, row, col, available, metadata FROM ${SEATDETAILS} WHERE venueId = #{veuneId} AND areaId = #{areaId}")
+    @Select("SELECT id, areaId, venueId, row, col, available, metadata FROM ${SEATDETAILS} WHERE venueId = #{venueId} AND areaId = #{areaId}")
     @Results({@Result(property = "metadata", column = "metadata", typeHandler = MetadataHandler.class)})
     List<Seat> loadSeats(@Param("venueId") UUID venueId, @Param("areaId") UUID areaId);
 
