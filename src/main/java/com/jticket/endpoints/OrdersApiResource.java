@@ -25,6 +25,7 @@ import com.jticket.integration.OrderPluginHelper;
 import com.jticket.persist.OrdersRepository;
 import com.jticket.persist.PersistenceException;
 
+import io.jsonwebtoken.JwtBuilder;
 import io.jsonwebtoken.Jwts;
 import jakarta.inject.Inject;
 import jakarta.validation.Valid;
@@ -162,21 +163,25 @@ public class OrdersApiResource implements OrdersApi {
         Date expiration = new Date(nowMillis + 5 * 60 * 1000); // The token will be valid for 5 minutes
         
         // Generate the signed JWT token
-        String jwtToken = Jwts.builder()
+        JwtBuilder jwtBuilder = Jwts.builder();
+        if (order.getMetadata() != null)
+            jwtBuilder.claims(order.getMetadata());
+        if (seat.getMetadata() != null)
+            jwtBuilder.claims(seat.getMetadata());
+
+        String jwtToken = jwtBuilder
                 .subject(sub)                       	// Subject (e.g., user ID)
                 .issuer("JTicket")                   	// Issuer
                 .issuedAt(now)                          // Issued at timestamp
                 .expiration(expiration)                 // Expiration timestamp
-                .claim("event", eventId)
-                .claim("session", sessionId)
-                .claim("venue", venueId)                 
-                .claim("area", areaId) 
-                .claim("seat", seatId)
+                .claim("event", eventId.toString())
+                .claim("session", sessionId.toString())
+                .claim("venue", venueId.toString())
+                .claim("area", areaId.toString())
+                .claim("seat", seatId.toString())
                 .claim("col", col)
                 .claim("row", row)
-                .claims(order.getMetadata())
-                .claims(seat.getMetadata())
-                .signWith(privateKey) 					
+                .signWith(privateKey)
                 .compact();                             // Serialize to a compact JWT string
 
         return Response.ok(new Ticket().token(jwtToken)).build();

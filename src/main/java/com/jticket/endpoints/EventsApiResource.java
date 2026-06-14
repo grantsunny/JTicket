@@ -89,10 +89,10 @@ public class EventsApiResource implements EventsApi {
         
         Date now = new Date();
         
-        if (!issuer.equals("JTicket"))
+        if (!"JTicket".equals(issuer))
         	throw new NotAuthorizedException("Not recognized token - invalid issuer");
-        
-        if (expiration.before(now)) 
+
+        if (expiration == null || expiration.before(now))
         	throw new NotAuthorizedException("Ticket token expired");
         
         if (!eventId.equals(claims.get("event", String.class)))
@@ -106,12 +106,20 @@ public class EventsApiResource implements EventsApi {
         //Update OrderSeat.checkedInTimestamp with nowMillis and return seat object. 
         
 		try {
-			Seat seat;
-			repository.checkInSeat(UUID.fromString(seatId), UUID.fromString(seatId), UUID.fromString(seatId));
-			seat = repository.loadSeatInEvent(UUID.fromString(seatId), UUID.fromString(seatId))
-					.checkedInTimestamp(now);
-			
+			UUID parsedEventId = UUID.fromString(eventId);
+			UUID parsedSessionId = UUID.fromString(sessionId);
+			UUID parsedSeatId = UUID.fromString(seatId);
+			if (repository.checkInSeat(parsedEventId, parsedSessionId, parsedSeatId) < 1)
+				throw new BadRequestException("Ticket was already checked in or does not identify a purchased seat");
+
+			Seat seat = repository.loadSeatInEvent(parsedEventId, parsedSeatId);
+			if (seat == null)
+				throw new BadRequestException("Ticket seat does not exist in the specified event");
+
+			seat.checkedInTimestamp(now);
 			return Response.ok(seat).build();
+		} catch (IllegalArgumentException e) {
+			throw new BadRequestException("Ticket contains an invalid identifier", e);
 		} catch (PersistenceException e) {
 			throw new WebApplicationException(e.getMessage(), e);
 		}

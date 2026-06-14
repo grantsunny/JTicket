@@ -8,7 +8,7 @@ import java.util.UUID;
 
 public interface EventsRepository {
 	
-	void checkInSeat(UUID eventId, UUID sessionId, UUID seatId) throws PersistenceException; 
+	int checkInSeat(UUID eventId, UUID sessionId, UUID seatId) throws PersistenceException;
 
     Price loadSeatLevelPricingOfEvent(UUID eventId, UUID seatId) throws PersistenceException;
     List<Price> loadPrices(UUID eventId) throws PersistenceException;
