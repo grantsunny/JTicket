@@ -1090,17 +1090,18 @@ public class JdbcHelper {
     }
 
     
-	public void checkInSeat(UUID eventId, UUID sessionId, UUID seatId) throws SQLException {
+	public int checkInSeat(UUID eventId, UUID sessionId, UUID seatId) throws SQLException {
     	
         try (Connection conn = dataSource.getConnection()) {
             String sqlCheckinSeat = "UPDATE OrderSeats SET checkedInTimestamp = CURRENT_TIMESTAMP " +
-                    "WHERE eventId = ? AND sessionId = ? AND seatId = ?";
+                    "WHERE eventId = ? AND sessionId = ? AND seatId = ? " +
+                    "AND checkedInTimestamp IS NULL";
             
             try (PreparedStatement stmt = conn.prepareStatement(sqlCheckinSeat)) {
                 stmt.setString(1, eventId.toString());
                 stmt.setString(2, sessionId.toString());
                 stmt.setString(3, seatId.toString());
-                stmt.executeUpdate();
+                return stmt.executeUpdate();
             }
         }
     }
@@ -1157,10 +1158,10 @@ public class JdbcHelper {
                                     .id(UUID.fromString(rsSeats.getString("seatId")))
                                     .areaId(UUID.fromString(rsSeats.getString("areaId")))
                                     .venueId(UUID.fromString(rsSeats.getString("venueId")))
-                    				.row(rsSeats.getInt("row"))
-                    				.col(rsSeats.getInt("col"))
-                    				.available(rsSeats.getBoolean("available"))
-                    				.checkedInTimestamp(rsSeats.getDate("checkInTimestamp"))
+                                    .row(rsSeats.getInt("row"))
+                                    .col(rsSeats.getInt("col"))
+                                    .available(rsSeats.getBoolean("available"))
+                                    .checkedInTimestamp(rsSeats.getTimestamp("checkedInTimestamp"))
                                     .metadata(parseMetadata(rsSeats.getString("metadata"))));
                 }
             }
@@ -1364,8 +1365,8 @@ public class JdbcHelper {
                     sessions.add(new Session().id(UUID.fromString(rs.getString("id")))
                             .eventId(UUID.fromString(rs.getString("eventId")))
                             .name(rs.getString("name"))
-                            .startTime(rs.getDate("startTime"))
-                            .endTime(rs.getDate("endDate"))
+                            .startTime(rs.getTimestamp("startTime"))
+                            .endTime(rs.getTimestamp("endTime"))
                             .metadata(parseMetadata(rs.getString("metadata")))
                     );
                 }
@@ -1379,14 +1380,15 @@ public class JdbcHelper {
         try (Connection conn = dataSource.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
 
-            stmt.setString(1, eventId.toString());
+            stmt.setString(1, sessionId.toString());
+            stmt.setString(2, eventId.toString());
             try (ResultSet rs = stmt.executeQuery()) {
                 if (rs.next()) {
                     return new Session().id(UUID.fromString(rs.getString("id")))
                             .eventId(UUID.fromString(rs.getString("eventId")))
                             .name(rs.getString("name"))
-                            .startTime(rs.getDate("startTime"))
-                            .endTime(rs.getDate("endDate"))
+                            .startTime(rs.getTimestamp("startTime"))
+                            .endTime(rs.getTimestamp("endTime"))
                             .metadata(parseMetadata(rs.getString("metadata")));
                 } else
                     return null;

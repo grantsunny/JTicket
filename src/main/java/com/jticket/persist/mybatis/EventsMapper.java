@@ -30,8 +30,9 @@ import com.jticket.persist.mybatis.handlers.MetadataHandler;
 public interface EventsMapper {
 
     @Update("UPDATE OrderSeats SET checkedInTimestamp = CURRENT_TIMESTAMP " +
-            "WHERE eventId = #{eventId} AND sessionId = #{sessionId} AND seatId = #{seatId}")	
-	void checkInSeat(@Param("eventId") UUID eventId, @Param("sessionId") UUID sessionId, @Param("seatId") UUID seatId); 
+            "WHERE eventId = #{eventId} AND sessionId = #{sessionId} AND seatId = #{seatId} " +
+            "AND checkedInTimestamp IS NULL")
+	int checkInSeat(@Param("eventId") UUID eventId, @Param("sessionId") UUID sessionId, @Param("seatId") UUID seatId);
 	
     @Select("SELECT Prices.id, name, (price / 100.0) AS price, eventId FROM PricesDistribution " +
             "INNER JOIN Prices ON Prices.id = PricesDistribution.priceId " +
@@ -286,7 +287,7 @@ public interface EventsMapper {
             "WHERE id = #{sessionId} AND eventId = #{eventId}")
     void updateSession(@Param("eventId") UUID eventId, @Param("sessionId") UUID sessionId, @Param("session") Session session);
 
-    @Delete("DELETE FROM Sessions WHERE id = #{id} AND eventId = #{eventid}")
+    @Delete("DELETE FROM Sessions WHERE id = #{sessionId} AND eventId = #{eventId}")
     void deleteSession(@Param("eventId") UUID eventId, @Param("sessionId") UUID sessionId);
 
     @Select("SELECT id, eventId, name, startTime, endTime, metadata FROM Sessions WHERE eventId = #{eventId}")

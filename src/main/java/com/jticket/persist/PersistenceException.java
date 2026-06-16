@@ -21,6 +21,7 @@ public class PersistenceException extends SQLException {
     }
 
     public PersistenceException(Throwable targetException) {
+        super(targetException);
     }
 
     public PersistenceException(String reason) {
