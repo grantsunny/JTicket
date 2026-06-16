@@ -70,8 +70,74 @@ We assume following roles in the context of JTicket.
 ![Provision of event](https://www.plantuml.com/plantuml/proxy?cache=no&src=https://raw.githubusercontent.com/grantsunny/JTicket/refs/heads/main/uml/checkin.plantuml)
 
 ## Authentication
-There is build-in mechanism based on crowd in production environment. 
-The back-office will therefore require authentication to function, whereas API require HTTP-BASIC auth to be used as well.
+Production uses standard OAuth 2.0 and OpenID Connect. Any compatible OIDC provider can be used; Auth0 is the
+illustrated OIDC provider in this guide.
+The back-office signs users in through the authorization-code flow and keeps the authenticated user in an HTTP session.
+API clients can authenticate independently with JWT bearer access tokens. Browser requests to the API can use the
+same authenticated session as the back-office.
+
+## Configure an OIDC provider
+
+JTicket uses an OIDC provider for both browser login and API access:
+
+* Back-office users sign in through OpenID Connect and use an HTTP session.
+* API clients send an OAuth2 JWT access token.
+
+The steps below use Auth0 as the illustrated OIDC provider. Equivalent application, API, user, role, and permission
+settings can be configured in another compatible provider, although dashboard names and permission mapping may differ.
+
+### 1. Create an OIDC application
+
+In Auth0, under **Applications > Applications**, create a **Regular Web Application** and add:
+
+```text
+http://127.0.0.1:8080/login/oauth2/code/jticket
+```
+
+to **Allowed Callback URLs**. Add the equivalent HTTPS URL for each deployed environment.
+
+### 2. Create an API
+
+In Auth0, under **Applications > APIs**, create an API with:
+
+* Identifier: `jticket-auth0-demo`
+* Signing algorithm: `RS256`
+* **RBAC** enabled
+* **Add Permissions in the Access Token** enabled
+
+Add the permissions listed in [Permissions mapping with OAuth2 scope](#permissions-mapping-with-oauth2-scope).
+The API identifier is the audience used by JTicket.
+
+### 3. Configure users and roles
+
+In Auth0, create users under **User Management > Users**, create the roles described above, and assign each role its
+matching API permissions. Assign roles to the human users who access JTicket through Universal Login.
+
+For `PaymentAgent`, use a **Machine to Machine Application** with the Client Credentials flow and grant only
+`order:write`.
+
+### 4. Configure JTicket
+
+Provide the OIDC issuer, application credentials, and API audience through environment variables:
+
+```bash
+export JTICKET_OIDC_ISSUER=https://YOUR_OIDC_PROVIDER/
+export JTICKET_OIDC_CLIENT_ID=YOUR_CLIENT_ID
+export JTICKET_OIDC_CLIENT_SECRET=YOUR_CLIENT_SECRET
+export JTICKET_OIDC_AUDIENCE=YOUR_API_AUDIENCE
+```
+
+For the illustrated Auth0 setup, `JTICKET_OIDC_AUDIENCE` must match the Auth0 API identifier.
+
+### 5. Verify both login modes
+
+1. Start JTicket with the `production` profile and open the back-office UI.
+2. Sign in through the configured OIDC provider and confirm that the UI and its `/api/**` requests use the same session.
+3. Call `/api/**` with a JWT access token whose audience is the JTicket API.
+4. Confirm that an API request without a session or token returns `401`.
+
+The `dev` profile remains unauthenticated. Production currently requires authentication but does not yet enforce the
+documented permissions on individual endpoints.
 
 ## Scaling
 There is no complex clustering configuration of scaling out the system as we are leveraging the in-memory database as 
@@ -79,4 +145,4 @@ the only sharing points among working nodes. So as long as we can make Ignite cl
 work great accordingly. 
 
 ## What's next
-De-couple from atlassian crowd which has concerns on working together with Apache license. Instead, integrating with standard OIDC with one example integration of auth0. 
+Add and verify fine-grained endpoint authorization using the documented OAuth2 scopes.

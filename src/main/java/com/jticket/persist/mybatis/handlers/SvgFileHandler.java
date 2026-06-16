@@ -1,6 +1,5 @@
 package com.jticket.persist.mybatis.handlers;
 
-import org.apache.commons.lang.NotImplementedException;
 import org.apache.ibatis.type.BaseTypeHandler;
 import org.apache.ibatis.type.JdbcType;
 import org.apache.ibatis.type.MappedTypes;
@@ -40,7 +39,7 @@ public class SvgFileHandler extends BaseTypeHandler<File> {
 
     @Override
     public void setNonNullParameter(PreparedStatement ps, int i, File parameter, JdbcType jdbcType) throws SQLException {
-        throw new NotImplementedException("Writing SVG as file is not needed.");
+        throw new UnsupportedOperationException("Writing SVG as file is not needed.");
     }
 
     @Override
