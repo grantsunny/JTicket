@@ -55,9 +55,9 @@ We assume following roles in the context of JTicket.
 
 | Name          | OAuth2 Scope                                       |
 |---------------|----------------------------------------------------|
-| Operator      | template:write, event:write, venue:read, seat:read |
+| Operator      | template:write, event:read, event:write, venue:read, seat:read |
 | Customer      | event:read, order:write                            |
-| Attendant     | event:write                                        |
+| Attendant     | event:read, event:write                            |
 | PaymentAgent  | order:write                                        |
 
 ### Ticket provision

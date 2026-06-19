@@ -54,6 +54,7 @@ public class OAuth2SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/events/**").hasAuthority("SCOPE_event:read")
                         .requestMatchers(HttpMethod.POST, "/api/events/**").hasAuthority("SCOPE_event:write")
                         .requestMatchers(HttpMethod.PUT, "/api/events/**").hasAuthority("SCOPE_event:write")
+                        .requestMatchers(HttpMethod.PATCH, "/api/events/**").hasAuthority("SCOPE_event:write")
                         .requestMatchers(HttpMethod.DELETE, "/api/events/**").hasAuthority("SCOPE_event:write")
                         .requestMatchers(HttpMethod.GET, "/api/venues/**").hasAuthority("SCOPE_venue:read")
                         .requestMatchers(HttpMethod.GET, "/api/seats/**").hasAuthority("SCOPE_seat:read")
