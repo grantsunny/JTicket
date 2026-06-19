@@ -216,6 +216,9 @@ class OAuth2HttpIntegrationTest {
                 request("GET", "/event.html").build(),
                 HttpResponse.BodyHandlers.ofString());
         assertThat(portal.statusCode()).isEqualTo(200);
+        assertThat(portal.body())
+                .contains("showCurrentUser(document.getElementById('user-info'))\n"
+                        + "        .then(() => stoneticket.refreshFormEventVenueList());");
 
         HttpResponse<String> template = client.send(
                 request("POST", "/api/template").build(),

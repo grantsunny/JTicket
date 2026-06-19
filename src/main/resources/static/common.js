@@ -11,14 +11,20 @@ export function apiFetch(resource, options = {}) {
     }).then(response => {
         if (response.status === 401) {
             window.location.href = '/oauth2/authorization/jticket';
+            return new Promise(() => {});
         }
         return response;
     });
 }
 
 export function showCurrentUser(container) {
-    apiFetch('/api/auth/userinfo')
-        .then(response => response.text())
+    return apiFetch('/api/auth/userinfo')
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`Unable to load current user. Status: ${response.status}`);
+            }
+            return response.text();
+        })
         .then(data => {
             container.textContent = data;
         });

@@ -8,8 +8,8 @@
     <script type="module" src="script.js"></script>
 </head>
 
-<body onload="stoneticket.showCurrentUser(document.getElementById('user-info'));
-        stoneticket.fetchVenues();">
+<body onload="stoneticket.showCurrentUser(document.getElementById('user-info'))
+        .then(() => stoneticket.fetchVenues());">
 <h1><label id="user-info"></label>, welcome to JTicket!  </h1>
 
 <ul>
