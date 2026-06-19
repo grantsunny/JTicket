@@ -258,6 +258,7 @@
                             </includes>
                             <excludes>
                                 <exclude>*.min.js</exclude>
+                                <exclude>script.js</exclude>
                             </excludes>
                         </configuration>
                     </execution>
