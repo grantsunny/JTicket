@@ -3,6 +3,9 @@ package com.jticket.security;
 import static com.jticket.security.OAuth2Scopes.EVENT_READ;
 import static com.jticket.security.OAuth2Scopes.EVENT_WRITE;
 import static com.jticket.security.OAuth2Scopes.ORDER_WRITE;
+import static com.jticket.security.OAuth2Scopes.SEAT_READ;
+import static com.jticket.security.OAuth2Scopes.TEMPLATE_WRITE;
+import static com.jticket.security.OAuth2Scopes.VENUE_READ;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.net.CookieManager;
@@ -57,6 +60,7 @@ import org.glassfish.jersey.server.filter.RolesAllowedDynamicFeature;
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.PATCH;
+import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.SecurityContext;
@@ -160,10 +164,83 @@ class OAuth2HttpIntegrationTest {
 
     @Test
     void exchangesAuthorizationCodeAndReusesOidcSessionForApi() throws Exception {
+        OIDC_PROVIDER.useAccessToken("browser-user", "event:read", List.of("event:read"));
+
         HttpClient client = HttpClient.newBuilder()
                 .cookieHandler(new CookieManager())
                 .followRedirects(HttpClient.Redirect.NEVER)
                 .build();
+        login(client);
+
+        HttpResponse<String> principal = client.send(
+                request("GET", "/api/principal").build(),
+                HttpResponse.BodyHandlers.ofString());
+
+        assertThat(principal.statusCode()).isEqualTo(200);
+        assertThat(principal.body()).isEqualTo("browser-user");
+
+        HttpResponse<String> events = client.send(
+                request("GET", "/api/events").build(),
+                HttpResponse.BodyHandlers.ofString());
+
+        assertThat(events.statusCode()).isEqualTo(200);
+        assertThat(events.body()).isEqualTo("events");
+    }
+
+    @Test
+    void oidcBrowserSessionCanUseBackendPortalAndOperatorApis() throws Exception {
+        List<String> operatorScopes = List.of(
+                TEMPLATE_WRITE,
+                EVENT_READ,
+                EVENT_WRITE,
+                VENUE_READ,
+                SEAT_READ);
+        OIDC_PROVIDER.useAccessToken("operator-user", String.join(" ", operatorScopes), operatorScopes);
+
+        HttpClient client = HttpClient.newBuilder()
+                .cookieHandler(new CookieManager())
+                .followRedirects(HttpClient.Redirect.NEVER)
+                .build();
+
+        HttpResponse<String> unauthenticatedPortal = client.send(
+                request("GET", "/event.html").build(),
+                HttpResponse.BodyHandlers.ofString());
+
+        assertThat(unauthenticatedPortal.statusCode()).isEqualTo(302);
+        assertThat(URI.create(unauthenticatedPortal.headers().firstValue("Location").orElseThrow()).getPath())
+                .isEqualTo("/oauth2/authorization/jticket");
+
+        login(client);
+
+        HttpResponse<String> portal = client.send(
+                request("GET", "/event.html").build(),
+                HttpResponse.BodyHandlers.ofString());
+        assertThat(portal.statusCode()).isEqualTo(200);
+
+        HttpResponse<String> template = client.send(
+                request("POST", "/api/template").build(),
+                HttpResponse.BodyHandlers.ofString());
+        HttpResponse<String> venues = client.send(
+                request("GET", "/api/venues").build(),
+                HttpResponse.BodyHandlers.ofString());
+        HttpResponse<String> seats = client.send(
+                request("GET", "/api/seats").build(),
+                HttpResponse.BodyHandlers.ofString());
+        HttpResponse<String> events = client.send(
+                request("GET", "/api/events").build(),
+                HttpResponse.BodyHandlers.ofString());
+        HttpResponse<String> createEvent = client.send(
+                request("POST", "/api/events").build(),
+                HttpResponse.BodyHandlers.ofString());
+
+        assertThat(template.statusCode()).isEqualTo(200);
+        assertThat(venues.statusCode()).isEqualTo(200);
+        assertThat(seats.statusCode()).isEqualTo(200);
+        assertThat(events.statusCode()).isEqualTo(200);
+        assertThat(createEvent.statusCode()).isEqualTo(200);
+    }
+
+    private void login(HttpClient client) throws IOException, InterruptedException {
         HttpResponse<String> authorization = client.send(
                 request("GET", "/oauth2/authorization/jticket").build(),
                 HttpResponse.BodyHandlers.ofString());
@@ -196,21 +273,7 @@ class OAuth2HttpIntegrationTest {
 
         assertThat(login.statusCode()).isEqualTo(302);
         assertThat(URI.create(login.headers().firstValue("Location").orElseThrow()).getPath())
-                .isEqualTo("/");
-
-        HttpResponse<String> principal = client.send(
-                request("GET", "/api/principal").build(),
-                HttpResponse.BodyHandlers.ofString());
-
-        assertThat(principal.statusCode()).isEqualTo(200);
-        assertThat(principal.body()).isEqualTo("browser-user");
-
-        HttpResponse<String> events = client.send(
-                request("GET", "/api/events").build(),
-                HttpResponse.BodyHandlers.ofString());
-
-        assertThat(events.statusCode()).isEqualTo(200);
-        assertThat(events.body()).isEqualTo("events");
+                .isIn("/", "/event.html");
     }
 
     private HttpResponse<String> send(String method, String path, String token)
@@ -264,6 +327,13 @@ class OAuth2HttpIntegrationTest {
             return "events";
         }
 
+        @POST
+        @Path("events")
+        @RolesAllowed(EVENT_WRITE)
+        public String createEvent() {
+            return "event-write";
+        }
+
         @PATCH
         @Path("events/{eventId}/pricing")
         @RolesAllowed(EVENT_WRITE)
@@ -277,6 +347,27 @@ class OAuth2HttpIntegrationTest {
         public String orders() {
             return "orders";
         }
+
+        @POST
+        @Path("template")
+        @RolesAllowed(TEMPLATE_WRITE)
+        public String template() {
+            return "template-write";
+        }
+
+        @GET
+        @Path("venues")
+        @RolesAllowed(VENUE_READ)
+        public String venues() {
+            return "venues";
+        }
+
+        @GET
+        @Path("seats")
+        @RolesAllowed(SEAT_READ)
+        public String seats() {
+            return "seats";
+        }
     }
 
     private static final class LocalOidcProvider {
@@ -287,6 +378,11 @@ class OAuth2HttpIntegrationTest {
         private final RSAPrivateKey privateKey;
         private final String jwkSet;
         private final AtomicReference<String> nonce = new AtomicReference<>();
+        private final AtomicReference<TokenClaims> browserAccessToken =
+                new AtomicReference<>(new TokenClaims(
+                        "browser-user",
+                        "event:read",
+                        List.of("event:read")));
 
         private LocalOidcProvider(HttpServer server, KeyPair keyPair) {
             this.server = server;
@@ -340,6 +436,10 @@ class OAuth2HttpIntegrationTest {
             nonce.set(value);
         }
 
+        void useAccessToken(String subject, String scope, List<String> permissions) {
+            browserAccessToken.set(new TokenClaims(subject, scope, permissions));
+        }
+
         String accessToken(String subject, String audience, List<String> permissions) {
             return accessToken(subject, audience, "event:read", permissions);
         }
@@ -386,13 +486,18 @@ class OAuth2HttpIntegrationTest {
         }
 
         private void tokenResponse(HttpExchange exchange) throws IOException {
+            TokenClaims tokenClaims = browserAccessToken.get();
             String response = String.format(
                     "{\"access_token\":\"%s\","
                             + "\"id_token\":\"%s\","
                             + "\"token_type\":\"Bearer\","
                             + "\"expires_in\":300,"
                             + "\"scope\":\"openid profile email\"}",
-                    accessToken("browser-user", "jticket-test-api", List.of("event:read")),
+                    accessToken(
+                            tokenClaims.subject(),
+                            "jticket-test-api",
+                            tokenClaims.scope(),
+                            tokenClaims.permissions()),
                     idToken());
             sendJson(exchange, response);
         }
@@ -412,6 +517,31 @@ class OAuth2HttpIntegrationTest {
 
         private String baseUrl() {
             return "http://127.0.0.1:" + server.getAddress().getPort();
+        }
+
+        private static final class TokenClaims {
+
+            private final String subject;
+            private final String scope;
+            private final List<String> permissions;
+
+            private TokenClaims(String subject, String scope, List<String> permissions) {
+                this.subject = subject;
+                this.scope = scope;
+                this.permissions = permissions;
+            }
+
+            private String subject() {
+                return subject;
+            }
+
+            private String scope() {
+                return scope;
+            }
+
+            private List<String> permissions() {
+                return permissions;
+            }
         }
     }
 }
