@@ -139,7 +139,11 @@ class OAuth2SecurityConfigTest {
 
         assertThat(converter.convert(token).getAuthorities())
                 .extracting("authority")
-                .containsExactlyInAnyOrder("SCOPE_event:read", "SCOPE_order:write");
+                .containsExactlyInAnyOrder(
+                        "SCOPE_event:read",
+                        "SCOPE_order:write",
+                        "ROLE_event:read",
+                        "ROLE_order:write");
     }
 
     @RestController
@@ -154,5 +158,6 @@ class OAuth2SecurityConfigTest {
         String api() {
             return "api";
         }
+
     }
 }

@@ -2,6 +2,8 @@ package com.jticket.security;
 
 import java.util.Collection;
 import java.util.LinkedHashSet;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -10,11 +12,20 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.core.convert.converter.Converter;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
+import org.springframework.security.oauth2.client.oidc.userinfo.OidcUserRequest;
+import org.springframework.security.oauth2.client.oidc.userinfo.OidcUserService;
+import org.springframework.security.oauth2.client.userinfo.OAuth2UserService;
 import org.springframework.security.oauth2.client.web.DefaultOAuth2AuthorizationRequestResolver;
 import org.springframework.security.oauth2.client.web.OAuth2AuthorizationRequestResolver;
+import org.springframework.security.oauth2.core.oidc.user.DefaultOidcUser;
+import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.oauth2.jwt.JwtException;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
 import org.springframework.security.oauth2.server.resource.web.BearerTokenAuthenticationEntryPoint;
@@ -34,17 +45,21 @@ public class OAuth2SecurityConfig {
     SecurityFilterChain oauth2SecurityFilterChain(
             HttpSecurity http,
             JwtAuthenticationConverter jwtAuthenticationConverter,
+            OAuth2UserService<OidcUserRequest, OidcUser> oidcUserService,
             OAuth2AuthorizationRequestResolver authorizationRequestResolver) throws Exception {
 
         http
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers("/oauth2/**", "/login/**", "/error").permitAll()
+                        .requestMatchers("/api/**").authenticated()
                         .anyRequest().authenticated())
                 // The current browser UI mutates /api resources without a CSRF token.
                 .csrf(AbstractHttpConfigurer::disable)
                 .oauth2Login(oauth2 -> oauth2
                         .authorizationEndpoint(endpoint -> endpoint
-                                .authorizationRequestResolver(authorizationRequestResolver)))
+                                .authorizationRequestResolver(authorizationRequestResolver))
+                        .userInfoEndpoint(endpoint -> endpoint
+                                .oidcUserService(oidcUserService)))
                 .oauth2ResourceServer(resourceServer -> resourceServer
                         .jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter)))
                 .exceptionHandling(exceptions -> exceptions
@@ -84,11 +99,69 @@ public class OAuth2SecurityConfig {
         Converter<Jwt, Collection<GrantedAuthority>> authoritiesConverter = jwt -> {
             Collection<GrantedAuthority> authorities = new LinkedHashSet<>(scopes.convert(jwt));
             authorities.addAll(permissions.convert(jwt));
+            addRoleAuthorities(authorities);
             return authorities;
         };
 
         JwtAuthenticationConverter authenticationConverter = new JwtAuthenticationConverter();
         authenticationConverter.setJwtGrantedAuthoritiesConverter(authoritiesConverter);
         return authenticationConverter;
+    }
+
+    @Bean
+    OAuth2UserService<OidcUserRequest, OidcUser> oidcUserService(
+            JwtDecoder jwtDecoder,
+            JwtAuthenticationConverter jwtAuthenticationConverter) {
+
+        OidcUserService delegate = new OidcUserService();
+
+        return userRequest -> {
+            OidcUser oidcUser = delegate.loadUser(userRequest);
+            Collection<GrantedAuthority> authorities =
+                    new LinkedHashSet<>(oidcUser.getAuthorities());
+
+            Set<String> tokenScopes = userRequest.getAccessToken().getScopes();
+            tokenScopes.stream()
+                    .map(scope -> new SimpleGrantedAuthority("SCOPE_" + scope))
+                    .forEach(authorities::add);
+            addRoleAuthorities(authorities);
+
+            try {
+                Jwt accessToken = jwtDecoder.decode(userRequest.getAccessToken().getTokenValue());
+                Authentication authentication = jwtAuthenticationConverter.convert(accessToken);
+                if (authentication != null) {
+                    authorities.addAll(authentication.getAuthorities());
+                }
+            } catch (JwtException ignored) {
+                // Some OIDC providers issue opaque browser access tokens. Keep login usable
+                // while still applying any authorities carried in the token response scopes.
+            }
+
+            return new DefaultOidcUser(
+                    authorities,
+                    oidcUser.getIdToken(),
+                    oidcUser.getUserInfo(),
+                    userNameAttributeName(userRequest));
+        };
+    }
+
+    private static String userNameAttributeName(OidcUserRequest userRequest) {
+        String configuredNameAttribute = userRequest.getClientRegistration()
+                .getProviderDetails()
+                .getUserInfoEndpoint()
+                .getUserNameAttributeName();
+
+        return configuredNameAttribute == null || configuredNameAttribute.isBlank()
+                ? "sub"
+                : configuredNameAttribute;
+    }
+
+    private static void addRoleAuthorities(Collection<GrantedAuthority> authorities) {
+        authorities.stream()
+                .map(GrantedAuthority::getAuthority)
+                .filter(authority -> authority.startsWith("SCOPE_"))
+                .map(authority -> new SimpleGrantedAuthority("ROLE_" + authority.substring("SCOPE_".length())))
+                .collect(Collectors.toList())
+                .forEach(authorities::add);
     }
 }

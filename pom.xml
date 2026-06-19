@@ -170,6 +170,18 @@
                                 <include>**/*</include>
                             </includes>
                         </fileset>
+                        <fileset>
+                            <directory>${project.basedir}/src/main/openapi</directory>
+                            <includes>
+                                <include>**/*</include>
+                            </includes>
+                        </fileset>
+                        <fileset>
+                            <directory>${project.basedir}/.openapi-generator</directory>
+                            <includes>
+                                <include>**/*</include>
+                            </includes>
+                        </fileset>
                     </filesets>
                 </configuration>
             </plugin>
@@ -246,6 +258,7 @@
                             </includes>
                             <excludes>
                                 <exclude>*.min.js</exclude>
+                                <exclude>script.js</exclude>
                             </excludes>
                         </configuration>
                     </execution>

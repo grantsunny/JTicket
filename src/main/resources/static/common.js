@@ -4,12 +4,35 @@ window.stoneticket = {
     showCurrentUser
 }
 
+export function apiFetch(resource, options = {}) {
+    return fetch(resource, {
+        ...options,
+        credentials: options.credentials || 'same-origin'
+    }).then(response => {
+        if (response.status === 401) {
+            return redirectToOidcLogin();
+        }
+        return response;
+    });
+}
+
 export function showCurrentUser(container) {
-    fetch('/api/auth/userinfo')
-        .then(response => response.text())
+    return apiFetch('/api/auth/userinfo')
+        .then(response => {
+            if (!response.ok) {
+                return redirectToOidcLogin();
+            }
+            return response.text();
+        })
         .then(data => {
             container.textContent = data;
-        });
+        })
+        .catch(() => redirectToOidcLogin());
+}
+
+function redirectToOidcLogin() {
+    window.location.href = '/oauth2/authorization/jticket';
+    return new Promise(() => {});
 }
 
 export function cleanUpContainer(container) {
@@ -27,7 +50,7 @@ export function enforceNumericInput(textBox) {
 }
 
 export function drawVenue(venueId, svgContainer) {
-    fetch(`/api/venues/${venueId}/svg`)
+    apiFetch(`/api/venues/${venueId}/svg`)
         .then(response => response.text())
         .then(svg => {
             svgContainer.innerHTML = svg;
@@ -35,7 +58,7 @@ export function drawVenue(venueId, svgContainer) {
 }
 
 export function drawSeats(eventId, areaId, seatsContainer) {
-    fetch(`/api/events/${eventId}/areas/${areaId}/seats`)
+    apiFetch(`/api/events/${eventId}/areas/${areaId}/seats`)
         .then(response => response.json())
         .then(seats => {
             cleanUpContainer(seatsContainer);
@@ -71,7 +94,7 @@ export function drawSeats(eventId, areaId, seatsContainer) {
                         });
 
                         //Add pricing information to the seat display. Perhaps with toolTips?
-                        fetch(`/api/events/${eventId}/seats/${seat.id}/pricing`)
+                        apiFetch(`/api/events/${eventId}/seats/${seat.id}/pricing`)
                             .then(response => {
                                 if (response.ok)
                                     response.json().then (pricing => {
@@ -138,12 +161,12 @@ export function drawEventVenueEx(eventId, svgContainer, onAreaClick) {
      let areaNames = {};
      let areaPrices = {};
 
-     fetch(`/api/events/${eventId}/areas`)
+     apiFetch(`/api/events/${eventId}/areas`)
         .then(response => response.json())
         .then(areas => {
             areas.forEach(area => {
                 areaNames[area.id] = area.name; // Map 'id' from JSON to 'areaId'
-                fetch(`/api/events/${eventId}/areas/${area.id}/pricing`)
+                apiFetch(`/api/events/${eventId}/areas/${area.id}/pricing`)
                     .then(response => {
                         if (response.ok)
                             response.json().then (pricing => {
@@ -314,7 +337,7 @@ function applySelectedAreaShadow(svgContainer, areaId) {
 
 
 export function drawEventVenue(eventId, svgContainer, onAreaClick) {
-    fetch(`/api/events/${eventId}/venue/svg`)
+    apiFetch(`/api/events/${eventId}/venue/svg`)
         .then(response => response.text())
         .then(svgHtml => {
             svgContainer.innerHTML = svgHtml;

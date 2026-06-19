@@ -1,5 +1,7 @@
 package com.jticket.endpoints;
 
+import static com.jticket.security.OAuth2Scopes.TEMPLATE_WRITE;
+
 import com.jticket.persist.SeatsRepository;
 import com.jticket.persist.VenuesRepository;
 import com.jticket.api.VenuesApi;
@@ -16,6 +18,7 @@ import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.glassfish.jersey.media.multipart.FormDataParam;
 import org.glassfish.jersey.media.multipart.FormDataContentDisposition;
 
+import jakarta.annotation.security.RolesAllowed;
 import java.io.IOException;
 import java.io.InputStream;
 import java.sql.SQLException;
@@ -24,6 +27,7 @@ import java.util.List;
 import java.util.Map;
 
 @Path("/template")
+@RolesAllowed(TEMPLATE_WRITE)
 public class TemplateResource {
 
     @Context

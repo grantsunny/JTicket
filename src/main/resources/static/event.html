@@ -11,8 +11,8 @@
     <script type="module" src="script.js"></script>
 </head>
 
-<body onload="stoneticket.showCurrentUser(document.getElementById('user-info'));
-        stoneticket.refreshFormEventVenueList();">
+<body onload="stoneticket.showCurrentUser(document.getElementById('user-info'))
+        .then(() => stoneticket.refreshFormEventVenueList());">
 <h1><label id="user-info"></label>, welcome to JTicket!  </h1>
 
 <ul>
@@ -79,11 +79,11 @@
                     <button onclick="stoneticket.updateSession(
                         this.closest('#modalSetupEventSessions'),
                         this.dataset.eventId,
-                        this.closest('#modalSetupEventSessions').querySelector('input[name=\'selectedSession[]\']:checked').value())">Update</button>
+                        this.closest('#modalSetupEventSessions').querySelector('input[name=\'selectedSession[]\']:checked').value)">Update</button>
                     <button onclick="stoneticket.deleteSession(
                         this.closest('#modalSetupEventSessions'),
                         this.dataset.eventId,
-                        this.closest('#modalSetupEventSessions').querySelector('input[name=\'selectedSession[]\']:checked').value())">Delete</button>
+                        this.closest('#modalSetupEventSessions').querySelector('input[name=\'selectedSession[]\']:checked').value)">Delete</button>
                     <hr>
                 </div>
                 <form id="formNewSession">

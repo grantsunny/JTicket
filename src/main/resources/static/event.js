@@ -1,4 +1,4 @@
-import {cleanUpContainer, drawEventVenueEx, drawSeats, enforceNumericInput} from "./common.js";
+import {apiFetch, cleanUpContainer, drawEventVenueEx, drawSeats, enforceNumericInput} from "./common.js";
 
 window.stoneticket = {
     ...window.stoneticket,
@@ -24,7 +24,7 @@ window.stoneticket = {
 function updateSession(container, eventId, sessionId) {
     if ((!sessionId) || (!eventId)) return;
 
-    fetch(`/api/events/${eventId}/sessions/${sessionId}`, {
+    apiFetch(`/api/events/${eventId}/sessions/${sessionId}`, {
         method: 'GET',
         headers: {
             'Accept': 'application/json',
@@ -48,7 +48,7 @@ function updateSession(container, eventId, sessionId) {
             } else
                 return;
 
-            fetch(`/api/events/${eventId}/sessions/${sessionId}`, {
+            apiFetch(`/api/events/${eventId}/sessions/${sessionId}`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
@@ -72,7 +72,7 @@ function updateSession(container, eventId, sessionId) {
 function deleteSession(container, eventId, sessionId) {
     if ((!sessionId) || (!eventId)) return;
 
-    fetch(`/api/events/${eventId}/sessions/${sessionId}`, {
+    apiFetch(`/api/events/${eventId}/sessions/${sessionId}`, {
         method: 'DELETE'
     })
         .then(response => {
@@ -93,7 +93,7 @@ function refreshFormEventCopyFromList(selectContainer, venueId) {
     if (venueId) {
         const apiUrl = `/api/events?venueId=${venueId}`; // Replace with the actual endpoint URL
         // Make a GET request to the API
-        fetch(apiUrl, {
+        apiFetch(apiUrl, {
             method: 'GET'
         })
             .then(response => response.json())
@@ -118,7 +118,7 @@ function fetchEvents() {
     const apiUrl = '/api/events'; // Replace with the actual endpoint URL
 
     // Make a GET request to the API
-    fetch(apiUrl)
+    apiFetch(apiUrl)
         .then(response => response.json())
         .then(data => {
             // Display existing events with venue information in the table
@@ -156,7 +156,7 @@ function submitNewPricingForm(eventId, newPricingForm) {
     const priceName = newPricingForm.querySelector("#newPriceName").value;
     const price = newPricingForm.querySelector("#newPrice").value;
 
-    fetch(apiUrl, {
+    apiFetch(apiUrl, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -187,7 +187,7 @@ function submitNewPricingForm(eventId, newPricingForm) {
 function reloadEventPricing(eventId, container, selectedAreaId) {
 
     const apiUrl = `/api/events/${eventId}/prices`; // Replace with the actual endpoint URL
-    fetch(apiUrl)
+    apiFetch(apiUrl)
         .then(response => response.json())
         .then(data => {
             container.innerHTML = ''; // Clear existing content
@@ -261,7 +261,7 @@ function reloadEventPricing(eventId, container, selectedAreaId) {
 }
 
 function setAreaPrice(eventId, priceId, areaId) {
-    fetch(`/api/events/${eventId}/areas/${areaId}/pricing`, {
+    apiFetch(`/api/events/${eventId}/areas/${areaId}/pricing`, {
         method: 'PATCH',
         headers: {
             'Content-Type': 'application/json',
@@ -284,7 +284,7 @@ function setSeatPrice(eventId, priceId, areaId, seatIds) {
     let apiPromises = [];
     seatIds.forEach(seatId => {
         apiPromises.push(
-            fetch(`/api/events/${eventId}/seats/${seatId}/pricing`, {
+            apiFetch(`/api/events/${eventId}/seats/${seatId}/pricing`, {
                 method: 'PATCH',
                 headers: {
                     'Content-Type': 'application/json',
@@ -327,7 +327,7 @@ function refreshEventSessions(container, eventId) {
     let tableSessions = container.querySelector("#tableEventSessions");
     cleanUpContainer(tableSessions);
 
-    fetch(`/api/events/${eventId}/sessions`, {
+    apiFetch(`/api/events/${eventId}/sessions`, {
         method: 'GET',
         headers: {
             'Accept': 'application/json',
@@ -399,7 +399,7 @@ function setupEventMetadata(eventId) {
     let jsonEditorContainer = modal.querySelector("#jsonEditor");
 
     cleanUpContainer(jsonEditorContainer);
-    fetch(`/api/events/${eventId}`, {
+    apiFetch(`/api/events/${eventId}`, {
         method: 'GET',
         headers: {
             'Accept': 'application/json',
@@ -435,7 +435,7 @@ export function submitEventMetadata(metadata, modal, closeModal = false) {
 
     let eventId = eventData.id;
 
-    fetch(`/api/events/${eventId}`, {
+    apiFetch(`/api/events/${eventId}`, {
         method: 'PUT',
         headers: {
             'Content-Type': 'application/json',
@@ -463,7 +463,7 @@ function changeEventVenue(eventName, eventId, currentVenueId) {
 
     const apiUrl = '/api/venues'; // Replace with the actual endpoint URL
 
-    fetch(apiUrl)
+    apiFetch(apiUrl)
         .then(response => response.json())
         .then(data => {
             var venueOptions = modal.querySelector('#modalVenueOptions');
@@ -495,7 +495,7 @@ function changeEventVenue(eventName, eventId, currentVenueId) {
 }
 
 function updateEventVenue(eventId, selectedVenueId, modal) {
-    fetch(`/api/events/${eventId}`, {
+    apiFetch(`/api/events/${eventId}`, {
         method: 'PATCH',
         headers: {
             'Content-Type': 'application/json',
@@ -521,7 +521,7 @@ function deleteEvent(eventId) {
         const apiUrl = `/api/events/${eventId}`; // Replace with the actual endpoint URL
 
         // Make a POST request to the API
-        fetch(apiUrl, {
+        apiFetch(apiUrl, {
             method: 'DELETE',
         })
             .then(response => {
@@ -552,7 +552,7 @@ function addNewSession(form) {
         endTime: sessionEndTime
     };
 
-    fetch(`/api/events/${eventId}/sessions`, {
+    apiFetch(`/api/events/${eventId}/sessions`, {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify(sessionPayload)
@@ -609,7 +609,7 @@ function submitEvent(eventData, copyEventFrom) {
     if (copyEventFrom) headers.append('X-Copy-From-Id', copyEventFrom);
 
     // Make a POST request to the API
-    fetch(apiUrl, {
+    apiFetch(apiUrl, {
         method: 'POST',
         headers: headers,
         body: JSON.stringify(eventData)
@@ -633,7 +633,7 @@ function refreshFormEventVenueList() {
     const apiUrl = '/api/venues'; // Replace with the actual endpoint URL
 
     // Make a GET request to the API
-    fetch(apiUrl)
+    apiFetch(apiUrl)
         .then(response => response.json())
         .then(data => {
 
@@ -654,4 +654,3 @@ function refreshFormEventVenueList() {
             console.error('Error fetching venues:', error);
         });
 }
-

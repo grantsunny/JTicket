@@ -1,5 +1,8 @@
 package com.jticket.endpoints;
 
+import static com.jticket.security.OAuth2Scopes.EVENT_READ;
+import static com.jticket.security.OAuth2Scopes.EVENT_WRITE;
+
 import java.security.KeyFactory;
 import java.security.NoSuchAlgorithmException;
 import java.security.PublicKey;
@@ -28,6 +31,7 @@ import com.jticket.persist.PersistenceException;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
+import jakarta.annotation.security.RolesAllowed;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.ClientErrorException;
@@ -70,6 +74,7 @@ public class EventsApiResource implements EventsApi {
 	}
 
 	@Override
+	@RolesAllowed(EVENT_WRITE)
 	public Response checkIn(String token, String eventId, String sessionId) {
         Claims claims;
 		try {
@@ -126,6 +131,7 @@ public class EventsApiResource implements EventsApi {
 	}
 
 	@Override
+	@RolesAllowed(EVENT_READ)
 	public Response listTicketPricesOfEvent(UUID eventId) {
 		try {
 			List<Price> prices = repository.loadPrices(eventId);
@@ -139,6 +145,7 @@ public class EventsApiResource implements EventsApi {
 	}
 
 	@Override
+	@RolesAllowed(EVENT_READ)
 	public Response getSeatLevelPricingOfEvent(UUID eventId, UUID seatId) {
 		try {
 			Price price = repository.loadSeatLevelPricingOfEvent(eventId, seatId);
@@ -152,6 +159,7 @@ public class EventsApiResource implements EventsApi {
 	}
 
 	@Override
+	@RolesAllowed(EVENT_READ)
 	public Response getSeatInEvent(UUID eventId, UUID seatId) {
 		try {
 			Seat seat = repository.loadSeatInEvent(eventId, seatId);
@@ -165,6 +173,7 @@ public class EventsApiResource implements EventsApi {
 	}
 
 	@Override
+	@RolesAllowed(EVENT_READ)
 	public Response getAllAreasInEvent(UUID eventId) {
 		try {
 			List<Area> areas = repository.loadAllAreasInEvent(eventId);
@@ -178,6 +187,7 @@ public class EventsApiResource implements EventsApi {
 	}
 
 	@Override
+	@RolesAllowed(EVENT_READ)
 	public Response getAllSeatsInAreaOfEvent(UUID eventId, UUID areaId) {
 		try {
 			List<Seat> seats = repository.loadSeatsInAreaOfEvent(eventId, areaId);
@@ -191,6 +201,7 @@ public class EventsApiResource implements EventsApi {
 	}
 
 	@Override
+	@RolesAllowed(EVENT_READ)
 	public Response getAreaInEvent(UUID eventId, UUID areaId) {
 		try {
 			Area area = repository.loadAreaInEvent(eventId, areaId);
@@ -204,6 +215,7 @@ public class EventsApiResource implements EventsApi {
 	}
 
 	@Override
+	@RolesAllowed(EVENT_READ)
 	public Response getAreaLevelPricingOfEvent(UUID eventId, UUID areaId) {
 		try {
 			Price price = repository.loadAreaLevelPricingOfEvent(eventId, areaId);
@@ -217,6 +229,7 @@ public class EventsApiResource implements EventsApi {
 	}
 
 	@Override
+	@RolesAllowed(EVENT_READ)
 	public Response getDefaultPricingOfEvent(UUID eventId) {
 		try {
 			Price price = repository.loadDefaultPricingOfEvent(eventId);
@@ -230,6 +243,7 @@ public class EventsApiResource implements EventsApi {
 	}
 
 	@Override
+	@RolesAllowed(EVENT_WRITE)
 	public Response createTicketPriceOfEvent(UUID eventId, Price price) {
 		try {
 			price = price.id(UUID.randomUUID());
@@ -251,6 +265,7 @@ public class EventsApiResource implements EventsApi {
 	}
 
 	@Override
+	@RolesAllowed(EVENT_WRITE)
 	public Response deleteEvent(UUID eventId) {
 		try {
 			repository.deleteEvent(eventId);
@@ -270,6 +285,7 @@ public class EventsApiResource implements EventsApi {
 	}
 
 	@Override
+	@RolesAllowed(EVENT_READ)
 	public Response getTicketPriceOfEvent(UUID eventId, UUID priceId) {
 		try {
 			Price price = repository.loadPriceOfEventById(eventId, priceId);
@@ -283,6 +299,7 @@ public class EventsApiResource implements EventsApi {
 	}
 
 	@Override
+	@RolesAllowed(EVENT_WRITE)
 	public Response deleteTicketPriceOfEvent(UUID eventId, UUID priceId) {
 		try {
 			repository.deleteTicketPriceOfEvent(eventId, priceId);
@@ -302,6 +319,7 @@ public class EventsApiResource implements EventsApi {
 	}
 
 	@Override
+	@RolesAllowed(EVENT_WRITE)
 	public Response assignDefaultPricingOfEvent(UUID eventId, LinkPrice linkPrice) {
 
 		UUID priceId = linkPrice.getPriceId();
@@ -323,6 +341,7 @@ public class EventsApiResource implements EventsApi {
 	}
 
 	@Override
+	@RolesAllowed(EVENT_WRITE)
 	public Response assignSeatLevelPricingOfEvent(UUID eventId, UUID seatId, LinkPrice linkPrice) {
 		UUID priceId = linkPrice.getPriceId();
 		try {
@@ -343,6 +362,7 @@ public class EventsApiResource implements EventsApi {
 	}
 
 	@Override
+	@RolesAllowed(EVENT_WRITE)
 	public Response assignAreaLevelPricingOfEvent(UUID eventId, UUID areaId, LinkPrice linkPrice) {
 		UUID priceId = linkPrice.getPriceId();
 		try {
@@ -363,11 +383,13 @@ public class EventsApiResource implements EventsApi {
 	}
 
 	@Override
+	@RolesAllowed(EVENT_READ)
 	public Response getEventOrders(UUID eventId) {
 		return null;
 	}
 
 	@Override
+	@RolesAllowed(EVENT_WRITE)
 	public Response createEvent(Event event, String xCopyFromId) {
 		if (xCopyFromId == null)
 			return createEvent(event);
@@ -397,6 +419,7 @@ public class EventsApiResource implements EventsApi {
 	}
 
 	@Override
+	@RolesAllowed(EVENT_READ)
 	public Response getEventById(UUID eventId) {
 		try {
 			Event event = repository.loadEvent(eventId);
@@ -410,6 +433,7 @@ public class EventsApiResource implements EventsApi {
 	}
 
 	@Override
+	@RolesAllowed(EVENT_READ)
 	public Response listEvents(String venueId) {
 		if (venueId != null) {
 			try {
@@ -432,6 +456,7 @@ public class EventsApiResource implements EventsApi {
 	}
 
 	@Override
+	@RolesAllowed(EVENT_READ)
 	public Response getVenueOfEvent(UUID eventId) {
 		try {
 			Venue venue = repository.loadVenueByEvent(eventId);
@@ -445,6 +470,7 @@ public class EventsApiResource implements EventsApi {
 	}
 
 	@Override
+	@RolesAllowed(EVENT_READ)
 	public Response getEventVenueSvgLayout(UUID eventId) {
 		try {
 			return Response.ok(repository.loadEventVenueSvg(eventId)).build();
@@ -454,6 +480,7 @@ public class EventsApiResource implements EventsApi {
 	}
 
 	@Override
+	@RolesAllowed(EVENT_WRITE)
 	public Response assignVenueToEvent(UUID eventId, LinkVenue linkVenue) {
 		UUID venueId = linkVenue.getVenueId();
 		try {
@@ -473,6 +500,7 @@ public class EventsApiResource implements EventsApi {
 	}
 
 	@Override
+	@RolesAllowed(EVENT_WRITE)
 	public Response updateEvent(UUID eventId, Event event) {
 		try {
 			repository.updateEvent(eventId, event);
@@ -491,6 +519,7 @@ public class EventsApiResource implements EventsApi {
 	}
 
 	@Override
+	@RolesAllowed(EVENT_WRITE)
 	public Response createSession(UUID eventId, Session session) {
 		session = session.id(UUID.randomUUID());
 		try {
@@ -504,6 +533,7 @@ public class EventsApiResource implements EventsApi {
 	}
 
 	@Override
+	@RolesAllowed(EVENT_READ)
 	public Response listSessions(UUID eventId) {
 		try {
 			List<Session> sessions = repository.loadSessions(eventId);
@@ -514,6 +544,7 @@ public class EventsApiResource implements EventsApi {
 	}
 
 	@Override
+	@RolesAllowed(EVENT_WRITE)
 	public Response updateSession(UUID eventId, UUID sessionId, Session session) {
 		try {
 			repository.updateSession(eventId, sessionId, session);
@@ -532,6 +563,7 @@ public class EventsApiResource implements EventsApi {
 	}
 
 	@Override
+	@RolesAllowed(EVENT_WRITE)
 	public Response deleteSession(UUID eventId, UUID sessionId) {
 		try {
 			repository.deleteSession(eventId, sessionId);
@@ -551,6 +583,7 @@ public class EventsApiResource implements EventsApi {
 	}
 
 	@Override
+	@RolesAllowed(EVENT_READ)
 	public Response getSession(UUID eventId, UUID sessionId) {
 		try {
 			Session session = repository.loadSession(eventId, sessionId);

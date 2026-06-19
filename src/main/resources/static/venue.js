@@ -1,4 +1,4 @@
-import {drawVenue, enforceNumericInput} from "./common.js";
+import {apiFetch, drawVenue, enforceNumericInput} from "./common.js";
 
 window.stoneticket = {
     ...window.stoneticket,
@@ -11,7 +11,7 @@ let areaNames = {}; // This object will store the mapping of areaId to area name
 function uploadTemplate(form) {
     const formData = new FormData(form);
 
-    fetch('/api/template', {
+    apiFetch('/api/template', {
         method: 'POST',
         body: formData
     })
@@ -59,7 +59,7 @@ function fetchVenues() {
     dropdownContainer.appendChild(dropdown);
 
     // Fetch venues and populate the dropdown
-    fetch('/api/venues')
+    apiFetch('/api/venues')
         .then(response => response.json())
         .then(data => {
             data.forEach(venue => {
@@ -73,7 +73,7 @@ function fetchVenues() {
 
 function fetchAreaNames(venueId) {
     // Replace with your actual API endpoint, use the venueId to fetch areas
-    return fetch(`/api/venues/${venueId}/areas`)
+    return apiFetch(`/api/venues/${venueId}/areas`)
         .then(response => response.json())
         .then(areas => {
             areaNames = {}; // Reset the areaNames object
@@ -110,7 +110,7 @@ function attachEventListeners(venueId) {
 
 
 function fetchSeatsForArea(venueId, areaId) {
-    fetch(`/api/venues/${venueId}/areas/${areaId}/seats`)
+    apiFetch(`/api/venues/${venueId}/areas/${areaId}/seats`)
         .then(response => response.json())
         .then(seats => {
             displaySeats(seats);
@@ -199,4 +199,3 @@ function hideAreaName() {
         tooltip.remove();
     }
 }
-
