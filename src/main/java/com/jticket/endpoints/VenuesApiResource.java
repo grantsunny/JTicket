@@ -1,7 +1,11 @@
 package com.jticket.endpoints;
 
+import static com.jticket.security.OAuth2Scopes.VENUE_READ;
+
 import java.sql.SQLException;
 import java.util.UUID;
+
+import jakarta.annotation.security.RolesAllowed;
 
 import com.jticket.api.VenuesApi;
 import com.jticket.api.model.Area;
@@ -15,6 +19,7 @@ import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.WebApplicationException;
 import jakarta.ws.rs.core.Response;
 
+@RolesAllowed(VENUE_READ)
 public class VenuesApiResource implements VenuesApi {
 
 	@Inject

@@ -3,13 +3,13 @@ package com.jticket.security;
 import java.util.Collection;
 import java.util.LinkedHashSet;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
 import org.springframework.core.convert.converter.Converter;
-import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.core.Authentication;
@@ -51,15 +51,6 @@ public class OAuth2SecurityConfig {
         http
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers("/oauth2/**", "/login/**", "/error").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/events/**").hasAuthority("SCOPE_event:read")
-                        .requestMatchers(HttpMethod.POST, "/api/events/**").hasAuthority("SCOPE_event:write")
-                        .requestMatchers(HttpMethod.PUT, "/api/events/**").hasAuthority("SCOPE_event:write")
-                        .requestMatchers(HttpMethod.PATCH, "/api/events/**").hasAuthority("SCOPE_event:write")
-                        .requestMatchers(HttpMethod.DELETE, "/api/events/**").hasAuthority("SCOPE_event:write")
-                        .requestMatchers(HttpMethod.GET, "/api/venues/**").hasAuthority("SCOPE_venue:read")
-                        .requestMatchers(HttpMethod.GET, "/api/seats/**").hasAuthority("SCOPE_seat:read")
-                        .requestMatchers("/api/template", "/api/template/**").hasAuthority("SCOPE_template:write")
-                        .requestMatchers("/api/orders", "/api/orders/**").hasAuthority("SCOPE_order:write")
                         .requestMatchers("/api/**").authenticated()
                         .anyRequest().authenticated())
                 // The current browser UI mutates /api resources without a CSRF token.
@@ -108,6 +99,7 @@ public class OAuth2SecurityConfig {
         Converter<Jwt, Collection<GrantedAuthority>> authoritiesConverter = jwt -> {
             Collection<GrantedAuthority> authorities = new LinkedHashSet<>(scopes.convert(jwt));
             authorities.addAll(permissions.convert(jwt));
+            addRoleAuthorities(authorities);
             return authorities;
         };
 
@@ -132,6 +124,7 @@ public class OAuth2SecurityConfig {
             tokenScopes.stream()
                     .map(scope -> new SimpleGrantedAuthority("SCOPE_" + scope))
                     .forEach(authorities::add);
+            addRoleAuthorities(authorities);
 
             try {
                 Jwt accessToken = jwtDecoder.decode(userRequest.getAccessToken().getTokenValue());
@@ -161,5 +154,14 @@ public class OAuth2SecurityConfig {
         return configuredNameAttribute == null || configuredNameAttribute.isBlank()
                 ? "sub"
                 : configuredNameAttribute;
+    }
+
+    private static void addRoleAuthorities(Collection<GrantedAuthority> authorities) {
+        authorities.stream()
+                .map(GrantedAuthority::getAuthority)
+                .filter(authority -> authority.startsWith("SCOPE_"))
+                .map(authority -> new SimpleGrantedAuthority("ROLE_" + authority.substring("SCOPE_".length())))
+                .collect(Collectors.toList())
+                .forEach(authorities::add);
     }
 }

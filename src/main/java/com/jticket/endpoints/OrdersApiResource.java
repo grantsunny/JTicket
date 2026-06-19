@@ -1,5 +1,7 @@
 package com.jticket.endpoints;
 
+import static com.jticket.security.OAuth2Scopes.ORDER_WRITE;
+
 import java.security.KeyFactory;
 import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
@@ -27,6 +29,7 @@ import com.jticket.persist.PersistenceException;
 
 import io.jsonwebtoken.JwtBuilder;
 import io.jsonwebtoken.Jwts;
+import jakarta.annotation.security.RolesAllowed;
 import jakarta.inject.Inject;
 import jakarta.validation.Valid;
 import jakarta.ws.rs.BadRequestException;
@@ -36,6 +39,7 @@ import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.UriBuilder;
 import jakarta.ws.rs.core.UriInfo;
 
+@RolesAllowed(ORDER_WRITE)
 public class OrdersApiResource implements OrdersApi {
 
     @Context
