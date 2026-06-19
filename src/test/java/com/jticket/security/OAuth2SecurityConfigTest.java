@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.oauth2Login;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -28,8 +29,10 @@ import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.mock.web.MockHttpSession;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.web.util.UriComponentsBuilder;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @WebMvcTest(properties = {
@@ -123,6 +126,39 @@ class OAuth2SecurityConfigTest {
     }
 
     @Test
+    void requiresReadScopeForEventReadApiRequests() throws Exception {
+        mockMvc.perform(get("/api/events").with(jwt()
+                        .authorities(new SimpleGrantedAuthority("SCOPE_order:write"))))
+                .andExpect(status().isForbidden());
+
+        mockMvc.perform(get("/api/events").with(jwt()
+                        .authorities(new SimpleGrantedAuthority("SCOPE_event:read"))))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void requiresWriteScopeForEventMutationApiRequests() throws Exception {
+        mockMvc.perform(post("/api/events").with(jwt()
+                        .authorities(new SimpleGrantedAuthority("SCOPE_event:read"))))
+                .andExpect(status().isForbidden());
+
+        mockMvc.perform(post("/api/events").with(jwt()
+                        .authorities(new SimpleGrantedAuthority("SCOPE_event:write"))))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void appliesFineGrainedAuthorizationToOidcBrowserSessions() throws Exception {
+        mockMvc.perform(get("/api/events").with(oauth2Login()
+                        .authorities(new SimpleGrantedAuthority("SCOPE_order:write"))))
+                .andExpect(status().isForbidden());
+
+        mockMvc.perform(get("/api/events").with(oauth2Login()
+                        .authorities(new SimpleGrantedAuthority("SCOPE_event:read"))))
+                .andExpect(status().isOk());
+    }
+
+    @Test
     void mapsStandardScopesAndAuth0PermissionsToAuthorities() {
         Jwt token = new Jwt(
                 "token",
@@ -153,6 +189,16 @@ class OAuth2SecurityConfigTest {
         @GetMapping("/api/test")
         String api() {
             return "api";
+        }
+
+        @GetMapping("/api/events")
+        String events() {
+            return "events";
+        }
+
+        @PostMapping("/api/events")
+        String createEvent() {
+            return "event";
         }
     }
 }

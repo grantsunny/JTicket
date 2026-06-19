@@ -117,6 +117,19 @@ class OAuth2HttpIntegrationTest {
     }
 
     @Test
+    void enforcesFineGrainedAuthorizationForRealSignedBearerToken() throws Exception {
+        String token = OIDC_PROVIDER.accessToken(
+                "api-user",
+                "jticket-test-api",
+                "order:write",
+                List.of("order:write"));
+
+        mockMvc.perform(get("/api/events")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
     void exchangesAuthorizationCodeAndReusesOidcSessionForApi() throws Exception {
         MvcResult authorization = mockMvc.perform(get("/oauth2/authorization/jticket"))
                 .andExpect(status().isFound())
@@ -152,6 +165,11 @@ class OAuth2HttpIntegrationTest {
                         .session(session))
                 .andExpect(status().isOk())
                 .andExpect(content().string("browser-user"));
+
+        mockMvc.perform(get("/api/events")
+                        .session(session))
+                .andExpect(status().isOk())
+                .andExpect(content().string("events"));
     }
 
     @SpringBootConfiguration
@@ -170,6 +188,11 @@ class OAuth2HttpIntegrationTest {
         @GetMapping("/api/principal")
         String principal(Authentication authentication) {
             return authentication.getName();
+        }
+
+        @GetMapping("/api/events")
+        String events() {
+            return "events";
         }
     }
 
@@ -235,13 +258,21 @@ class OAuth2HttpIntegrationTest {
         }
 
         String accessToken(String subject, String audience, List<String> permissions) {
+            return accessToken(subject, audience, "event:read", permissions);
+        }
+
+        String accessToken(
+                String subject,
+                String audience,
+                String scope,
+                List<String> permissions) {
             return signedToken(new JWTClaimsSet.Builder()
                     .subject(subject)
                     .audience(audience)
                     .issuer(baseUrl())
                     .issueTime(Date.from(Instant.now()))
                     .expirationTime(Date.from(Instant.now().plusSeconds(300)))
-                    .claim("scope", "event:read")
+                    .claim("scope", scope)
                     .claim("permissions", permissions)
                     .build());
         }
