@@ -10,8 +10,7 @@ export function apiFetch(resource, options = {}) {
         credentials: options.credentials || 'same-origin'
     }).then(response => {
         if (response.status === 401) {
-            window.location.href = '/oauth2/authorization/jticket';
-            return new Promise(() => {});
+            return redirectToOidcLogin();
         }
         return response;
     });
@@ -21,13 +20,19 @@ export function showCurrentUser(container) {
     return apiFetch('/api/auth/userinfo')
         .then(response => {
             if (!response.ok) {
-                throw new Error(`Unable to load current user. Status: ${response.status}`);
+                return redirectToOidcLogin();
             }
             return response.text();
         })
         .then(data => {
             container.textContent = data;
-        });
+        })
+        .catch(() => redirectToOidcLogin());
+}
+
+function redirectToOidcLogin() {
+    window.location.href = '/oauth2/authorization/jticket';
+    return new Promise(() => {});
 }
 
 export function cleanUpContainer(container) {
