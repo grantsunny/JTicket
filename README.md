@@ -140,11 +140,11 @@ The `dev` profile remains unauthenticated. Production requires authentication an
 on individual endpoints.
 
 ## Scaling
-The Kubernetes manifests run JTicket as a replicated deployment behind a ClusterIP service and ingress. Database
-coordination is handled by the CockroachDB manifests: three durable StatefulSet nodes provide persistent storage, while
-the JTicket deployment starts memory-backed CockroachDB nodes that join the same cluster for low-latency SQL access. The
-application can scale horizontally as long as all replicas point at the shared CockroachDB cluster.
+JTicket run as a replicated deployment with CockroachDB in a hybrid mode. Durable StatefulSet DB nodes provide 
+persistent storage, while JTicket deployment starts with memory-backed DB nodes as side-car. 
+
+By such configuration, JTicket can scale horizontally and work with completely in-memory database! 
 
 ## What's next
-Implement the operator order views behind `order:read:all`, including the existing `/events/{eventId}/orders` endpoint,
-and revisit the persisted `userId` column size for real OIDC `sub` values.
+1. Portal: Implement the operator order UI behind `order:read:all`
+2. The Attendance UI - will it be something like a Android application or SDK? 
