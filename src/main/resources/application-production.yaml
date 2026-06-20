@@ -22,7 +22,7 @@ spring:
       enabled: false
   datasource:
     url: jdbc:postgresql://localhost:26257/TKT
-    driver-class-name: new org.postgresql.Driver
+    driver-class-name: org.postgresql.Driver
     username: root
     hikari:
       maximum-pool-size: 10

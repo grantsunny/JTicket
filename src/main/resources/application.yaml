@@ -10,6 +10,10 @@ spring:
   jersey:
     application-path: /api/
 
+mybatis:
+  configuration:
+    jdbc-type-for-null: "VARCHAR"
+
 ticket:
   user-token:
     required: true

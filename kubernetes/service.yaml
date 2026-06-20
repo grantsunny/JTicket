@@ -6,6 +6,7 @@ metadata:
 spec:
   selector:
     app: jticket
+    component: app
   ports:
     - protocol: TCP
       port: 80

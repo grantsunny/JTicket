@@ -5,5 +5,13 @@ metadata:
   namespace: jticket
 spec:
   clusterIP: None  # Headless service for DNS-based discovery
+  publishNotReadyAddresses: true
   selector:
-    app: jticket
+    cockroach-cluster: jticket-db
+  ports:
+    - name: sql
+      port: 26257
+      targetPort: sql
+    - name: db-console
+      port: 8081
+      targetPort: db-console
