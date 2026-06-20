@@ -1,0 +1,99 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: jticket-db-durable
+  namespace: jticket
+spec:
+  serviceName: jticket-db
+  replicas: 3
+  selector:
+    matchLabels:
+      app: jticket-db
+      component: durable-cockroachdb
+  template:
+    metadata:
+      labels:
+        app: jticket-db
+        component: durable-cockroachdb
+        cockroach-cluster: jticket-db
+    spec:
+      securityContext:
+        fsGroup: 1000
+      initContainers:
+        - name: prepare-cockroach-data
+          image: cockroachdb/cockroach:v24.3.33
+          securityContext:
+            runAsUser: 0
+          command:
+            - /bin/bash
+            - -ec
+            - |
+              mkdir -p "/cockroach/cockroach-data/${HOSTNAME}"
+              chown -R 1000:1000 "/cockroach/cockroach-data/${HOSTNAME}"
+          volumeMounts:
+            - name: cockroach-data
+              mountPath: /cockroach/cockroach-data
+      containers:
+        - name: cockroachdb
+          image: cockroachdb/cockroach:v24.3.33
+          env:
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+          ports:
+            - containerPort: 26257
+              name: sql
+            - containerPort: 8081
+              name: db-console
+          command:
+            - /bin/bash
+            - -ec
+            - |
+              exec cockroach start \
+                --insecure \
+                --listen-addr=0.0.0.0:26257 \
+                --advertise-addr="${POD_IP}:26257" \
+                --http-addr=0.0.0.0:8081 \
+                --store=path=/cockroach/cockroach-data/${HOSTNAME},attrs=durable,size=10Gi \
+                --attrs=durable \
+                --locality=tier=durable \
+                --cache=256Mi \
+                --max-sql-memory=256Mi \
+                --join=jticket-db:26257
+          startupProbe:
+            tcpSocket:
+              port: sql
+            failureThreshold: 30
+            periodSeconds: 2
+          readinessProbe:
+            exec:
+              command:
+                - /bin/bash
+                - -ec
+                - cockroach sql --insecure --host=localhost:26257 --execute="SELECT 1" >/dev/null
+            periodSeconds: 5
+            failureThreshold: 6
+          volumeMounts:
+            - name: cockroach-data
+              mountPath: /cockroach/cockroach-data
+      volumes:
+        # Local host storage keeps this manifest simple. For stronger scheduling
+        # guarantees, replace this with local PersistentVolumes/PVCs or a
+        # volumeClaimTemplates block like the commented example below.
+        - name: cockroach-data
+          hostPath:
+            path: /var/lib/jticket/cockroachdb
+            type: DirectoryOrCreate
+
+# Example PVC-backed replacement for the hostPath volume above:
+# volumeClaimTemplates:
+#   - metadata:
+#       name: cockroach-data
+#     spec:
+#       accessModes:
+#         - ReadWriteOnce
+#       storageClassName: local-path
+#       resources:
+#         requests:
+#           storage: 10Gi

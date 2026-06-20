@@ -13,24 +13,88 @@ spec:
       name: jticket
       labels:
         app: jticket
+        component: app
+        cockroach-cluster: jticket-db
     spec:
       initContainers:
+        - name: cockroachdb
+          image: cockroachdb/cockroach:v24.3.33
+          restartPolicy: Always
+          env:
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+          ports:
+            - containerPort: 26257
+              name: sql
+            - containerPort: 8081
+              name: db-console
+          command:
+            - /bin/bash
+            - -ec
+            - |
+              exec cockroach start \
+                --insecure \
+                --listen-addr=0.0.0.0:26257 \
+                --advertise-addr="${POD_IP}:26257" \
+                --http-addr=0.0.0.0:8081 \
+                --store=type=mem,size=512Mi \
+                --attrs=mem \
+                --locality=tier=mem \
+                --cache=128Mi \
+                --max-sql-memory=128Mi \
+                --join=jticket-db:26257
+          startupProbe:
+            tcpSocket:
+              port: sql
+            failureThreshold: 30
+            periodSeconds: 2
+          readinessProbe:
+            exec:
+              command:
+                - /bin/bash
+                - -ec
+                - cockroach sql --insecure --host=localhost:26257 --execute="SELECT 1" >/dev/null
+            periodSeconds: 5
+            failureThreshold: 6
         - name: init-database
           image: cockroachdb/cockroach:v24.3.33
           command:
             - /bin/bash
-            - -c
+            - -ec
             - |
-              echo -n "Waiting for CockroachDB to become ready..."
-              until cockroach sql --insecure --host=localhost --execute="SHOW DATABASES;" >/dev/null 2>&1; do
+              echo "Initializing CockroachDB cluster if needed..."
+              until cockroach init --insecure --host=localhost:26257 >/tmp/cockroach-init.log 2>&1; do
+                if grep -qi "already.*initialized" /tmp/cockroach-init.log; then
+                  cat /tmp/cockroach-init.log
+                  break
+                fi
+                cat /tmp/cockroach-init.log
+                sleep 2
+              done
+
+              echo -n "Waiting for CockroachDB SQL..."
+              until cockroach sql --insecure --host=localhost:26257 --execute="SELECT 1" >/dev/null 2>&1; do
                 echo -n "."
                 sleep 2
               done
               echo
-              echo "CockroachDB is ready. Initializing database..."
-              cockroach sql --insecure --host=localhost --execute="
+
+              echo -n "Waiting for 3 durable CockroachDB nodes..."
+              until [ "$(cockroach node status --insecure --host=localhost:26257 --format=tsv | awk -F '\t' 'NR > 1 && $7 ~ /tier=durable/ && $9 == "true" { count++ } END { print count + 0 }')" -ge 3 ]; do
+                echo -n "."
+                sleep 5
+              done
+              echo
+
+              echo "Creating JTicket database objects..."
+              cockroach sql --insecure --host=localhost:26257 --execute="
                 CREATE DATABASE IF NOT EXISTS TKT;
-                ALTER RANGE default CONFIGURE ZONE USING num_replicas = 3;
+                ALTER DATABASE TKT CONFIGURE ZONE USING
+                  num_replicas = 5,
+                  constraints = '{\"+tier=durable\": 3, \"+tier=mem\": 2}',
+                  lease_preferences = '[[+tier=mem]]';
               "
               echo "Database initialized successfully."
       containers:
@@ -39,14 +103,4 @@ spec:
           ports:
             - containerPort: 8080
           imagePullPolicy: Always
-        - name: cockroachdb
-          image: cockroachdb/cockroach:v24.3.33
-          ports:
-            - containerPort: 26257  # CockroachDB SQL port
-            - containerPort: 8080   # CockroachDB Admin UI port
-          args:
-            - start
-            - --insecure
-            - --store=type=mem,size=512Mi   # In-memory configuration
-            - --join=jticket-db             # Use the headless service for node discovery    
       restartPolicy: Always
