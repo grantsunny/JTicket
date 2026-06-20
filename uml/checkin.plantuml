@@ -26,7 +26,7 @@ Attendant --> Customer: Scan the QR code for token
 
 
 Attendant --> eventEndpoint: POST /events/{eventId}/sessions/{sessionId}
-note over Attendance, eventEndpoint
+note over Attendant, eventEndpoint
 Supply token, event and session to the service for checkin
 System will check the JWT timestamp for token expiration
 Upon successful checking in, checkinTimestamp of corresponding seat will be updated.
