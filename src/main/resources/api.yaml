@@ -742,6 +742,7 @@ paths:
     get:
       summary: Get all the orders of a given event
       operationId: getEventOrders
+      description: Retrieve all orders for an event. Intended for operators with order:read:all.
       parameters:
         - name: eventId
           in: path
@@ -1028,20 +1029,8 @@ paths:
     get:
       summary: Get a list of orders
       operationId: getAllOrders
-      description: Retrieve a list of orders within an optional time range. Filter orders by creation timestamp using query parameters.
+      description: Retrieve orders within an optional time range. Customers see their own orders; operators with order:read:all can see all orders.
       parameters:
-        - name: x-ticket-userId
-          in: cookie
-          schema:
-            type: string
-          required: false
-          description: If there is userId in cookie, will return orders under given user
-        - name: x-ticket-userId
-          in: header
-          schema:
-            type: string
-          required: false
-          description: If there is userId in cookie, will return orders under given user
         - name: startTime
           in: query
           schema:
@@ -1069,20 +1058,7 @@ paths:
     post:
       summary: Create an order
       operationId: createOrder
-      description: Create a new order with multiple seat selections. Returns the created order with payment details.
-      parameters:
-        - name: x-ticket-userId
-          in: cookie
-          schema:
-            type: string
-          required: false
-          description: If there is userId in cookie, will use this userId to create order; otherwise the body shall contain the userId.
-        - name: x-ticket-userId
-          in: header
-          schema:
-            type: string
-          required: false
-          description: If there is userId in cookie, will return orders under given user
+      description: Create a new order with multiple seat selections for the authenticated customer.
       requestBody:
         description: Order creation request
         required: true
@@ -1104,20 +1080,8 @@ paths:
     get:
       summary: Get a specific order
       operationId: getOrder
-      description: Retrieve details of a specific order by its UUID.
+      description: Retrieve details of a specific order by its UUID. Customers can retrieve only their own orders; operators with order:read:all can retrieve any order.
       parameters:
-        - name: x-ticket-userId
-          in: cookie
-          schema:
-            type: string
-          required: false
-          description: If there is userId in cookie, getting order does not belong to user will get 404.
-        - name: x-ticket-userId
-          in: header
-          schema:
-            type: string
-          required: false
-          description: If there is userId in cookie, will return orders under given user
         - name: orderId
           in: path
           required: true
@@ -1138,19 +1102,8 @@ paths:
     patch:
       summary: Accomplish a payment to a order
       operationId: payOrder
+      description: Mark an order as paid. Intended for payment agents with order:pay; no customer owner check is required.
       parameters:
-        - name: x-ticket-userId
-          in: cookie
-          schema:
-            type: string
-          required: false
-          description: If there is userId in cookie, payment order does not belong to user will fail with 404.
-        - name: x-ticket-userId
-          in: header
-          schema:
-            type: string
-          required: false
-          description: If there is userId in cookie, will return orders under given user
         - name: orderId
           in: path
           required: true
@@ -1179,20 +1132,8 @@ paths:
     delete:
       summary: Cancel an order
       operationId: cancelOrder
-      description: Cancel a specific order by marking it as unpaid. Can only cancel orders that are not paid.
+      description: Cancel a specific order. Customers can cancel only their own orders; operators with order:write:all can cancel any order.
       parameters:
-        - name: x-ticket-userId
-          in: cookie
-          schema:
-            type: string
-          required: false
-          description: If there is userId in cookie, cancel order does not belong to user will fail with 404.
-        - name: x-ticket-userId
-          in: header
-          schema:
-            type: string
-          required: false
-          description: If there is userId in cookie, will return orders under given user
         - name: orderId
           in: path
           required: true
@@ -1214,20 +1155,8 @@ paths:
       operationId: _createCheckInToken
       description: > 
         Create corresponding ticket object (for QR code) in JWT token format by supplying one seatId, 
-        with signature.
+        with signature. Customers can create QR tokens only for their own paid orders; operators with order:read:all can create QR tokens for any paid order.
       parameters:
-        - name: x-ticket-userId
-          in: cookie
-          schema:
-            type: string
-          required: false
-          description: If there is userId in cookie, cancel order does not belong to user will fail with 404.
-        - name: x-ticket-userId
-          in: header
-          schema:
-            type: string
-          required: false
-          description: If there is userId in cookie, will return orders under given user
         - name: orderId
           in: path
           required: true

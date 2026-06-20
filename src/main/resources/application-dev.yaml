@@ -22,10 +22,6 @@ springdoc:
     path: api/doc
 
 ticket:
-  user-token:
-    required: false
-    path: /api/order
-    name: x-ticket-userId
   sqlParams:
     SEATDETAILS: SEATDETAILS
     SEATSINEVENT: SEATSINEVENT

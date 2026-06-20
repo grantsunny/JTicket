@@ -1,6 +1,10 @@
 package com.jticket.endpoints;
 
+import static com.jticket.security.OAuth2Scopes.ORDER_PAY;
+import static com.jticket.security.OAuth2Scopes.ORDER_READ;
+import static com.jticket.security.OAuth2Scopes.ORDER_READ_ALL;
 import static com.jticket.security.OAuth2Scopes.ORDER_WRITE;
+import static com.jticket.security.OAuth2Scopes.ORDER_WRITE_ALL;
 
 import java.security.KeyFactory;
 import java.security.NoSuchAlgorithmException;
@@ -25,7 +29,6 @@ import com.jticket.api.model.Seat;
 import com.jticket.api.model.Ticket;
 import com.jticket.integration.OrderPluginHelper;
 import com.jticket.persist.OrdersRepository;
-import com.jticket.persist.PersistenceException;
 
 import io.jsonwebtoken.JwtBuilder;
 import io.jsonwebtoken.Jwts;
@@ -36,14 +39,17 @@ import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.WebApplicationException;
 import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriBuilder;
 import jakarta.ws.rs.core.UriInfo;
 
-@RolesAllowed(ORDER_WRITE)
 public class OrdersApiResource implements OrdersApi {
 
     @Context
     private UriInfo uriInfo;
+
+    @Context
+    private SecurityContext securityContext;
 
     @Inject
     private OrdersRepository repository;
@@ -90,6 +96,37 @@ public class OrdersApiResource implements OrdersApi {
             throw new BadRequestException(e);
         }
     }
+
+    private String currentUserId() {
+        if ((securityContext == null) || (securityContext.getUserPrincipal() == null))
+            throw new WebApplicationException("Cannot handle order without authenticated user", Response.Status.UNAUTHORIZED);
+        return securityContext.getUserPrincipal().getName();
+    }
+
+    private String currentUserIdOrNull() {
+        if ((securityContext == null) || (securityContext.getUserPrincipal() == null))
+            return null;
+        return securityContext.getUserPrincipal().getName();
+    }
+
+    private boolean hasRole(String role) {
+        return (securityContext != null) && securityContext.isUserInRole(role);
+    }
+
+    private boolean canReadAllOrders() {
+        return hasRole(ORDER_READ_ALL);
+    }
+
+    private boolean canWriteAllOrders() {
+        return hasRole(ORDER_WRITE_ALL);
+    }
+
+    private Order loadOrder(UUID orderId) throws SQLException {
+        Order order = repository.loadOrder(orderId);
+        if (order == null)
+            throw new WebApplicationException(Response.Status.NOT_FOUND);
+        return order;
+    }
     
     /**
      *  JWT (JSON Web Token) used for authentication and access control. The JWT is
@@ -114,16 +151,16 @@ public class OrdersApiResource implements OrdersApi {
      */
     
     @Override
-    public Response createCheckInToken(
-            UUID orderId, LinkSeat linkSeat, String userIdCookie, String userIdHeader) {
+    @RolesAllowed({ORDER_READ, ORDER_READ_ALL})
+    public Response createCheckInToken(UUID orderId, LinkSeat linkSeat) {
     	
-        String userId = userIdHeader != null ? userIdHeader : userIdCookie;
-        verifyOrderAndUser(userId, orderId);
+        if (!canReadAllOrders())
+            verifyOrderAndUser(currentUserId(), orderId);
         
         Order order;
 		try {
-			order = repository.loadOrder(orderId);
-		} catch (PersistenceException e) {
+			order = loadOrder(orderId);
+		} catch (SQLException e) {
 			throw new WebApplicationException(e.getMessage(), e);
 		}
 		
@@ -153,7 +190,7 @@ public class OrdersApiResource implements OrdersApi {
 			throw new WebApplicationException(e.getMessage(), e);
 		}
         
-        String sub = userId;
+        String sub = order.getUserId();
         UUID eventId = order.getEventId();
         UUID sessionId = order.getSessionId();
         UUID venueId = seat.getVenueId();
@@ -192,17 +229,17 @@ public class OrdersApiResource implements OrdersApi {
     }
 
     @Override
-    public Response createOrder(Order order, String userIdCookie, String userIdHeader) {
-        String userId = userIdHeader != null ? userIdHeader : userIdCookie;
-        if (userId != null)
-            order.setUserId(userId);
-        else
+    @RolesAllowed(ORDER_WRITE)
+    public Response createOrder(Order order) {
+        String userId = currentUserIdOrNull();
+        if (userId == null)
             userId = order.getUserId();
 
         if (userId == null)
             throw new WebApplicationException("Cannot create order without user information", Response.Status.BAD_REQUEST);
 
         try {
+            order.setUserId(userId);
             order.setId(UUID.randomUUID());
             order = plugin.beforePlaceOrder(userId, order);
             repository.saveNewOrder(order);
@@ -219,8 +256,9 @@ public class OrdersApiResource implements OrdersApi {
 
 
     @Override
-    public Response getAllOrders(String userIdCookie, String userIdHeader, Date startTime, Date endTime) {
-        String userId = userIdHeader != null ? userIdHeader : userIdCookie;
+    @RolesAllowed({ORDER_READ, ORDER_READ_ALL})
+    public Response getAllOrders(Date startTime, Date endTime) {
+        String userId = canReadAllOrders() ? null : currentUserIdOrNull();
         List<Order> orders;
         try {
             if (startTime != null && endTime != null)
@@ -244,11 +282,12 @@ public class OrdersApiResource implements OrdersApi {
     }
 
     @Override
-    public Response getOrder(UUID orderId, String userIdCookie, String userIdHeader) {
-        String userId = userIdHeader != null ? userIdHeader : userIdCookie;
-        verifyOrderAndUser(userId, orderId);
+    @RolesAllowed({ORDER_READ, ORDER_READ_ALL})
+    public Response getOrder(UUID orderId) {
+        if (!canReadAllOrders())
+            verifyOrderAndUser(currentUserId(), orderId);
         try {
-            Order order = repository.loadOrder(orderId);
+            Order order = loadOrder(orderId);
             return Response.ok(order).build();
         } catch (SQLException e) {
             throw new BadRequestException(e);
@@ -256,11 +295,11 @@ public class OrdersApiResource implements OrdersApi {
     }
 
     @Override
-    public Response payOrder(UUID orderId, Payment payment, String userIdCookie, String userIdHeader) {
-        String userId = userIdHeader != null ? userIdHeader : userIdCookie;
-        verifyOrderAndUser(userId, orderId);
+    @RolesAllowed(ORDER_PAY)
+    public Response payOrder(UUID orderId, Payment payment) {
         try {
-            plugin.beforePayOrder(userId, orderId.toString(), payment.getPaidAmount());
+            Order order = loadOrder(orderId);
+            plugin.beforePayOrder(order, payment.getPaidAmount());
             repository.updateOrderPayAmount(orderId, payment.getPaidAmount());
             return Response.accepted().build();
         } catch (SQLException e) {
@@ -269,11 +308,13 @@ public class OrdersApiResource implements OrdersApi {
     }
 
     @Override
-    public Response cancelOrder(UUID orderId, String userIdCookie, String userIdHeader) {
-        String userId = userIdHeader != null ? userIdHeader : userIdCookie;
-        verifyOrderAndUser(userId, orderId);
+    @RolesAllowed({ORDER_WRITE, ORDER_WRITE_ALL})
+    public Response cancelOrder(UUID orderId) {
+        if (!canWriteAllOrders())
+            verifyOrderAndUser(currentUserId(), orderId);
         try {
-            plugin.beforeCancelOrder(userId, orderId.toString());
+            Order order = loadOrder(orderId);
+            plugin.beforeCancelOrder(order);
             repository.deleteOrder(orderId);
             return Response.noContent().build();
         } catch (SQLException e) {

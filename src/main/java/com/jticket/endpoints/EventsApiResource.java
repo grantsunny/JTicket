@@ -2,6 +2,7 @@ package com.jticket.endpoints;
 
 import static com.jticket.security.OAuth2Scopes.EVENT_READ;
 import static com.jticket.security.OAuth2Scopes.EVENT_WRITE;
+import static com.jticket.security.OAuth2Scopes.ORDER_READ_ALL;
 
 import java.security.KeyFactory;
 import java.security.NoSuchAlgorithmException;
@@ -383,7 +384,7 @@ public class EventsApiResource implements EventsApi {
 	}
 
 	@Override
-	@RolesAllowed(EVENT_READ)
+	@RolesAllowed(ORDER_READ_ALL)
 	public Response getEventOrders(UUID eventId) {
 		return null;
 	}
