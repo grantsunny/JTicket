@@ -16,7 +16,7 @@ spec:
     spec:
       initContainers:
         - name: init-database
-          image: cockroachdb/cockroach:v24.3.1  
+          image: cockroachdb/cockroach:v24.3.33
           command:
             - /bin/bash
             - -c
@@ -40,7 +40,7 @@ spec:
             - containerPort: 8080
           imagePullPolicy: Always
         - name: cockroachdb
-          image: cockroachdb/cockroach:v24.3.1  
+          image: cockroachdb/cockroach:v24.3.33
           ports:
             - containerPort: 26257  # CockroachDB SQL port
             - containerPort: 8080   # CockroachDB Admin UI port

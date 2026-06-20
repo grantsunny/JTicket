@@ -29,9 +29,9 @@ pipeline {
             steps {
                 script {
                     // Determine the latest version of kubectl
-                    def kubectlVersion = sh(script: "curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt", returnStdout: true).trim()
-                    def kubectlDownloadUrl = "https://storage.googleapis.com/kubernetes-release/release/${kubectlVersion}/bin/linux/amd64/kubectl"
-                    sh "curl -LO ${kubectlDownloadUrl}"
+                    def kubectlVersion = sh(script: "curl -fsSL https://dl.k8s.io/release/stable.txt", returnStdout: true).trim()
+                    def kubectlDownloadUrl = "https://dl.k8s.io/release/${kubectlVersion}/bin/linux/amd64/kubectl"
+                    sh "curl -fsSLO ${kubectlDownloadUrl}"
                     sh "chmod +x ./kubectl"
                 }
             }
