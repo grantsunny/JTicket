@@ -140,9 +140,11 @@ The `dev` profile remains unauthenticated. Production requires authentication an
 on individual endpoints.
 
 ## Scaling
-There is no complex clustering configuration of scaling out the system as we are leveraging the in-memory database as 
-the only sharing points among working nodes. So as long as we can make Ignite cluster running good, JTicket cluster will 
-work great accordingly. 
+The Kubernetes manifests run JTicket as a replicated deployment behind a ClusterIP service and ingress. Database
+coordination is handled by the CockroachDB manifests: three durable StatefulSet nodes provide persistent storage, while
+the JTicket deployment starts memory-backed CockroachDB nodes that join the same cluster for low-latency SQL access. The
+application can scale horizontally as long as all replicas point at the shared CockroachDB cluster.
 
 ## What's next
-Continue refining role-specific API flows and OAuth2 scope coverage as new workflows are added.
+Implement the operator order views behind `order:read:all`, including the existing `/events/{eventId}/orders` endpoint,
+and revisit the persisted `userId` column size for real OIDC `sub` values.
