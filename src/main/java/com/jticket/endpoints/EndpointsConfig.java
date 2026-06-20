@@ -16,7 +16,6 @@ public class EndpointsConfig extends ResourceConfig {
             register(RolesAllowedDynamicFeature.class);
         }
         registerClasses(
-                UserTokenFilter.class,
                 DateObjectMapperProvider.class,
                 ApiDocResource.class,
                 AuthResource.class,

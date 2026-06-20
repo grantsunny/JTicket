@@ -15,10 +15,6 @@ mybatis:
     jdbc-type-for-null: "VARCHAR"
 
 ticket:
-  user-token:
-    required: true
-    path: /api/orders
-    name: x-ticket-userId
   jwt:
     algorithm: RSA
     private-key: |

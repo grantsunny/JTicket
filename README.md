@@ -55,10 +55,10 @@ We assume following roles in the context of JTicket.
 
 | Name          | OAuth2 Scope                                       |
 |---------------|----------------------------------------------------|
-| Operator      | template:write, event:read, event:write, venue:read, seat:read |
-| Customer      | event:read, order:write                            |
+| Operator      | template:write, event:read, event:write, venue:read, seat:read, order:read:all, order:write:all |
+| Customer      | event:read, order:read, order:write                |
 | Attendant     | event:read, event:write                            |
-| PaymentAgent  | order:write                                        |
+| PaymentAgent  | order:pay                                          |
 
 ### Ticket provision
 ![Provision of event](https://www.plantuml.com/plantuml/proxy?cache=no&src=https://raw.githubusercontent.com/grantsunny/JTicket/refs/heads/main/uml/provision.plantuml)
@@ -114,7 +114,7 @@ In Auth0, create users under **User Management > Users**, create the roles descr
 matching API permissions. Assign roles to the human users who access JTicket through Universal Login.
 
 For `PaymentAgent`, use a **Machine to Machine Application** with the Client Credentials flow and grant only
-`order:write`.
+`order:pay`.
 
 ### 4. Configure JTicket
 
@@ -136,8 +136,8 @@ For the illustrated Auth0 setup, `JTICKET_OIDC_AUDIENCE` must match the Auth0 AP
 3. Call `/api/**` with a JWT access token whose audience is the JTicket API.
 4. Confirm that an API request without a session or token returns `401`.
 
-The `dev` profile remains unauthenticated. Production currently requires authentication but does not yet enforce the
-documented permissions on individual endpoints.
+The `dev` profile remains unauthenticated. Production requires authentication and enforces the documented permissions
+on individual endpoints.
 
 ## Scaling
 There is no complex clustering configuration of scaling out the system as we are leveraging the in-memory database as 
@@ -145,4 +145,4 @@ the only sharing points among working nodes. So as long as we can make Ignite cl
 work great accordingly. 
 
 ## What's next
-Add and verify fine-grained endpoint authorization using the documented OAuth2 scopes.
+Continue refining role-specific API flows and OAuth2 scope coverage as new workflows are added.

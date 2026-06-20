@@ -38,10 +38,6 @@ spring:
 ticket:
   oauth2:
     audience: ${JTICKET_OIDC_AUDIENCE:jticket-auth0-demo}
-  user-token:
-    required: true
-    path: /api/orders
-    name: x-ticket-userId
   sqlParams:
     SEATDETAILS: SEATDETAILS
     SEATSINEVENT: SEATSINEVENT

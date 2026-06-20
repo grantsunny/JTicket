@@ -20,7 +20,7 @@ customer --> eventEndpoint: GET /events/{eventId}/seats/{seatId}
 customer --> eventEndpoint: GET /events/{eventId}/seats/{seatId}/pricing
 end
 
-group create order and accomplish payment [x-ticket-userId in cookie or header to authorize]
+group create order and accomplish payment [OAuth2 subject owns customer orders]
 customer --> orderEndpoint: GET /orders
 customer --> orderEndpoint: POST /orders
 customer --> orderEndpoint: GET /orders/{orderId}
