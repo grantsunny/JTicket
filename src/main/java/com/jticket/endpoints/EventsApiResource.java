@@ -20,6 +20,7 @@ import org.springframework.beans.factory.annotation.Value;
 import com.jticket.api.EventsApi;
 import com.jticket.api.model.Area;
 import com.jticket.api.model.Event;
+import com.jticket.api.model.EventStatistics;
 import com.jticket.api.model.LinkPrice;
 import com.jticket.api.model.LinkVenue;
 import com.jticket.api.model.Price;
@@ -387,6 +388,20 @@ public class EventsApiResource implements EventsApi {
 	@RolesAllowed(ORDER_READ_ALL)
 	public Response getEventOrders(UUID eventId) {
 		return null;
+	}
+
+	@Override
+	@RolesAllowed(EVENT_READ)
+	public Response getEventStatistics(UUID eventId) {
+		try {
+			if (repository.loadEvent(eventId) == null)
+				return Response.status(Response.Status.NOT_FOUND).build();
+
+			EventStatistics statistics = repository.loadEventStatistics(eventId);
+			return Response.ok(statistics).build();
+		} catch (SQLException e) {
+			throw new BadRequestException(e);
+		}
 	}
 
 	@Override

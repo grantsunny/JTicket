@@ -29,6 +29,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jticket.api.model.Area;
 import com.jticket.api.model.Event;
+import com.jticket.api.model.EventStatistics;
 import com.jticket.api.model.Order;
 import com.jticket.api.model.Price;
 import com.jticket.api.model.Seat;
@@ -1104,6 +1105,37 @@ public class JdbcHelper {
                 return stmt.executeUpdate();
             }
         }
+    }
+
+    public EventStatistics loadEventStatistics(UUID eventId) throws SQLException {
+        String sql = "SELECT " +
+                "(SELECT COUNT(*) FROM TKT.Seats " +
+                "INNER JOIN TKT.Areas ON TKT.Seats.areaId = TKT.Areas.id " +
+                "INNER JOIN TKT.Events ON TKT.Events.venueId = TKT.Areas.venueId " +
+                "WHERE TKT.Events.id = ?) AS totalSeats, " +
+                "(SELECT COUNT(*) FROM TKT.OrderSeats WHERE eventId = ?) AS orderedSeats, " +
+                "(SELECT COUNT(*) FROM TKT.OrderSeats WHERE eventId = ? AND checkedInTimestamp IS NOT NULL) AS checkedInSeats, " +
+                "(SELECT COUNT(*) FROM TKT.OrderSeats WHERE eventId = ? AND checkedInTimestamp IS NULL) AS uncheckedInSeats";
+
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, eventId.toString());
+            stmt.setString(2, eventId.toString());
+            stmt.setString(3, eventId.toString());
+            stmt.setString(4, eventId.toString());
+
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    return new EventStatistics()
+                            .eventId(eventId)
+                            .totalSeats(rs.getInt("totalSeats"))
+                            .orderedSeats(rs.getInt("orderedSeats"))
+                            .checkedInSeats(rs.getInt("checkedInSeats"))
+                            .uncheckedInSeats(rs.getInt("uncheckedInSeats"));
+                }
+            }
+        }
+        return null;
     }
     
     @Transactional(rollbackFor = SQLException.class)

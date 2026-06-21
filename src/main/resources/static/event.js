@@ -42,7 +42,7 @@ function updateSession(container, eventId, sessionId) {
 
                     session.name = sessionName;
                     session.startTime = sessionStartTime;
-                    session.sessionEndTime = sessionEndTime;
+                    session.endTime = sessionEndTime;
                 } else
                     return;
             } else

@@ -9,6 +9,7 @@ spring:
         registration:
           jticket:
             provider: oidc
+            # Demo Auth0 application values; override with JTICKET_OIDC_CLIENT_ID and JTICKET_OIDC_CLIENT_SECRET for deployments.
             client-id: ${JTICKET_OIDC_CLIENT_ID:sGIuOL9U1DtpD39kofVqAEdSW7BaLdRb}
             client-secret: ${JTICKET_OIDC_CLIENT_SECRET:pJeoD-UJQ559icUZHA15J96-rsza8Xao4i8HU6oKzwrdhCEtfTXZXxRUkfHIK3xa}
             authorization-grant-type: authorization_code

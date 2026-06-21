@@ -761,6 +761,28 @@ paths:
                   $ref: '#/components/schemas/Order'
         '404':
           description: Event not found
+
+  /events/{eventId}/statistics:
+    get:
+      summary: Get check-in statistics for a given event
+      operationId: getEventStatistics
+      description: Retrieve simple seat and check-in counts for an event.
+      parameters:
+        - name: eventId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Event statistics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventStatistics'
+        '404':
+          description: Event not found
           
   /venues:
     get:
@@ -1337,6 +1359,25 @@ components:
         metadata:
           type: object
           additionalProperties: true
+
+    EventStatistics:
+      type: object
+      properties:
+        eventId:
+          type: string
+          format: uuid
+        totalSeats:
+          type: integer
+          description: Total seats available in the event venue layout.
+        orderedSeats:
+          type: integer
+          description: Seats currently associated with orders for the event.
+        checkedInSeats:
+          type: integer
+          description: Ordered seats that have already been checked in.
+        uncheckedInSeats:
+          type: integer
+          description: Ordered seats that have not been checked in yet.
 
     Order:
       type: object

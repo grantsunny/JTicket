@@ -75,9 +75,9 @@ export function drawSeats(eventId, areaId, seatsContainer) {
             // Create table rows and cells
             Object.keys(seatRows).sort((a, b) => a - b).forEach(row => {
                 const tr = table.insertRow();
-                seatRows[row].sort((a, b) => a.column - b.column).forEach(seat => {
+                seatRows[row].sort((a, b) => a.col - b.col).forEach(seat => {
                     const td= tr.insertCell();
-                    td.textContent = seat.name;
+                    td.textContent = `${seat.row}-${seat.col}`;
                     td.dataset.seatid = seat.id;
                     td.dataset.selected = "false";
                     td.className = seat.available ? 'available-seat' : 'unavailable-seat';
