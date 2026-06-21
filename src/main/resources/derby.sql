@@ -76,18 +76,22 @@ CREATE TABLE TKT.Orders (
                     sessionId VARCHAR(36) NOT NULL,
                     userId VARCHAR(36) NOT NULL,
                     timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    paidAmount DECIMAL(10, 2) DEFAULT 0,
+                    paymentChannel VARCHAR(64),
+                    paymentTransactionId VARCHAR(128),
+                    paymentTimestamp TIMESTAMP,
+                    paymentAmount INT DEFAULT 0,
                     metadata CLOB,
                     FOREIGN KEY (eventId) REFERENCES TKT.Events(id),
-                    FOREIGN KEY (sessionId) REFERENCES TKT.Sessions(id)
+                    FOREIGN KEY (sessionId) REFERENCES TKT.Sessions(id),
+                    UNIQUE (paymentTransactionId)
 );
 
---Trigger to prevent removal of paiAmount > 0 (paid order)
+--Trigger to prevent removal of paymentAmount > 0 (paid order)
 CREATE TRIGGER TKT.PreventPaidOrderRemoval
     NO CASCADE BEFORE DELETE ON TKT.ORDERS
 REFERENCING OLD AS deletedRow
 FOR EACH ROW MODE DB2SQL
-WHEN (deletedRow.paidAmount > 0)
+WHEN (deletedRow.paymentAmount > 0)
     CALL TKT.RaiseException('Paid order cannot be deleted')
 ;
 

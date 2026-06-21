@@ -13,10 +13,6 @@ import org.apache.ibatis.session.RowBounds;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
 
-/**
- * This is to workaround (or enhance) the situation that some DB system (such as Ignite) does not support view.
- * So we are using the way of embedded table to simulate this
- */
 @Component
 @ConfigurationProperties("ticket")
 @Intercepts({

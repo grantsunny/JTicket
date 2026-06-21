@@ -17,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.jticket.api.model.Order;
 import com.jticket.api.model.Seat;
+import com.jticket.persist.OrdersRepository.PaymentResult;
 import com.jticket.persist.PersistenceException;
 import com.jticket.persist.mybatis.handlers.MetadataHandler;
 
@@ -26,13 +27,16 @@ public interface OrdersMapper {
     @Results({@Result(property = "metadata", column = "metadata", typeHandler = MetadataHandler.class)})
     boolean isUserOrderExist(@Param("userId") String userId, @Param("orderId") UUID orderId);
     
-    @Select("SELECT SEATDETAILS.ID, SEATDETAILS.AREAID, SEATDETAILS.VENUEID, SEATDETAILS.ROW, SEATDETAILS.COL, SEATDETAILS.AVAILABLE, "
-    		+ "ORDERSEATS.checkedInTimestamp, ORDERSEATS.METADATA FROM ${SEATDETAILS} "
-    		+ "INNER JOIN ORDERSEATS ON ORDERSEATS.ORDERID = #{orderId} AND ORDERSEATS.SEATID = SEATDETAILS.ID")
+    @Select("SELECT SKU.SEATID AS ID, SKU.AREAID, SKU.VENUEID, SKU.ROW, SKU.COL, SKU.AVAILABLE, "
+            + "ORDERSEATS.checkedInTimestamp, ORDERSEATS.METADATA, SKU.PRICE, SKU.PRICENAME FROM ${SKU} "
+            + "INNER JOIN ORDERSEATS ON ORDERSEATS.ORDERID = #{orderId} "
+            + "AND ORDERSEATS.EVENTID = SKU.EVENTID "
+            + "AND ORDERSEATS.SESSIONID = SKU.SESSIONID "
+            + "AND ORDERSEATS.SEATID = SKU.SEATID")
     @Results({@Result(property = "metadata", column = "metadata", typeHandler = MetadataHandler.class)})
     List<Seat> _loadOrderSeats(@Param("orderId") UUID orderId);
 
-    @Select("SELECT ID, EVENTID, USERID, TIMESTAMP, (PAIDAMOUNT * 100) AS PAIDAMOUNT, METADATA FROM ORDERS " +
+    @Select("SELECT ID, EVENTID, USERID, TIMESTAMP, PAYMENTCHANNEL, PAYMENTTRANSACTIONID, PAYMENTTIMESTAMP, PAYMENTAMOUNT, METADATA FROM ORDERS " +
             "WHERE USERID = #{userId} AND TIMESTAMP BETWEEN #{startTime} AND #{endTime}")
     @Results({@Result(property = "metadata", column = "metadata", typeHandler = MetadataHandler.class)})
     List<Order> _loadOrdersByUserIdAndDateRange(@Param("userId") String userId, @Param("startTime") Date startTime, @Param("endTime") Date endTime);
@@ -47,7 +51,7 @@ public interface OrdersMapper {
         return orders;
     }
 
-    @Select("SELECT ID, EVENTID, USERID, TIMESTAMP, (PAIDAMOUNT * 100) AS PAIDAMOUNT, METADATA FROM ORDERS " +
+    @Select("SELECT ID, EVENTID, USERID, TIMESTAMP, PAYMENTCHANNEL, PAYMENTTRANSACTIONID, PAYMENTTIMESTAMP, PAYMENTAMOUNT, METADATA FROM ORDERS " +
             "WHERE TIMESTAMP BETWEEN #{startTime} AND #{endTime}")
     @Results({@Result(property = "metadata", column = "metadata", typeHandler = MetadataHandler.class)})
     List<Order> _loadOrdersByDateRange(@Param("startTime") Date startTime, @Param("endTime") Date endTime);
@@ -62,7 +66,7 @@ public interface OrdersMapper {
         return orders;
     }
 
-    @Select("SELECT ID, EVENTID, USERID, TIMESTAMP, (PAIDAMOUNT * 100) AS PAIDAMOUNT, METADATA FROM ORDERS " +
+    @Select("SELECT ID, EVENTID, USERID, TIMESTAMP, PAYMENTCHANNEL, PAYMENTTRANSACTIONID, PAYMENTTIMESTAMP, PAYMENTAMOUNT, METADATA FROM ORDERS " +
             "WHERE USERID = #{userId} ")
     @Results({@Result(property = "metadata", column = "metadata", typeHandler = MetadataHandler.class)})
     List<Order> _loadOrdersByUserId(@Param("userId") String userId);
@@ -77,7 +81,7 @@ public interface OrdersMapper {
         return orders;
     }
 
-    @Select("SELECT ID, EVENTID, USERID, TIMESTAMP, (PAIDAMOUNT * 100) AS PAIDAMOUNT, METADATA FROM ORDERS")
+    @Select("SELECT ID, EVENTID, USERID, TIMESTAMP, PAYMENTCHANNEL, PAYMENTTRANSACTIONID, PAYMENTTIMESTAMP, PAYMENTAMOUNT, METADATA FROM ORDERS")
     @Results({@Result(property = "metadata", column = "metadata", typeHandler = MetadataHandler.class)})
     List<Order> _loadOrders();
 
@@ -91,7 +95,7 @@ public interface OrdersMapper {
         return orders;
     }
 
-    @Select("SELECT ID, EVENTID, USERID, TIMESTAMP, (PAIDAMOUNT * 100) AS PAIDAMOUNT, METADATA FROM ORDERS " +
+    @Select("SELECT ID, EVENTID, USERID, TIMESTAMP, PAYMENTCHANNEL, PAYMENTTRANSACTIONID, PAYMENTTIMESTAMP, PAYMENTAMOUNT, METADATA FROM ORDERS " +
             "WHERE ID = #{orderId} ")
     @Results({@Result(property = "metadata", column = "metadata", typeHandler = MetadataHandler.class)})
     Order _loadOrder(@Param("orderId") UUID orderId);
@@ -130,8 +134,34 @@ public interface OrdersMapper {
             );
     }
 
-    @Update("UPDATE ORDERS SET PAIDAMOUNT = PAIDAMOUNT + (#{paidAmount} / 100.0) WHERE ID = #{orderId}")
-    void updateOrderPayAmount(@Param("orderId") UUID orderId, @Param("paidAmount") Integer paidAmount);
+    @Update("UPDATE ORDERS SET PAYMENTCHANNEL = #{paymentChannel}, PAYMENTTRANSACTIONID = #{paymentTransactionId}, " +
+            "PAYMENTAMOUNT = #{paymentAmount}, PAYMENTTIMESTAMP = CURRENT_TIMESTAMP " +
+            "WHERE ID = #{orderId} AND PAYMENTTRANSACTIONID IS NULL " +
+            "AND NOT EXISTS (SELECT 1 FROM ORDERS WHERE PAYMENTTRANSACTIONID = #{paymentTransactionId} AND ID <> #{orderId})")
+    int _applyOrderPayment(@Param("orderId") UUID orderId,
+                           @Param("paymentChannel") String paymentChannel,
+                           @Param("paymentTransactionId") String paymentTransactionId,
+                           @Param("paymentAmount") Integer paymentAmount);
+
+    @Select("SELECT CASE " +
+            "WHEN COUNT(*) = 0 THEN 'ORDER_NOT_FOUND' " +
+            "WHEN MAX(PAYMENTTRANSACTIONID) = #{paymentTransactionId} " +
+            "AND MAX(PAYMENTCHANNEL) = #{paymentChannel} " +
+            "AND MAX(PAYMENTAMOUNT) = #{paymentAmount} THEN 'IDEMPOTENT_RETRY' " +
+            "ELSE 'CONFLICT' END " +
+            "FROM ORDERS WHERE ID = #{orderId}")
+    PaymentResult _classifyOrderPayment(@Param("orderId") UUID orderId,
+                                         @Param("paymentChannel") String paymentChannel,
+                                         @Param("paymentTransactionId") String paymentTransactionId,
+                                         @Param("paymentAmount") Integer paymentAmount);
+
+    @Transactional
+    default PaymentResult updateOrderPayment(UUID orderId, String paymentChannel, String paymentTransactionId, Integer paymentAmount) {
+        if (_applyOrderPayment(orderId, paymentChannel, paymentTransactionId, paymentAmount) > 0)
+            return PaymentResult.SUCCESS;
+
+        return _classifyOrderPayment(orderId, paymentChannel, paymentTransactionId, paymentAmount);
+    }
 
     @Update("UPDATE ORDERS SET METADATA = #{order.metadata, typeHandler=com.jticket.persist.mybatis.handlers.MetadataHandler} WHERE ID = #{order.id}")
     void _updateOrderMetadata(@Param("order") Order order);

@@ -7,6 +7,13 @@ import java.util.List;
 import java.util.UUID;
 
 public interface OrdersRepository {
+    enum PaymentResult {
+        SUCCESS,
+        IDEMPOTENT_RETRY,
+        CONFLICT,
+        ORDER_NOT_FOUND
+    }
+
     boolean isUserOrderExist(String userId, UUID orderId) throws PersistenceException;
     void saveNewOrder(Order order) throws PersistenceException;
     List<Order> loadOrders(String userId, Date startTime, Date endTime) throws PersistenceException;
@@ -14,7 +21,7 @@ public interface OrdersRepository {
     List<Order> loadOrders(String userId) throws PersistenceException;
     List<Order> loadOrders() throws PersistenceException;
     Order loadOrder(UUID orderId) throws PersistenceException;
-    void updateOrderPayAmount(UUID orderId, Integer paidAmount) throws PersistenceException;
+    PaymentResult updateOrderPayment(UUID orderId, String paymentChannel, String paymentTransactionId, Integer paymentAmount) throws PersistenceException;
     void deleteOrder(UUID orderId) throws PersistenceException;
     void updateOrderMetadata(Order order) throws PersistenceException;
 }

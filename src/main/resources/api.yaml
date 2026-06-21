@@ -1140,9 +1140,20 @@ paths:
             schema:
               type: object
               title: payment
+              required:
+                - paymentChannel
+                - paymentTransactionId
+                - paymentAmount
               properties:
-                paidAmount:
+                paymentChannel:
+                  type: string
+                  description: Payment vendor or channel, for example paypal, alipay, wechatpay, or applepay.
+                paymentTransactionId:
+                  type: string
+                  description: Vendor-generated transaction identifier used for idempotency.
+                paymentAmount:
                   type: integer
+                  description: Payment amount in cents.
       responses:
         '202':
           description: Payment accepted
@@ -1356,6 +1367,12 @@ components:
           type: string
           format: date-time
           description: Only used when correlated with order. Not appliable for seat layout design within venue. 
+        price:
+          type: integer
+          description: Resolved seat price in cents when loaded in an event/order context.
+        priceName:
+          type: string
+          description: Name of the resolved ticket price when loaded in an event/order context.
         metadata:
           type: object
           additionalProperties: true
@@ -1405,9 +1422,19 @@ components:
           items:
             $ref: '#/components/schemas/Seat'
           description: An array of seats with metadata booked in the order. (Required)
-        paidAmount:
+        paymentChannel:
+          type: string
+          description: Payment vendor or channel, for example paypal, alipay, wechatpay, or applepay.
+        paymentTransactionId:
+          type: string
+          description: Vendor-generated transaction identifier used for idempotency.
+        paymentAmount:
           type: integer
-          description: The total amount of the order to pay. (in *cents*)
+          description: The total amount paid for the order. (in *cents*)
+        paymentTimestamp:
+          type: string
+          format: date-time
+          description: Timestamp indicating when the order payment was first applied.
         timestamp:
           type: string
           format: date-time

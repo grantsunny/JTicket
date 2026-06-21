@@ -20,6 +20,8 @@ import java.util.function.Predicate;
 import java.util.function.Supplier;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.jticket.api.OrdersApi;
 import com.jticket.api.model.LinkSeat;
@@ -45,6 +47,8 @@ import jakarta.ws.rs.core.UriInfo;
 
 public class OrdersApiResource implements OrdersApi {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(OrdersApiResource.class);
+
     @Context
     private UriInfo uriInfo;
 
@@ -62,6 +66,9 @@ public class OrdersApiResource implements OrdersApi {
     
     @Value("${ticket.jwt.algorithm:RSA}")
     private String keyAlgorithm;
+
+    @Value("${ticket.accept-underpayment:true}")
+    private boolean acceptUnderpayment = true;
     
     private PrivateKey privateKey;
     
@@ -127,6 +134,37 @@ public class OrdersApiResource implements OrdersApi {
             throw new WebApplicationException(Response.Status.NOT_FOUND);
         return order;
     }
+
+    private Integer calculateSeatTotalAmount(Order order) {
+        if (order.getSeats() == null)
+            return null;
+
+        int total = 0;
+        for (Seat seat : order.getSeats()) {
+            if (seat.getPrice() == null)
+                return null;
+            total += seat.getPrice();
+        }
+        return total;
+    }
+
+    private void validatePaymentAmount(Order order, Payment payment) {
+        Integer seatTotalAmount = calculateSeatTotalAmount(order);
+        if (seatTotalAmount == null)
+            return;
+
+        if (seatTotalAmount > payment.getPaymentAmount()) {
+            String message = "Payment amount is less than order seat total: orderId=%s, paymentAmount=%d, seatTotalAmount=%d"
+                    .formatted(order.getId(), payment.getPaymentAmount(), seatTotalAmount);
+            if (!acceptUnderpayment)
+                throw new WebApplicationException(message, Response.Status.NOT_ACCEPTABLE);
+            LOGGER.warn(message);
+        } else if (payment.getPaymentAmount() > seatTotalAmount) {
+            LOGGER.warn(
+                    "Payment amount is greater than order seat total: orderId={}, paymentAmount={}, seatTotalAmount={}",
+                    order.getId(), payment.getPaymentAmount(), seatTotalAmount);
+        }
+    }
     
     /**
      *  JWT (JSON Web Token) used for authentication and access control. The JWT is
@@ -164,7 +202,7 @@ public class OrdersApiResource implements OrdersApi {
 			throw new WebApplicationException(e.getMessage(), e);
 		}
 		
-        if (order.getPaidAmount() <= 0)
+        if (order.getPaymentAmount() == null || order.getPaymentAmount() <= 0)
             throw new WebApplicationException("Cannot get ticket token for unpaid order", Response.Status.PAYMENT_REQUIRED);
 
         Seat seat = order.getSeats().stream()
@@ -296,12 +334,38 @@ public class OrdersApiResource implements OrdersApi {
 
     @Override
     @RolesAllowed(ORDER_PAY)
-    public Response payOrder(UUID orderId, Payment payment) {
+    public synchronized Response payOrder(UUID orderId, Payment payment) {
+        if (payment == null ||
+                payment.getPaymentChannel() == null || payment.getPaymentChannel().isBlank() ||
+                payment.getPaymentTransactionId() == null || payment.getPaymentTransactionId().isBlank() ||
+                payment.getPaymentAmount() == null || payment.getPaymentAmount() <= 0)
+            throw new WebApplicationException("Payment channel, transaction id, and positive amount are required", Response.Status.BAD_REQUEST);
+
         try {
             Order order = loadOrder(orderId);
-            plugin.beforePayOrder(order, payment.getPaidAmount());
-            repository.updateOrderPayAmount(orderId, payment.getPaidAmount());
-            return Response.accepted().build();
+            validatePaymentAmount(order, payment);
+
+            OrdersRepository.PaymentResult result = repository.updateOrderPayment(
+                    orderId,
+                    payment.getPaymentChannel(),
+                    payment.getPaymentTransactionId(),
+                    payment.getPaymentAmount());
+
+            return switch (result) {
+                case SUCCESS -> {
+                    plugin.beforePayOrder(order, payment.getPaymentAmount());
+                    yield Response.accepted().build();
+                }
+                case IDEMPOTENT_RETRY -> {
+                    LOGGER.warn(
+                            "Skipping payment plugin for idempotent payment retry: orderId={}, paymentChannel={}, paymentTransactionId={}",
+                            orderId, payment.getPaymentChannel(), payment.getPaymentTransactionId());
+                    yield Response.accepted().build();
+                }
+                case CONFLICT -> throw new WebApplicationException(
+                        "Payment request conflicts with existing order payment", Response.Status.CONFLICT);
+                case ORDER_NOT_FOUND -> throw new WebApplicationException(Response.Status.NOT_FOUND);
+            };
         } catch (SQLException e) {
             throw new BadRequestException(e);
         }

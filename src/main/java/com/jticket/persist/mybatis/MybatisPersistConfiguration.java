@@ -101,8 +101,9 @@ public class MybatisPersistConfiguration {
             rollbackClass.add(org.apache.ibatis.exceptions.PersistenceException.class);
 
             Method targetMethod = targetObject.getClass().getMethod(method.getName(), method.getParameterTypes());
-            if (targetMethod.getAnnotation(Transactional.class) != null) {
-                rollbackClass.addAll(Arrays.asList(method.getAnnotation(Transactional.class).rollbackFor()));
+            Transactional transactional = targetMethod.getAnnotation(Transactional.class);
+            if (transactional != null) {
+                rollbackClass.addAll(Arrays.asList(transactional.rollbackFor()));
                 if (targetMethod.getAnnotation(com.jticket.persist.mybatis.ExecutorType.class) != null)
                     return invokeWithTxn(
                             targetObject, targetMethod, args,
