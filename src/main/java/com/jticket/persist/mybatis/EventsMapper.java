@@ -19,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.jticket.api.model.Area;
 import com.jticket.api.model.Event;
+import com.jticket.api.model.EventStatistics;
 import com.jticket.api.model.Price;
 import com.jticket.api.model.Seat;
 import com.jticket.api.model.Session;
@@ -33,6 +34,16 @@ public interface EventsMapper {
             "WHERE eventId = #{eventId} AND sessionId = #{sessionId} AND seatId = #{seatId} " +
             "AND checkedInTimestamp IS NULL")
 	int checkInSeat(@Param("eventId") UUID eventId, @Param("sessionId") UUID sessionId, @Param("seatId") UUID seatId);
+
+    @Select("SELECT #{eventId} AS eventId, " +
+            "(SELECT COUNT(*) FROM Seats " +
+            "INNER JOIN Areas ON Seats.areaId = Areas.id " +
+            "INNER JOIN Events ON Events.venueId = Areas.venueId " +
+            "WHERE Events.id = #{eventId}) AS totalSeats, " +
+            "(SELECT COUNT(*) FROM OrderSeats WHERE eventId = #{eventId}) AS orderedSeats, " +
+            "(SELECT COUNT(*) FROM OrderSeats WHERE eventId = #{eventId} AND checkedInTimestamp IS NOT NULL) AS checkedInSeats, " +
+            "(SELECT COUNT(*) FROM OrderSeats WHERE eventId = #{eventId} AND checkedInTimestamp IS NULL) AS uncheckedInSeats")
+    EventStatistics loadEventStatistics(@Param("eventId") UUID eventId);
 	
     @Select("SELECT Prices.id, name, (price / 100.0) AS price, eventId FROM PricesDistribution " +
             "INNER JOIN Prices ON Prices.id = PricesDistribution.priceId " +

@@ -15,6 +15,8 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import com.jticket.api.model.Event;
+import com.jticket.api.model.EventStatistics;
 import com.jticket.api.model.Seat;
 import com.jticket.persist.EventsRepository;
 
@@ -32,6 +34,8 @@ class EventsApiResourceTest {
     private UUID checkedInSeatId;
     private int affectedRows;
     private Seat loadedSeat;
+    private Event loadedEvent;
+    private EventStatistics loadedStatistics;
 
     @BeforeEach
     void setUp() throws Exception {
@@ -48,6 +52,10 @@ class EventsApiResourceTest {
                     }
                     if ("loadSeatInEvent".equals(method.getName()))
                         return loadedSeat;
+                    if ("loadEvent".equals(method.getName()))
+                        return loadedEvent;
+                    if ("loadEventStatistics".equals(method.getName()))
+                        return loadedStatistics;
                     return null;
                 });
         resource = new EventsApiResource();
@@ -85,6 +93,27 @@ class EventsApiResourceTest {
 
         assertThrows(BadRequestException.class, () -> resource.checkIn(
                 token(eventId, sessionId, seatId), eventId.toString(), sessionId.toString()));
+    }
+
+    @Test
+    void eventStatisticsReturnsCheckInCountsForExistingEvent() {
+        UUID eventId = UUID.randomUUID();
+        loadedEvent = new Event().id(eventId);
+        loadedStatistics = new EventStatistics()
+                .eventId(eventId)
+                .totalSeats(100)
+                .orderedSeats(25)
+                .checkedInSeats(10)
+                .uncheckedInSeats(15);
+
+        Response response = resource.getEventStatistics(eventId);
+
+        assertEquals(200, response.getStatus());
+        EventStatistics statistics = (EventStatistics) response.getEntity();
+        assertEquals(100, statistics.getTotalSeats());
+        assertEquals(25, statistics.getOrderedSeats());
+        assertEquals(10, statistics.getCheckedInSeats());
+        assertEquals(15, statistics.getUncheckedInSeats());
     }
 
     private String token(UUID eventId, UUID sessionId, UUID seatId) {

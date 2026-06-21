@@ -85,12 +85,6 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE TRIGGER prevent_paid_order_removal_trigger
-BEFORE DELETE ON TKT.Orders
-FOR EACH ROW
-EXECUTE FUNCTION prevent_paid_order_removal()
-;
-
 CREATE TABLE TKT.Orders (
                     id VARCHAR(36) PRIMARY KEY NOT NULL,
                     eventId VARCHAR(36) NOT NULL,
@@ -102,6 +96,12 @@ CREATE TABLE TKT.Orders (
                     FOREIGN KEY (eventId) REFERENCES TKT.Events(id),
                     FOREIGN KEY (sessionId) REFERENCES TKT.Sessions(id)
 );
+
+CREATE TRIGGER prevent_paid_order_removal_trigger
+BEFORE DELETE ON TKT.Orders
+FOR EACH ROW
+EXECUTE FUNCTION prevent_paid_order_removal()
+;
 
 CREATE TABLE TKT.OrderSeats (
                     orderId VARCHAR(36) NOT NULL,
