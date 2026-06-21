@@ -2,7 +2,6 @@ package com.jticket.staticui;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.jticket.StaticResourceConfig;
 import com.jticket.security.DevelopmentSecurityConfig;
 
 import org.junit.jupiter.api.Test;
@@ -41,8 +40,8 @@ class StaticUiReachabilityTest {
     }
 
     @Test
-    void indexHtmlIsReachableFromStaticPath() {
-        ResponseEntity<String> response = restTemplate.getForEntity("/static/index.html", String.class);
+    void indexHtmlIsReachableFromRootPath() {
+        ResponseEntity<String> response = restTemplate.getForEntity("/index.html", String.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(response.getBody())
@@ -53,8 +52,8 @@ class StaticUiReachabilityTest {
     }
 
     @Test
-    void venueHtmlIsReachableFromStaticPath() {
-        ResponseEntity<String> response = restTemplate.getForEntity("/static/venue.html", String.class);
+    void venueHtmlIsReachableFromRootPath() {
+        ResponseEntity<String> response = restTemplate.getForEntity("/venue.html", String.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(response.getBody())
@@ -66,15 +65,27 @@ class StaticUiReachabilityTest {
 
     @ParameterizedTest
     @ValueSource(strings = {
-            "/static/script.js",
-            "/static/style.css",
-            "/static/modal-style.css"
+            "/script.js",
+            "/style.css",
+            "/modal-style.css"
     })
     void linkedStaticAssetsAreReachable(String path) {
         ResponseEntity<String> response = restTemplate.getForEntity(path, String.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(response.getBody()).isNotBlank();
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "/static/index.html",
+            "/static/venue.html",
+            "/static/style.css"
+    })
+    void classpathStaticDirectoryNameIsNotPartOfDefaultUrlPath(String path) {
+        ResponseEntity<String> response = restTemplate.getForEntity(path, String.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
     }
 
     private ResponseEntity<String> getFollowingRedirect(String path) {
@@ -89,7 +100,7 @@ class StaticUiReachabilityTest {
 
     @SpringBootConfiguration
     @EnableAutoConfiguration
-    @Import({DevelopmentSecurityConfig.class, StaticResourceConfig.class})
+    @Import(DevelopmentSecurityConfig.class)
     static class TestApplication {
     }
 }
