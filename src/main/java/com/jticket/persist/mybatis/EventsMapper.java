@@ -54,7 +54,7 @@ public interface EventsMapper {
     @Select("SELECT id, name, (price / 100.0) AS price, eventId FROM Prices Where eventId = #{eventId}")
     List<Price> loadPrices(@Param("eventId") UUID eventId);
 
-    @Select("SELECT seatId AS id, areaId, venueId, row, col, available, metadata, price, priceName, orderId FROM " +
+    @Select("SELECT seatId AS id, areaId, venueId, row, col, available, metadata, (price / 100.0) AS price, priceName, orderId FROM " +
             "${SKU} WHERE seatId = #{seatId} AND eventId = #{eventId}")
     @Results({@Result(property = "metadata", column = "metadata", typeHandler = MetadataHandler.class)})
     Seat loadSeatInEvent(@Param("eventId") UUID eventId, @Param("seatId") UUID seatId);
@@ -66,7 +66,7 @@ public interface EventsMapper {
     @Results({@Result(property = "metadata", column = "metadata", typeHandler = MetadataHandler.class)})
     List<Area> loadAllAreasInEvent(@Param("eventId") UUID eventId);
 
-    @Select("SELECT id, areaId, venueId, row, col, available, metadata, price, priceName FROM "+
+    @Select("SELECT id, areaId, venueId, row, col, available, metadata, (price / 100.0) AS price, priceName FROM "+
             "${SEATSINEVENT} WHERE eventId = #{eventId} AND areaId = #{areaId}")
     @Results({@Result(property = "metadata", column = "metadata", typeHandler = MetadataHandler.class)})
     List<Seat> loadSeatsInAreaOfEvent(@Param("eventId") UUID eventId, @Param("areaId") UUID areaId);

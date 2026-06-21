@@ -15,6 +15,7 @@ import java.sql.SQLException;
 import java.util.Base64;
 import java.util.Date;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
@@ -164,6 +165,24 @@ public class OrdersApiResource implements OrdersApi {
                     "Payment amount is greater than order seat total: orderId={}, paymentAmount={}, seatTotalAmount={}",
                     order.getId(), payment.getPaymentAmount(), seatTotalAmount);
         }
+    }
+
+    private boolean isSamePayment(Order order, Payment payment) {
+        return Objects.equals(order.getPaymentChannel(), payment.getPaymentChannel()) &&
+                Objects.equals(order.getPaymentTransactionId(), payment.getPaymentTransactionId()) &&
+                Objects.equals(order.getPaymentAmount(), payment.getPaymentAmount());
+    }
+
+    private Response existingPaymentResponse(Order order, Payment payment) {
+        if (isSamePayment(order, payment)) {
+            LOGGER.warn(
+                    "Skipping payment plugin for idempotent payment retry: orderId={}, paymentChannel={}, paymentTransactionId={}",
+                    order.getId(), payment.getPaymentChannel(), payment.getPaymentTransactionId());
+            return Response.accepted().build();
+        }
+
+        throw new WebApplicationException(
+                "Payment request conflicts with existing order payment", Response.Status.CONFLICT);
     }
     
     /**
@@ -344,6 +363,10 @@ public class OrdersApiResource implements OrdersApi {
         try {
             Order order = loadOrder(orderId);
             validatePaymentAmount(order, payment);
+            if (order.getPaymentTransactionId() != null)
+                return existingPaymentResponse(order, payment);
+
+            plugin.beforePayOrder(order, payment.getPaymentAmount());
 
             OrdersRepository.PaymentResult result = repository.updateOrderPayment(
                     orderId,
@@ -352,10 +375,7 @@ public class OrdersApiResource implements OrdersApi {
                     payment.getPaymentAmount());
 
             return switch (result) {
-                case SUCCESS -> {
-                    plugin.beforePayOrder(order, payment.getPaymentAmount());
-                    yield Response.accepted().build();
-                }
+                case SUCCESS -> Response.accepted().build();
                 case IDEMPOTENT_RETRY -> {
                     LOGGER.warn(
                             "Skipping payment plugin for idempotent payment retry: orderId={}, paymentChannel={}, paymentTransactionId={}",

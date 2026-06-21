@@ -847,12 +847,13 @@ public class JdbcHelper {
         String orderId = rs.getString("orderId");
         String priceName = rs.getString("priceName");
         BigDecimal price = rs.getBigDecimal("price");
+        Integer priceInCents = (price == null) ? null : price.multiply(BigDecimal.valueOf(100L)).intValue();
 
         Map<String, Object> metadata = new HashMap<>(
                 parseMetadata(rs.getString("metadata")));
 
         metadata.put("orderId", orderId);
-        metadata.put("price", (price == null) ? null : price.multiply(BigDecimal.valueOf(100L)).intValue());
+        metadata.put("price", priceInCents);
         metadata.put("priceName", priceName);
 
         return new Seat().id(UUID.fromString(id))
@@ -861,7 +862,7 @@ public class JdbcHelper {
                 .row(row)
                 .col(col)
                 .available(available)
-                .price((price == null) ? null : price.intValue())
+                .price(priceInCents)
                 .priceName(priceName)
                 .metadata(metadata);
     }
@@ -1194,6 +1195,7 @@ public class JdbcHelper {
                 ResultSet rsSeats = stmtSeat.executeQuery();
 
                 while (rsSeats.next()) {
+                    BigDecimal seatPrice = rsSeats.getBigDecimal("price");
                     order.getSeats().add(
                             new Seat()
                                     .id(UUID.fromString(rsSeats.getString("seatId")))
@@ -1203,7 +1205,7 @@ public class JdbcHelper {
                                     .col(rsSeats.getInt("col"))
                                     .available(rsSeats.getBoolean("available"))
                                     .checkedInTimestamp(rsSeats.getTimestamp("checkedInTimestamp"))
-                                    .price(rsSeats.getInt("price"))
+                                    .price((seatPrice == null) ? null : seatPrice.multiply(BigDecimal.valueOf(100L)).intValue())
                                     .priceName(rsSeats.getString("priceName"))
                                     .metadata(parseMetadata(rsSeats.getString("metadata"))));
                 }

@@ -1156,11 +1156,15 @@ paths:
                   description: Payment amount in cents.
       responses:
         '202':
-          description: Payment accepted
+          description: Payment accepted. Returned for both a first successful payment and an idempotent retry with the same channel, transaction id, and amount.
         '400':
-          description: Invalid input
+          description: Invalid input, including a missing payment channel, transaction id, or positive payment amount.
         '404':
-          description: order not found
+          description: Order not found.
+        '406':
+          description: Payment amount is less than the resolved order total and underpayment is not accepted by configuration.
+        '409':
+          description: Payment request conflicts with the existing order payment, such as a different transaction id, channel, or amount.
 
     delete:
       summary: Cancel an order
