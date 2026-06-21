@@ -73,12 +73,12 @@ FOR EACH ROW
 EXECUTE FUNCTION prevent_event_time_overlap()
 ;
 
---Trigger to prevent removal of paiAmount > 0 (paid order)
+--Trigger to prevent removal of paymentAmount > 0 (paid order)
 CREATE FUNCTION prevent_paid_order_removal()
 RETURNS TRIGGER AS $$
 BEGIN
-    -- Check if the paidAmount is greater than 0
-    IF OLD.paidAmount > 0 THEN
+    -- Check if the paymentAmount is greater than 0
+    IF OLD.paymentAmount > 0 THEN
         RAISE EXCEPTION 'Paid order cannot be deleted';
     END IF;
     RETURN OLD;
@@ -91,10 +91,14 @@ CREATE TABLE TKT.Orders (
                     sessionId VARCHAR(36) NOT NULL,
                     userId VARCHAR(36) NOT NULL,
                     timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    paidAmount DECIMAL(10, 2) DEFAULT 0,
+                    paymentChannel VARCHAR(64),
+                    paymentTransactionId VARCHAR(128),
+                    paymentTimestamp TIMESTAMP,
+                    paymentAmount INT DEFAULT 0,
                     metadata TEXT,
                     FOREIGN KEY (eventId) REFERENCES TKT.Events(id),
-                    FOREIGN KEY (sessionId) REFERENCES TKT.Sessions(id)
+                    FOREIGN KEY (sessionId) REFERENCES TKT.Sessions(id),
+                    UNIQUE (paymentTransactionId)
 );
 
 CREATE TRIGGER prevent_paid_order_removal_trigger

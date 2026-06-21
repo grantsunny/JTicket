@@ -74,13 +74,14 @@ public class JdbcPersistConfiguration {
             Set<Class<? extends Throwable>> rollbackClass = new HashSet<>();
             rollbackClass.add(SQLException.class);
 
-            if (method.getAnnotation(Transactional.class) != null) {
+            Method jdbcMethod = JdbcHelper.class.getMethod(method.getName(), method.getParameterTypes());
+            Transactional transactional = jdbcMethod.getAnnotation(Transactional.class);
+            if (transactional != null) {
                 isTransactional = true;
-                rollbackClass.addAll(Arrays.asList(method.getAnnotation(Transactional.class).rollbackFor()));
+                rollbackClass.addAll(Arrays.asList(transactional.rollbackFor()));
             }
 
             // Attempt to call the method on the target object
-            Method jdbcMethod = JdbcHelper.class.getMethod(method.getName(), method.getParameterTypes());
             if (isTransactional) {
                 TransactionStatus status = transactionManager.getTransaction(new DefaultTransactionDefinition());
                 try {

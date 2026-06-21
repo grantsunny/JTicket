@@ -35,6 +35,7 @@ import com.jticket.api.model.Price;
 import com.jticket.api.model.Seat;
 import com.jticket.api.model.Session;
 import com.jticket.api.model.Venue;
+import com.jticket.persist.OrdersRepository.PaymentResult;
 
 import jakarta.inject.Inject;
 
@@ -846,12 +847,13 @@ public class JdbcHelper {
         String orderId = rs.getString("orderId");
         String priceName = rs.getString("priceName");
         BigDecimal price = rs.getBigDecimal("price");
+        Integer priceInCents = (price == null) ? null : price.multiply(BigDecimal.valueOf(100L)).intValue();
 
         Map<String, Object> metadata = new HashMap<>(
                 parseMetadata(rs.getString("metadata")));
 
         metadata.put("orderId", orderId);
-        metadata.put("price", (price == null) ? null : price.multiply(BigDecimal.valueOf(100L)).intValue());
+        metadata.put("price", priceInCents);
         metadata.put("priceName", priceName);
 
         return new Seat().id(UUID.fromString(id))
@@ -860,6 +862,8 @@ public class JdbcHelper {
                 .row(row)
                 .col(col)
                 .available(available)
+                .price(priceInCents)
+                .priceName(priceName)
                 .metadata(metadata);
     }
 
@@ -886,7 +890,7 @@ public class JdbcHelper {
     public List<Seat> loadSeatsInAreaOfEvent(UUID eventId, UUID areaId) throws SQLException {
 
         String sql =
-                "SELECT id, areaId, venueId, row, col, available, metadata, price, priceName, NULL AS orderId FROM " +
+                "SELECT id AS seatId, areaId, venueId, row, col, available, metadata, price, priceName, NULL AS orderId FROM " +
                 "TKT.SEATSINEVENT WHERE eventId = ? AND areaId = ?";
 
         List<Seat> seats = new LinkedList<>();
@@ -1173,18 +1177,25 @@ public class JdbcHelper {
                     .eventId(UUID.fromString(rsOrders.getString("eventId")))
                     .userId(rsOrders.getString("userId"))
                     .timestamp(rsOrders.getTimestamp("timeStamp"))
-                    .paidAmount(rsOrders.getBigDecimal("paidAmount").multiply(BigDecimal.valueOf(100L)).intValue())
+                    .paymentChannel(rsOrders.getString("paymentChannel"))
+                    .paymentTransactionId(rsOrders.getString("paymentTransactionId"))
+                    .paymentTimestamp(rsOrders.getTimestamp("paymentTimestamp"))
+                    .paymentAmount(rsOrders.getInt("paymentAmount"))
                     .metadata(parseMetadata(rsOrders.getString("metadata")));
 
-            String sqlSeats = "SELECT SEATDETAILS.ID, SEATDETAILS.AREAID, SEATDETAILS.VENUEID, SEATDETAILS.ROW, SEATDETAILS.COL, SEATDETAILS.AVAILABLE, "
-            		+ "ORDERSEATS.checkedInTimestamp, ORDERSEATS.METADATA FROM ${SEATDETAILS} "
-            		+ "INNER JOIN ORDERSEATS ON ORDERSEATS.ORDERID = #{orderId} AND ORDERSEATS.SEATID = SEATDETAILS.ID";
+            String sqlSeats = "SELECT SKU.SEATID AS ID, SKU.AREAID, SKU.VENUEID, SKU.ROW, SKU.COL, SKU.AVAILABLE, " +
+                    "ORDERSEATS.checkedInTimestamp, ORDERSEATS.METADATA, SKU.PRICE, SKU.PRICENAME FROM TKT.SKU " +
+                    "INNER JOIN TKT.ORDERSEATS ON ORDERSEATS.ORDERID = ? " +
+                    "AND ORDERSEATS.EVENTID = SKU.EVENTID " +
+                    "AND ORDERSEATS.SESSIONID = SKU.SESSIONID " +
+                    "AND ORDERSEATS.SEATID = SKU.SEATID";
             
             try (PreparedStatement stmtSeat = conn.prepareStatement(sqlSeats)) {
                 stmtSeat.setString(1, order.getId().toString());
                 ResultSet rsSeats = stmtSeat.executeQuery();
 
                 while (rsSeats.next()) {
+                    BigDecimal seatPrice = rsSeats.getBigDecimal("price");
                     order.getSeats().add(
                             new Seat()
                                     .id(UUID.fromString(rsSeats.getString("seatId")))
@@ -1194,6 +1205,8 @@ public class JdbcHelper {
                                     .col(rsSeats.getInt("col"))
                                     .available(rsSeats.getBoolean("available"))
                                     .checkedInTimestamp(rsSeats.getTimestamp("checkedInTimestamp"))
+                                    .price((seatPrice == null) ? null : seatPrice.multiply(BigDecimal.valueOf(100L)).intValue())
+                                    .priceName(rsSeats.getString("priceName"))
                                     .metadata(parseMetadata(rsSeats.getString("metadata"))));
                 }
             }
@@ -1206,7 +1219,7 @@ public class JdbcHelper {
     public List<Order> loadOrders(String userId, Date startTime, Date endTime) throws SQLException {
 
         try (Connection conn = dataSource.getConnection()) {
-            String sqlOrders = "SELECT ID, EVENTID, USERID, TIMESTAMP, PAIDAMOUNT, METADATA FROM TKT.ORDERS " +
+            String sqlOrders = "SELECT ID, EVENTID, USERID, TIMESTAMP, PAYMENTCHANNEL, PAYMENTTRANSACTIONID, PAYMENTTIMESTAMP, PAYMENTAMOUNT, METADATA FROM TKT.ORDERS " +
                     "WHERE USERID = ? AND TIMESTAMP BETWEEN ? AND ?";
 
             try (PreparedStatement stmt = conn.prepareStatement(sqlOrders)) {
@@ -1222,7 +1235,7 @@ public class JdbcHelper {
 
     public List<Order> loadOrders(Date startTime, Date endTime) throws SQLException {
         try (Connection conn = dataSource.getConnection()) {
-            String sqlOrders = "SELECT ID, EVENTID, USERID, TIMESTAMP, PAIDAMOUNT, METADATA FROM TKT.ORDERS " +
+            String sqlOrders = "SELECT ID, EVENTID, USERID, TIMESTAMP, PAYMENTCHANNEL, PAYMENTTRANSACTIONID, PAYMENTTIMESTAMP, PAYMENTAMOUNT, METADATA FROM TKT.ORDERS " +
                     "WHERE TIMESTAMP BETWEEN ? AND ?";
 
             try (PreparedStatement stmt = conn.prepareStatement(sqlOrders)) {
@@ -1238,7 +1251,7 @@ public class JdbcHelper {
 
     public List<Order> loadOrders(String userId) throws SQLException {
         try (Connection conn = dataSource.getConnection()) {
-            String sqlOrders = "SELECT ID, EVENTID, USERID, TIMESTAMP, PAIDAMOUNT, METADATA FROM TKT.ORDERS " +
+            String sqlOrders = "SELECT ID, EVENTID, USERID, TIMESTAMP, PAYMENTCHANNEL, PAYMENTTRANSACTIONID, PAYMENTTIMESTAMP, PAYMENTAMOUNT, METADATA FROM TKT.ORDERS " +
                     "WHERE USERID = ?";
 
             try (PreparedStatement stmt = conn.prepareStatement(sqlOrders)) {
@@ -1252,7 +1265,7 @@ public class JdbcHelper {
 
     public List<Order> loadOrders() throws SQLException {
         try (Connection conn = dataSource.getConnection()) {
-            String sqlOrders = "SELECT ID, EVENTID, USERID, TIMESTAMP, PAIDAMOUNT, METADATA FROM TKT.ORDERS";
+            String sqlOrders = "SELECT ID, EVENTID, USERID, TIMESTAMP, PAYMENTCHANNEL, PAYMENTTRANSACTIONID, PAYMENTTIMESTAMP, PAYMENTAMOUNT, METADATA FROM TKT.ORDERS";
 
             try (PreparedStatement stmt = conn.prepareStatement(sqlOrders)) {
                 ResultSet rsOrders = stmt.executeQuery();
@@ -1263,26 +1276,49 @@ public class JdbcHelper {
 
     public Order loadOrder(UUID orderId) throws SQLException {
         try (Connection conn = dataSource.getConnection()) {
-            String sqlOrders = "SELECT ID, EVENTID, USERID, TIMESTAMP, PAIDAMOUNT, METADATA FROM TKT.ORDERS " +
+            String sqlOrders = "SELECT ID, EVENTID, USERID, TIMESTAMP, PAYMENTCHANNEL, PAYMENTTRANSACTIONID, PAYMENTTIMESTAMP, PAYMENTAMOUNT, METADATA FROM TKT.ORDERS " +
                     "WHERE ID = ?";
 
             try (PreparedStatement stmt = conn.prepareStatement(sqlOrders)) {
                 stmt.setString(1, orderId.toString());
                 ResultSet rsOrders = stmt.executeQuery();
 
-                return loadOrders(conn, rsOrders).get(0);
+                List<Order> orders = loadOrders(conn, rsOrders);
+                return orders.isEmpty() ? null : orders.get(0);
             }
         }
     }
 
     @Transactional(rollbackFor = SQLException.class)
-    public void updateOrderPayAmount(UUID orderId, Integer paidAmount) throws SQLException {
+    public PaymentResult updateOrderPayment(UUID orderId, String paymentChannel, String paymentTransactionId, Integer paymentAmount) throws SQLException {
         try (Connection conn = dataSource.getConnection()) {
-            String sql = "UPDATE TKT.ORDERS SET PAIDAMOUNT = PAIDAMOUNT + ? WHERE ID = ?";
+            String sql = "UPDATE TKT.ORDERS SET PAYMENTCHANNEL = ?, PAYMENTTRANSACTIONID = ?, PAYMENTAMOUNT = ?, PAYMENTTIMESTAMP = CURRENT_TIMESTAMP " +
+                    "WHERE ID = ? AND PAYMENTTRANSACTIONID IS NULL " +
+                    "AND NOT EXISTS (SELECT 1 FROM TKT.ORDERS WHERE PAYMENTTRANSACTIONID = ? AND ID <> ?)";
             try (PreparedStatement stmt = conn.prepareStatement(sql)) {
-                stmt.setBigDecimal(1, BigDecimal.valueOf(paidAmount, 2));
-                stmt.setString(2, orderId.toString());
-                stmt.executeUpdate();
+                stmt.setString(1, paymentChannel);
+                stmt.setString(2, paymentTransactionId);
+                stmt.setInt(3, paymentAmount);
+                stmt.setString(4, orderId.toString());
+                stmt.setString(5, paymentTransactionId);
+                stmt.setString(6, orderId.toString());
+                if (stmt.executeUpdate() > 0)
+                    return PaymentResult.SUCCESS;
+            }
+
+            String classifySql = "SELECT CASE " +
+                    "WHEN COUNT(*) = 0 THEN 'ORDER_NOT_FOUND' " +
+                    "WHEN MAX(PAYMENTTRANSACTIONID) = ? AND MAX(PAYMENTCHANNEL) = ? AND MAX(PAYMENTAMOUNT) = ? THEN 'IDEMPOTENT_RETRY' " +
+                    "ELSE 'CONFLICT' END AS PAYMENTRESULT " +
+                    "FROM TKT.ORDERS WHERE ID = ?";
+            try (PreparedStatement stmt = conn.prepareStatement(classifySql)) {
+                stmt.setString(1, paymentTransactionId);
+                stmt.setString(2, paymentChannel);
+                stmt.setInt(3, paymentAmount);
+                stmt.setString(4, orderId.toString());
+                ResultSet rs = stmt.executeQuery();
+                rs.next();
+                return PaymentResult.valueOf(rs.getString("PAYMENTRESULT"));
             }
         }
     }
