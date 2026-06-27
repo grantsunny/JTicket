@@ -916,6 +916,7 @@ public class JdbcHelper {
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
 
             pstmt.setString(1, eventId.toString());
+            pstmt.setString(2, areaId.toString());
             try (ResultSet rs = pstmt.executeQuery()) {
                 if (rs.next()) {
                     String name = rs.getString("name");

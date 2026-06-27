@@ -1517,6 +1517,7 @@ components:
       type: object
       required:
         - eventId
+        - sessionId
         - seats
       properties:
         id:
