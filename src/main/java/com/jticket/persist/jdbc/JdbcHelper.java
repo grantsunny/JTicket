@@ -34,6 +34,8 @@ import com.jticket.api.model.Order;
 import com.jticket.api.model.Price;
 import com.jticket.api.model.Seat;
 import com.jticket.api.model.Session;
+import com.jticket.api.model.TicketingSeat;
+import com.jticket.api.model.SessionStatistics;
 import com.jticket.api.model.Venue;
 import com.jticket.persist.OrdersRepository.PaymentResult;
 
@@ -834,7 +836,7 @@ public class JdbcHelper {
         return areas;
     }
 
-    private Seat readSeatFromSKU(ResultSet rs) throws SQLException {
+    private TicketingSeat readSeatFromSKU(ResultSet rs) throws SQLException {
 
         String id = rs.getString("seatId");
         int row = rs.getInt("row");
@@ -844,19 +846,13 @@ public class JdbcHelper {
 
 
         boolean available = rs.getBoolean("available");
-        String orderId = rs.getString("orderId");
         String priceName = rs.getString("priceName");
         BigDecimal price = rs.getBigDecimal("price");
         Integer priceInCents = (price == null) ? null : price.multiply(BigDecimal.valueOf(100L)).intValue();
 
-        Map<String, Object> metadata = new HashMap<>(
-                parseMetadata(rs.getString("metadata")));
+        Map<String, Object> metadata = parseMetadata(rs.getString("metadata"));
 
-        metadata.put("orderId", orderId);
-        metadata.put("price", priceInCents);
-        metadata.put("priceName", priceName);
-
-        return new Seat().id(UUID.fromString(id))
+        return new TicketingSeat().id(UUID.fromString(id))
                 .areaId(UUID.fromString(areaId))
                 .venueId(UUID.fromString(venueId))
                 .row(row)
@@ -867,7 +863,7 @@ public class JdbcHelper {
                 .metadata(metadata);
     }
 
-    public Seat loadSeatInEvent(UUID eventId, UUID seatId) throws SQLException {
+    public TicketingSeat loadSeatInEvent(UUID eventId, UUID seatId) throws SQLException {
         String sql =
                 "SELECT seatId, areaId, venueId, row, col, available, metadata, price, priceName, orderId FROM " +
                         "TKT.SKU WHERE seatId = ? AND eventId = ?";
@@ -887,13 +883,13 @@ public class JdbcHelper {
         }
     }
 
-    public List<Seat> loadSeatsInAreaOfEvent(UUID eventId, UUID areaId) throws SQLException {
+    public List<TicketingSeat> loadSeatsInAreaOfEvent(UUID eventId, UUID areaId) throws SQLException {
 
         String sql =
                 "SELECT id AS seatId, areaId, venueId, row, col, available, metadata, price, priceName, NULL AS orderId FROM " +
                 "TKT.SEATSINEVENT WHERE eventId = ? AND areaId = ?";
 
-        List<Seat> seats = new LinkedList<>();
+        List<TicketingSeat> seats = new LinkedList<>();
 
         try (Connection conn = dataSource.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
@@ -920,6 +916,7 @@ public class JdbcHelper {
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
 
             pstmt.setString(1, eventId.toString());
+            pstmt.setString(2, areaId.toString());
             try (ResultSet rs = pstmt.executeQuery()) {
                 if (rs.next()) {
                     String name = rs.getString("name");
@@ -1112,26 +1109,17 @@ public class JdbcHelper {
     }
 
     public EventStatistics loadEventStatistics(UUID eventId) throws SQLException {
-        String sql = "SELECT " +
-                "(SELECT COUNT(*) FROM TKT.Seats " +
-                "INNER JOIN TKT.Areas ON TKT.Seats.areaId = TKT.Areas.id " +
-                "INNER JOIN TKT.Events ON TKT.Events.venueId = TKT.Areas.venueId " +
-                "WHERE TKT.Events.id = ?) AS totalSeats, " +
-                "(SELECT COUNT(*) FROM TKT.OrderSeats WHERE eventId = ?) AS orderedSeats, " +
-                "(SELECT COUNT(*) FROM TKT.OrderSeats WHERE eventId = ? AND checkedInTimestamp IS NOT NULL) AS checkedInSeats, " +
-                "(SELECT COUNT(*) FROM TKT.OrderSeats WHERE eventId = ? AND checkedInTimestamp IS NULL) AS uncheckedInSeats";
+        String sql = "SELECT eventId, totalSeats, orderedSeats, checkedInSeats, uncheckedInSeats " +
+                "FROM TKT.EventStatistics WHERE eventId = ?";
 
         try (Connection conn = dataSource.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, eventId.toString());
-            stmt.setString(2, eventId.toString());
-            stmt.setString(3, eventId.toString());
-            stmt.setString(4, eventId.toString());
 
             try (ResultSet rs = stmt.executeQuery()) {
                 if (rs.next()) {
                     return new EventStatistics()
-                            .eventId(eventId)
+                            .eventId(UUID.fromString(rs.getString("eventId")))
                             .totalSeats(rs.getInt("totalSeats"))
                             .orderedSeats(rs.getInt("orderedSeats"))
                             .checkedInSeats(rs.getInt("checkedInSeats"))
@@ -1141,27 +1129,123 @@ public class JdbcHelper {
         }
         return null;
     }
+
+    public SessionStatistics loadSessionStatistics(UUID eventId, UUID sessionId) throws SQLException {
+        String sql = "SELECT eventId, sessionId, totalSeats, orderedSeats, checkedInSeats, uncheckedInSeats " +
+                "FROM TKT.SessionStatistics WHERE eventId = ? AND sessionId = ?";
+
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, eventId.toString());
+            stmt.setString(2, sessionId.toString());
+
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    return new SessionStatistics()
+                            .eventId(UUID.fromString(rs.getString("eventId")))
+                            .sessionId(UUID.fromString(rs.getString("sessionId")))
+                            .totalSeats(rs.getInt("totalSeats"))
+                            .orderedSeats(rs.getInt("orderedSeats"))
+                            .checkedInSeats(rs.getInt("checkedInSeats"))
+                            .uncheckedInSeats(rs.getInt("uncheckedInSeats"));
+                }
+            }
+        }
+        return null;
+    }
+
+    public List<TicketingSeat> loadSeatsInAreaOfSession(UUID eventId, UUID sessionId, UUID areaId) throws SQLException {
+        String sql = "SELECT seatId, sessionId, areaId, venueId, row, col, available, metadata, price, priceName, " +
+                "orderId, userId, checkedInTimestamp, status FROM TKT.TicketingSeatStatus " +
+                "WHERE eventId = ? AND sessionId = ? AND areaId = ? ORDER BY row, col";
+
+        List<TicketingSeat> seats = new LinkedList<>();
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, eventId.toString());
+            stmt.setString(2, sessionId.toString());
+            stmt.setString(3, areaId.toString());
+
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    seats.add(readSeatFromTicketingSeatStatus(rs));
+                }
+            }
+        }
+        return seats;
+    }
+
+    public TicketingSeat loadSeatInSession(UUID eventId, UUID sessionId, UUID seatId) throws SQLException {
+        String sql = "SELECT seatId, sessionId, areaId, venueId, row, col, available, metadata, price, priceName, " +
+                "orderId, userId, checkedInTimestamp, status FROM TKT.TicketingSeatStatus " +
+                "WHERE eventId = ? AND sessionId = ? AND seatId = ?";
+
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, eventId.toString());
+            stmt.setString(2, sessionId.toString());
+            stmt.setString(3, seatId.toString());
+
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    return readSeatFromTicketingSeatStatus(rs);
+                }
+            }
+        }
+        return null;
+    }
+
+    private TicketingSeat readSeatFromTicketingSeatStatus(ResultSet rs) throws SQLException {
+        BigDecimal price = rs.getBigDecimal("price");
+        String orderId = rs.getString("orderId");
+
+        TicketingSeat seat = new TicketingSeat()
+                .id(UUID.fromString(rs.getString("seatId")))
+                .sessionId(UUID.fromString(rs.getString("sessionId")))
+                .areaId(UUID.fromString(rs.getString("areaId")))
+                .venueId(UUID.fromString(rs.getString("venueId")))
+                .row(rs.getInt("row"))
+                .col(rs.getInt("col"))
+                .available(rs.getBoolean("available"))
+                .checkedInTimestamp(rs.getTimestamp("checkedInTimestamp"))
+                .status(TicketingSeat.StatusEnum.fromValue(rs.getString("status")))
+                .userId(rs.getString("userId"))
+                .price((price == null) ? null : price.multiply(BigDecimal.valueOf(100L)).intValue())
+                .priceName(rs.getString("priceName"))
+                .metadata(parseMetadata(rs.getString("metadata")));
+
+        if (orderId != null)
+            seat.orderId(UUID.fromString(orderId));
+        return seat;
+    }
     
     @Transactional(rollbackFor = SQLException.class)
     public void saveNewOrder(Order order) throws SQLException {
 
         try (Connection conn = dataSource.getConnection()) {
-            String sqlNewOrder = "INSERT INTO TKT.ORDERS(ID, EVENTID, USERID, TIMESTAMP, METADATA) VALUES (?, ?, ?, CURRENT_TIMESTAMP, ?)";
+            if (order.getId() == null)
+                order.id(UUID.randomUUID());
+
+            String sqlNewOrder = "INSERT INTO TKT.ORDERS(ID, EVENTID, SESSIONID, USERID, TIMESTAMP, METADATA) " +
+                    "VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP, ?)";
             try (PreparedStatement stmt = conn.prepareStatement(sqlNewOrder)) {
-                stmt.setString(1, order.getId() == null ? UUID.randomUUID().toString(): order.getId().toString());
+                stmt.setString(1, order.getId().toString());
                 stmt.setString(2, order.getEventId().toString());
-                stmt.setString(3, order.getUserId());
-                stmt.setString(4, metadataMapToJsonString(order.getMetadata()));
+                stmt.setString(3, order.getSessionId().toString());
+                stmt.setString(4, order.getUserId());
+                stmt.setString(5, metadataMapToJsonString(order.getMetadata()));
                 stmt.executeUpdate();
             }
 
-            String sqlNewOrderSeat = "INSERT INTO TKT.ORDERSEATS(ORDERID, EVENTID, SEATID, METADATA) VALUES (?, ?, ?, ?)";
+            String sqlNewOrderSeat = "INSERT INTO TKT.ORDERSEATS(ORDERID, EVENTID, SESSIONID, SEATID, METADATA) " +
+                    "VALUES (?, ?, ?, ?, ?)";
             try (PreparedStatement stmt = conn.prepareStatement(sqlNewOrderSeat)) {
-                for (Seat seatEntry: order.getSeats()) {
+                for (var seatEntry: order.getSeats()) {
                     stmt.setString(1, order.getId().toString());
                     stmt.setString(2, order.getEventId().toString());
-                    stmt.setString(3, seatEntry.getId().toString());
-                    stmt.setString(4, metadataMapToJsonString(seatEntry.getMetadata()));
+                    stmt.setString(3, order.getSessionId().toString());
+                    stmt.setString(4, seatEntry.getId().toString());
+                    stmt.setString(5, metadataMapToJsonString(seatEntry.getMetadata()));
                     stmt.addBatch();
                 }
                 stmt.executeBatch();
@@ -1175,6 +1259,7 @@ public class JdbcHelper {
             Order order = new Order()
                     .id(UUID.fromString(rsOrders.getString("id")))
                     .eventId(UUID.fromString(rsOrders.getString("eventId")))
+                    .sessionId(UUID.fromString(rsOrders.getString("sessionId")))
                     .userId(rsOrders.getString("userId"))
                     .timestamp(rsOrders.getTimestamp("timeStamp"))
                     .paymentChannel(rsOrders.getString("paymentChannel"))
@@ -1183,31 +1268,15 @@ public class JdbcHelper {
                     .paymentAmount(rsOrders.getInt("paymentAmount"))
                     .metadata(parseMetadata(rsOrders.getString("metadata")));
 
-            String sqlSeats = "SELECT SKU.SEATID AS ID, SKU.AREAID, SKU.VENUEID, SKU.ROW, SKU.COL, SKU.AVAILABLE, " +
-                    "ORDERSEATS.checkedInTimestamp, ORDERSEATS.METADATA, SKU.PRICE, SKU.PRICENAME FROM TKT.SKU " +
-                    "INNER JOIN TKT.ORDERSEATS ON ORDERSEATS.ORDERID = ? " +
-                    "AND ORDERSEATS.EVENTID = SKU.EVENTID " +
-                    "AND ORDERSEATS.SESSIONID = SKU.SESSIONID " +
-                    "AND ORDERSEATS.SEATID = SKU.SEATID";
+            String sqlSeats = "SELECT seatId, sessionId, areaId, venueId, row, col, available, metadata, price, priceName, " +
+                    "orderId, userId, checkedInTimestamp, status FROM TKT.TicketingSeatStatus WHERE orderId = ? ORDER BY row, col";
             
             try (PreparedStatement stmtSeat = conn.prepareStatement(sqlSeats)) {
                 stmtSeat.setString(1, order.getId().toString());
                 ResultSet rsSeats = stmtSeat.executeQuery();
 
                 while (rsSeats.next()) {
-                    BigDecimal seatPrice = rsSeats.getBigDecimal("price");
-                    order.getSeats().add(
-                            new Seat()
-                                    .id(UUID.fromString(rsSeats.getString("seatId")))
-                                    .areaId(UUID.fromString(rsSeats.getString("areaId")))
-                                    .venueId(UUID.fromString(rsSeats.getString("venueId")))
-                                    .row(rsSeats.getInt("row"))
-                                    .col(rsSeats.getInt("col"))
-                                    .available(rsSeats.getBoolean("available"))
-                                    .checkedInTimestamp(rsSeats.getTimestamp("checkedInTimestamp"))
-                                    .price((seatPrice == null) ? null : seatPrice.multiply(BigDecimal.valueOf(100L)).intValue())
-                                    .priceName(rsSeats.getString("priceName"))
-                                    .metadata(parseMetadata(rsSeats.getString("metadata"))));
+                    order.getSeats().add(readSeatFromTicketingSeatStatus(rsSeats));
                 }
             }
             loadOrders.add(order);
@@ -1219,7 +1288,7 @@ public class JdbcHelper {
     public List<Order> loadOrders(String userId, Date startTime, Date endTime) throws SQLException {
 
         try (Connection conn = dataSource.getConnection()) {
-            String sqlOrders = "SELECT ID, EVENTID, USERID, TIMESTAMP, PAYMENTCHANNEL, PAYMENTTRANSACTIONID, PAYMENTTIMESTAMP, PAYMENTAMOUNT, METADATA FROM TKT.ORDERS " +
+            String sqlOrders = "SELECT ID, EVENTID, SESSIONID, USERID, TIMESTAMP, PAYMENTCHANNEL, PAYMENTTRANSACTIONID, PAYMENTTIMESTAMP, PAYMENTAMOUNT, METADATA FROM TKT.ORDERS " +
                     "WHERE USERID = ? AND TIMESTAMP BETWEEN ? AND ?";
 
             try (PreparedStatement stmt = conn.prepareStatement(sqlOrders)) {
@@ -1235,12 +1304,12 @@ public class JdbcHelper {
 
     public List<Order> loadOrders(Date startTime, Date endTime) throws SQLException {
         try (Connection conn = dataSource.getConnection()) {
-            String sqlOrders = "SELECT ID, EVENTID, USERID, TIMESTAMP, PAYMENTCHANNEL, PAYMENTTRANSACTIONID, PAYMENTTIMESTAMP, PAYMENTAMOUNT, METADATA FROM TKT.ORDERS " +
+            String sqlOrders = "SELECT ID, EVENTID, SESSIONID, USERID, TIMESTAMP, PAYMENTCHANNEL, PAYMENTTRANSACTIONID, PAYMENTTIMESTAMP, PAYMENTAMOUNT, METADATA FROM TKT.ORDERS " +
                     "WHERE TIMESTAMP BETWEEN ? AND ?";
 
             try (PreparedStatement stmt = conn.prepareStatement(sqlOrders)) {
-                stmt.setTimestamp(2, new Timestamp(startTime.getTime()));
-                stmt.setTimestamp(3, new Timestamp(endTime.getTime()));
+                stmt.setTimestamp(1, new Timestamp(startTime.getTime()));
+                stmt.setTimestamp(2, new Timestamp(endTime.getTime()));
                 ResultSet rsOrders = stmt.executeQuery();
 
                 return loadOrders(conn, rsOrders);
@@ -1251,7 +1320,7 @@ public class JdbcHelper {
 
     public List<Order> loadOrders(String userId) throws SQLException {
         try (Connection conn = dataSource.getConnection()) {
-            String sqlOrders = "SELECT ID, EVENTID, USERID, TIMESTAMP, PAYMENTCHANNEL, PAYMENTTRANSACTIONID, PAYMENTTIMESTAMP, PAYMENTAMOUNT, METADATA FROM TKT.ORDERS " +
+            String sqlOrders = "SELECT ID, EVENTID, SESSIONID, USERID, TIMESTAMP, PAYMENTCHANNEL, PAYMENTTRANSACTIONID, PAYMENTTIMESTAMP, PAYMENTAMOUNT, METADATA FROM TKT.ORDERS " +
                     "WHERE USERID = ?";
 
             try (PreparedStatement stmt = conn.prepareStatement(sqlOrders)) {
@@ -1263,9 +1332,23 @@ public class JdbcHelper {
         }
     }
 
+    public List<Order> loadOrders(UUID eventId) throws SQLException {
+        try (Connection conn = dataSource.getConnection()) {
+            String sqlOrders = "SELECT ID, EVENTID, SESSIONID, USERID, TIMESTAMP, PAYMENTCHANNEL, PAYMENTTRANSACTIONID, PAYMENTTIMESTAMP, PAYMENTAMOUNT, METADATA FROM TKT.ORDERS " +
+                    "WHERE EVENTID = ?";
+
+            try (PreparedStatement stmt = conn.prepareStatement(sqlOrders)) {
+                stmt.setString(1, eventId.toString());
+                ResultSet rsOrders = stmt.executeQuery();
+
+                return loadOrders(conn, rsOrders);
+            }
+        }
+    }
+
     public List<Order> loadOrders() throws SQLException {
         try (Connection conn = dataSource.getConnection()) {
-            String sqlOrders = "SELECT ID, EVENTID, USERID, TIMESTAMP, PAYMENTCHANNEL, PAYMENTTRANSACTIONID, PAYMENTTIMESTAMP, PAYMENTAMOUNT, METADATA FROM TKT.ORDERS";
+            String sqlOrders = "SELECT ID, EVENTID, SESSIONID, USERID, TIMESTAMP, PAYMENTCHANNEL, PAYMENTTRANSACTIONID, PAYMENTTIMESTAMP, PAYMENTAMOUNT, METADATA FROM TKT.ORDERS";
 
             try (PreparedStatement stmt = conn.prepareStatement(sqlOrders)) {
                 ResultSet rsOrders = stmt.executeQuery();
@@ -1276,7 +1359,7 @@ public class JdbcHelper {
 
     public Order loadOrder(UUID orderId) throws SQLException {
         try (Connection conn = dataSource.getConnection()) {
-            String sqlOrders = "SELECT ID, EVENTID, USERID, TIMESTAMP, PAYMENTCHANNEL, PAYMENTTRANSACTIONID, PAYMENTTIMESTAMP, PAYMENTAMOUNT, METADATA FROM TKT.ORDERS " +
+            String sqlOrders = "SELECT ID, EVENTID, SESSIONID, USERID, TIMESTAMP, PAYMENTCHANNEL, PAYMENTTRANSACTIONID, PAYMENTTIMESTAMP, PAYMENTAMOUNT, METADATA FROM TKT.ORDERS " +
                     "WHERE ID = ?";
 
             try (PreparedStatement stmt = conn.prepareStatement(sqlOrders)) {
@@ -1329,14 +1412,14 @@ public class JdbcHelper {
             String sqlUpdateOrder = "UPDATE TKT.ORDERS SET METADATA = ? WHERE ID = ?";
             try (PreparedStatement stmt = conn.prepareStatement(sqlUpdateOrder)) {
                 stmt.setString(1, metadataMapToJsonString(order.getMetadata()));
-                stmt.setString(1, order.getId().toString());
+                stmt.setString(2, order.getId().toString());
                 stmt.executeUpdate();
             }
 
             String sqlUpdateSeat = "UPDATE TKT.ORDERSEATS SET METADATA = ? " +
                     "WHERE ORDERID = ? AND EVENTID = ? AND SEATID = ?";
             try (PreparedStatement stmt = conn.prepareStatement(sqlUpdateSeat)) {
-                for (Seat seatEntry: order.getSeats()) {
+                for (var seatEntry: order.getSeats()) {
                     stmt.setString(1, metadataMapToJsonString(seatEntry.getMetadata()));
                     stmt.setString(2, order.getId().toString());
                     stmt.setString(3, order.getEventId().toString());

@@ -16,10 +16,11 @@ import org.apache.ibatis.annotations.Update;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.jticket.api.model.Order;
-import com.jticket.api.model.Seat;
+import com.jticket.api.model.TicketingSeat;
 import com.jticket.persist.OrdersRepository.PaymentResult;
 import com.jticket.persist.PersistenceException;
 import com.jticket.persist.mybatis.handlers.MetadataHandler;
+import com.jticket.persist.mybatis.handlers.TicketingSeatStatusHandler;
 
 @Mapper
 public interface OrdersMapper {
@@ -27,16 +28,16 @@ public interface OrdersMapper {
     @Results({@Result(property = "metadata", column = "metadata", typeHandler = MetadataHandler.class)})
     boolean isUserOrderExist(@Param("userId") String userId, @Param("orderId") UUID orderId);
     
-    @Select("SELECT SKU.SEATID AS ID, SKU.AREAID, SKU.VENUEID, SKU.ROW, SKU.COL, SKU.AVAILABLE, "
-            + "ORDERSEATS.checkedInTimestamp, ORDERSEATS.METADATA, SKU.PRICE, SKU.PRICENAME FROM ${SKU} "
-            + "INNER JOIN ORDERSEATS ON ORDERSEATS.ORDERID = #{orderId} "
-            + "AND ORDERSEATS.EVENTID = SKU.EVENTID "
-            + "AND ORDERSEATS.SESSIONID = SKU.SESSIONID "
-            + "AND ORDERSEATS.SEATID = SKU.SEATID")
-    @Results({@Result(property = "metadata", column = "metadata", typeHandler = MetadataHandler.class)})
-    List<Seat> _loadOrderSeats(@Param("orderId") UUID orderId);
+    @Select("SELECT seatId AS id, sessionId, areaId, venueId, row, col, available, checkedInTimestamp, status, orderId, userId, "
+            + "(price * 100) AS price, priceName, metadata FROM TicketingSeatStatus "
+            + "WHERE orderId = #{orderId} ORDER BY row, col")
+    @Results({
+            @Result(property = "metadata", column = "metadata", typeHandler = MetadataHandler.class),
+            @Result(property = "status", column = "status", typeHandler = TicketingSeatStatusHandler.class)
+    })
+    List<TicketingSeat> _loadOrderSeats(@Param("orderId") UUID orderId);
 
-    @Select("SELECT ID, EVENTID, USERID, TIMESTAMP, PAYMENTCHANNEL, PAYMENTTRANSACTIONID, PAYMENTTIMESTAMP, PAYMENTAMOUNT, METADATA FROM ORDERS " +
+    @Select("SELECT ID, EVENTID, SESSIONID, USERID, TIMESTAMP, PAYMENTCHANNEL, PAYMENTTRANSACTIONID, PAYMENTTIMESTAMP, PAYMENTAMOUNT, METADATA FROM ORDERS " +
             "WHERE USERID = #{userId} AND TIMESTAMP BETWEEN #{startTime} AND #{endTime}")
     @Results({@Result(property = "metadata", column = "metadata", typeHandler = MetadataHandler.class)})
     List<Order> _loadOrdersByUserIdAndDateRange(@Param("userId") String userId, @Param("startTime") Date startTime, @Param("endTime") Date endTime);
@@ -51,7 +52,7 @@ public interface OrdersMapper {
         return orders;
     }
 
-    @Select("SELECT ID, EVENTID, USERID, TIMESTAMP, PAYMENTCHANNEL, PAYMENTTRANSACTIONID, PAYMENTTIMESTAMP, PAYMENTAMOUNT, METADATA FROM ORDERS " +
+    @Select("SELECT ID, EVENTID, SESSIONID, USERID, TIMESTAMP, PAYMENTCHANNEL, PAYMENTTRANSACTIONID, PAYMENTTIMESTAMP, PAYMENTAMOUNT, METADATA FROM ORDERS " +
             "WHERE TIMESTAMP BETWEEN #{startTime} AND #{endTime}")
     @Results({@Result(property = "metadata", column = "metadata", typeHandler = MetadataHandler.class)})
     List<Order> _loadOrdersByDateRange(@Param("startTime") Date startTime, @Param("endTime") Date endTime);
@@ -66,7 +67,7 @@ public interface OrdersMapper {
         return orders;
     }
 
-    @Select("SELECT ID, EVENTID, USERID, TIMESTAMP, PAYMENTCHANNEL, PAYMENTTRANSACTIONID, PAYMENTTIMESTAMP, PAYMENTAMOUNT, METADATA FROM ORDERS " +
+    @Select("SELECT ID, EVENTID, SESSIONID, USERID, TIMESTAMP, PAYMENTCHANNEL, PAYMENTTRANSACTIONID, PAYMENTTIMESTAMP, PAYMENTAMOUNT, METADATA FROM ORDERS " +
             "WHERE USERID = #{userId} ")
     @Results({@Result(property = "metadata", column = "metadata", typeHandler = MetadataHandler.class)})
     List<Order> _loadOrdersByUserId(@Param("userId") String userId);
@@ -81,7 +82,22 @@ public interface OrdersMapper {
         return orders;
     }
 
-    @Select("SELECT ID, EVENTID, USERID, TIMESTAMP, PAYMENTCHANNEL, PAYMENTTRANSACTIONID, PAYMENTTIMESTAMP, PAYMENTAMOUNT, METADATA FROM ORDERS")
+    @Select("SELECT ID, EVENTID, SESSIONID, USERID, TIMESTAMP, PAYMENTCHANNEL, PAYMENTTRANSACTIONID, PAYMENTTIMESTAMP, PAYMENTAMOUNT, METADATA FROM ORDERS " +
+            "WHERE EVENTID = #{eventId} ")
+    @Results({@Result(property = "metadata", column = "metadata", typeHandler = MetadataHandler.class)})
+    List<Order> _loadOrdersByEventId(@Param("eventId") UUID eventId);
+
+    @Transactional
+    default List<Order> loadOrders(UUID eventId) {
+        List<Order> orders = _loadOrdersByEventId(eventId);
+        for (Order order: orders) {
+            UUID orderId = order.getId();
+            order.setSeats(_loadOrderSeats(orderId));
+        }
+        return orders;
+    }
+
+    @Select("SELECT ID, EVENTID, SESSIONID, USERID, TIMESTAMP, PAYMENTCHANNEL, PAYMENTTRANSACTIONID, PAYMENTTIMESTAMP, PAYMENTAMOUNT, METADATA FROM ORDERS")
     @Results({@Result(property = "metadata", column = "metadata", typeHandler = MetadataHandler.class)})
     List<Order> _loadOrders();
 
@@ -95,7 +111,7 @@ public interface OrdersMapper {
         return orders;
     }
 
-    @Select("SELECT ID, EVENTID, USERID, TIMESTAMP, PAYMENTCHANNEL, PAYMENTTRANSACTIONID, PAYMENTTIMESTAMP, PAYMENTAMOUNT, METADATA FROM ORDERS " +
+    @Select("SELECT ID, EVENTID, SESSIONID, USERID, TIMESTAMP, PAYMENTCHANNEL, PAYMENTTRANSACTIONID, PAYMENTTIMESTAMP, PAYMENTAMOUNT, METADATA FROM ORDERS " +
             "WHERE ID = #{orderId} ")
     @Results({@Result(property = "metadata", column = "metadata", typeHandler = MetadataHandler.class)})
     Order _loadOrder(@Param("orderId") UUID orderId);
@@ -110,11 +126,11 @@ public interface OrdersMapper {
 
     @Insert("<script>INSERT INTO ORDERSEATS(ORDERID, EVENTID, SESSIONID, SEATID, METADATA) VALUES " +
             "<foreach collection='seats' item='seat' separator=','> " +
-            "(#{orderId}, #{eventId}, #{sessionId}, #{seat.seatId}, " +
+            "(#{orderId}, #{eventId}, #{sessionId}, #{seat.id}, " +
             "#{seat.metadata, typeHandler=com.jticket.persist.mybatis.handlers.MetadataHandler}) " +
             "</foreach>" +
             "</script>")
-    int _saveOrderSeats(UUID orderId, UUID eventId, UUID sessionId, List<Seat> seats);
+    int _saveOrderSeats(UUID orderId, UUID eventId, UUID sessionId, List<TicketingSeat> seats);
 
     @Insert("INSERT INTO ORDERS(ID, EVENTID, SESSIONID, USERID, TIMESTAMP, METADATA) " +
             "VALUES (#{order.Id}, #{order.eventId}, #{order.sessionId}, #{order.userId}, CURRENT_TIMESTAMP, " +
@@ -168,7 +184,7 @@ public interface OrdersMapper {
 
     @Update("UPDATE ORDERSEATS SET METADATA = " +
             "#{seat.metadata, typeHandler=com.jticket.persist.mybatis.handlers.MetadataHandler} WHERE ORDERID = #{orderId} AND EVENTID = #{eventId} AND SEATID = #{seat.id}")
-    void _updateOrderSeatsMetadata(@Param("orderId") UUID orderId, @Param("eventId") UUID eventId, @Param("seat") Seat seat);
+    void _updateOrderSeatsMetadata(@Param("orderId") UUID orderId, @Param("eventId") UUID eventId, @Param("seat") TicketingSeat seat);
 
     
     
@@ -179,7 +195,7 @@ public interface OrdersMapper {
     @ExecutorType(org.apache.ibatis.session.ExecutorType.BATCH)
     default void updateOrderMetadata(Order order) {
         _updateOrderMetadata(order);
-        for (Seat seat: order.getSeats()) {
+        for (TicketingSeat seat: order.getSeats()) {
             _updateOrderSeatsMetadata(order.getId(), order.getEventId(), seat);
         }
     }

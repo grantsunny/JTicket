@@ -23,11 +23,14 @@ import com.jticket.api.model.Event;
 import com.jticket.api.model.EventStatistics;
 import com.jticket.api.model.LinkPrice;
 import com.jticket.api.model.LinkVenue;
+import com.jticket.api.model.Order;
 import com.jticket.api.model.Price;
-import com.jticket.api.model.Seat;
 import com.jticket.api.model.Session;
+import com.jticket.api.model.TicketingSeat;
+import com.jticket.api.model.SessionStatistics;
 import com.jticket.api.model.Venue;
 import com.jticket.persist.EventsRepository;
+import com.jticket.persist.OrdersRepository;
 import com.jticket.persist.PersistenceException;
 
 import io.jsonwebtoken.Claims;
@@ -51,6 +54,9 @@ public class EventsApiResource implements EventsApi {
 
 	@Inject
 	private EventsRepository repository;
+
+	@Inject
+	private OrdersRepository ordersRepository;
 
 	@Value("${ticket.jwt.public-key}")
 	private String publicKeyPem;
@@ -110,7 +116,7 @@ public class EventsApiResource implements EventsApi {
         
         String seatId = claims.get("seat", String.class);
         
-        //Update OrderSeat.checkedInTimestamp with nowMillis and return seat object. 
+        // Update OrderSeat.checkedInTimestamp and return the session-context seat.
         
 		try {
 			UUID parsedEventId = UUID.fromString(eventId);
@@ -119,11 +125,10 @@ public class EventsApiResource implements EventsApi {
 			if (repository.checkInSeat(parsedEventId, parsedSessionId, parsedSeatId) < 1)
 				throw new BadRequestException("Ticket was already checked in or does not identify a purchased seat");
 
-			Seat seat = repository.loadSeatInEvent(parsedEventId, parsedSeatId);
+			TicketingSeat seat = repository.loadSeatInSession(parsedEventId, parsedSessionId, parsedSeatId);
 			if (seat == null)
-				throw new BadRequestException("Ticket seat does not exist in the specified event");
+				throw new BadRequestException("Ticket seat does not exist in the specified session");
 
-			seat.checkedInTimestamp(now);
 			return Response.ok(seat).build();
 		} catch (IllegalArgumentException e) {
 			throw new BadRequestException("Ticket contains an invalid identifier", e);
@@ -164,7 +169,7 @@ public class EventsApiResource implements EventsApi {
 	@RolesAllowed(EVENT_READ)
 	public Response getSeatInEvent(UUID eventId, UUID seatId) {
 		try {
-			Seat seat = repository.loadSeatInEvent(eventId, seatId);
+			TicketingSeat seat = repository.loadSeatInEvent(eventId, seatId);
 			if (seat == null)
 				return Response.status(Response.Status.NOT_FOUND).build();
 			else
@@ -192,7 +197,7 @@ public class EventsApiResource implements EventsApi {
 	@RolesAllowed(EVENT_READ)
 	public Response getAllSeatsInAreaOfEvent(UUID eventId, UUID areaId) {
 		try {
-			List<Seat> seats = repository.loadSeatsInAreaOfEvent(eventId, areaId);
+			List<TicketingSeat> seats = repository.loadSeatsInAreaOfEvent(eventId, areaId);
 			if ((seats == null) || (seats.isEmpty()))
 				return Response.status(Response.Status.NOT_FOUND).build();
 			else
@@ -387,7 +392,17 @@ public class EventsApiResource implements EventsApi {
 	@Override
 	@RolesAllowed(ORDER_READ_ALL)
 	public Response getEventOrders(UUID eventId) {
-		return null;
+		try {
+			if (repository.loadEvent(eventId) == null)
+				return Response.status(Response.Status.NOT_FOUND).build();
+
+			List<Order> orders = ordersRepository.loadOrders(eventId);
+			if (orders == null)
+				orders = List.of();
+			return Response.ok(orders).build();
+		} catch (SQLException e) {
+			throw new BadRequestException(e);
+		}
 	}
 
 	@Override
@@ -399,6 +414,36 @@ public class EventsApiResource implements EventsApi {
 
 			EventStatistics statistics = repository.loadEventStatistics(eventId);
 			return Response.ok(statistics).build();
+		} catch (SQLException e) {
+			throw new BadRequestException(e);
+		}
+	}
+
+	@Override
+	@RolesAllowed(EVENT_READ)
+	public Response getSessionStatistics(UUID eventId, UUID sessionId) {
+		try {
+			if (repository.loadSession(eventId, sessionId) == null)
+				return Response.status(Response.Status.NOT_FOUND).build();
+
+			SessionStatistics statistics = repository.loadSessionStatistics(eventId, sessionId);
+			return Response.ok(statistics).build();
+		} catch (SQLException e) {
+			throw new BadRequestException(e);
+		}
+	}
+
+	@Override
+	@RolesAllowed(EVENT_READ)
+	public Response getAllSeatsInAreaOfSession(UUID eventId, UUID sessionId, UUID areaId) {
+		try {
+			if (repository.loadSession(eventId, sessionId) == null || repository.loadAreaInEvent(eventId, areaId) == null)
+				return Response.status(Response.Status.NOT_FOUND).build();
+
+			List<TicketingSeat> seats = repository.loadSeatsInAreaOfSession(eventId, sessionId, areaId);
+			if ((seats == null) || seats.isEmpty())
+				return Response.status(Response.Status.NOT_FOUND).build();
+			return Response.ok(seats).build();
 		} catch (SQLException e) {
 			throw new BadRequestException(e);
 		}
