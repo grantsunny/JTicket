@@ -11,11 +11,14 @@ public interface EventsRepository {
     int checkInSeat(UUID eventId, UUID sessionId, UUID seatId) throws PersistenceException;
 
     EventStatistics loadEventStatistics(UUID eventId) throws PersistenceException;
+    SessionStatistics loadSessionStatistics(UUID eventId, UUID sessionId) throws PersistenceException;
     Price loadSeatLevelPricingOfEvent(UUID eventId, UUID seatId) throws PersistenceException;
     List<Price> loadPrices(UUID eventId) throws PersistenceException;
-    Seat loadSeatInEvent(UUID eventId, UUID seatId) throws PersistenceException;
+    TicketingSeat loadSeatInEvent(UUID eventId, UUID seatId) throws PersistenceException;
+    TicketingSeat loadSeatInSession(UUID eventId, UUID sessionId, UUID seatId) throws PersistenceException;
+    List<TicketingSeat> loadSeatsInAreaOfSession(UUID eventId, UUID sessionId, UUID areaId) throws PersistenceException;
     List<Area> loadAllAreasInEvent(UUID eventId) throws PersistenceException;
-    List<Seat> loadSeatsInAreaOfEvent(UUID eventId, UUID areaId) throws PersistenceException;
+    List<TicketingSeat> loadSeatsInAreaOfEvent(UUID eventId, UUID areaId) throws PersistenceException;
     Area loadAreaInEvent(UUID eventId, UUID areaId) throws PersistenceException;
     Price loadAreaLevelPricingOfEvent(UUID eventId, UUID areaId) throws PersistenceException;
     Price loadDefaultPricingOfEvent(UUID eventId) throws PersistenceException;

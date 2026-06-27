@@ -36,7 +36,8 @@ class StaticUiReachabilityTest {
                 .contains("<title>Welcome to StoneTicket!</title>")
                 .contains("welcome to JTicket!")
                 .contains("href=\"/venue.html\"")
-                .contains("href=\"/event.html\"");
+                .contains("href=\"/event.html\"")
+                .contains("href=\"/order.html\"");
     }
 
     @Test
@@ -48,7 +49,8 @@ class StaticUiReachabilityTest {
                 .contains("<title>Welcome to StoneTicket!</title>")
                 .contains("welcome to JTicket!")
                 .contains("href=\"/venue.html\"")
-                .contains("href=\"/event.html\"");
+                .contains("href=\"/event.html\"")
+                .contains("href=\"/order.html\"");
     }
 
     @Test
@@ -63,11 +65,24 @@ class StaticUiReachabilityTest {
                 .contains("id=\"seatsContainer\"");
     }
 
+    @Test
+    void orderHtmlIsReachableFromRootPath() {
+        ResponseEntity<String> response = restTemplate.getForEntity("/order.html", String.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody())
+                .contains("<title>Welcome to StoneTicket!</title>")
+                .contains("Order Management")
+                .contains("id=\"orderEventId\"")
+                .contains("id=\"orderList\"");
+    }
+
     @ParameterizedTest
     @ValueSource(strings = {
             "/script.js",
             "/style.css",
-            "/modal-style.css"
+            "/modal-style.css",
+            "/order.js"
     })
     void linkedStaticAssetsAreReachable(String path) {
         ResponseEntity<String> response = restTemplate.getForEntity(path, String.class);
@@ -80,6 +95,7 @@ class StaticUiReachabilityTest {
     @ValueSource(strings = {
             "/static/index.html",
             "/static/venue.html",
+            "/static/order.html",
             "/static/style.css"
     })
     void classpathStaticDirectoryNameIsNotPartOfDefaultUrlPath(String path) {

@@ -17,7 +17,7 @@ import java.util.UUID;
 
 import com.jticket.api.model.Order;
 import com.jticket.api.model.Payment;
-import com.jticket.api.model.Seat;
+import com.jticket.api.model.TicketingSeat;
 import com.jticket.integration.OrderPluginHelper;
 import com.jticket.persist.OrdersRepository;
 import jakarta.ws.rs.BadRequestException;
@@ -104,7 +104,7 @@ class OrdersApiResourceTest {
                 .paymentChannel("paypal")
                 .paymentTransactionId("txn-123")
                 .paymentAmount(1234);
-        Order order = new Order().id(orderId).userId("customer-sub").seats(java.util.List.of(new Seat().price(1234)));
+        Order order = new Order().id(orderId).userId("customer-sub").seats(java.util.List.of(new TicketingSeat().price(1234)));
         when(repository.loadOrder(orderId)).thenReturn(order);
         when(repository.updateOrderPayment(orderId, "paypal", "txn-123", 1234))
                 .thenReturn(OrdersRepository.PaymentResult.SUCCESS);
@@ -125,7 +125,7 @@ class OrdersApiResourceTest {
                 .paymentChannel("paypal")
                 .paymentTransactionId("txn-123")
                 .paymentAmount(1234);
-        Order order = new Order().id(orderId).userId("customer-sub").seats(java.util.List.of(new Seat().price(1234)));
+        Order order = new Order().id(orderId).userId("customer-sub").seats(java.util.List.of(new TicketingSeat().price(1234)));
         when(repository.loadOrder(orderId)).thenReturn(order);
         doThrow(new SQLException("plugin rejected payment")).when(plugin).beforePayOrder(order, 1234);
 
@@ -146,7 +146,7 @@ class OrdersApiResourceTest {
                 .paymentChannel("paypal")
                 .paymentTransactionId("txn-123")
                 .paymentAmount(1234)
-                .seats(java.util.List.of(new Seat().price(1234))));
+                .seats(java.util.List.of(new TicketingSeat().price(1234))));
 
         Response response = resource.payOrder(orderId, payment);
 
@@ -167,7 +167,7 @@ class OrdersApiResourceTest {
                 .paymentChannel("paypal")
                 .paymentTransactionId("txn-123")
                 .paymentAmount(1234)
-                .seats(java.util.List.of(new Seat().price(1234))));
+                .seats(java.util.List.of(new TicketingSeat().price(1234))));
 
         assertThatThrownBy(() -> resource.payOrder(orderId, payment))
                 .isInstanceOf(WebApplicationException.class)
@@ -190,7 +190,7 @@ class OrdersApiResourceTest {
                 .paymentChannel("paypal")
                 .paymentTransactionId("txn-123")
                 .paymentAmount(1234)
-                .seats(java.util.List.of(new Seat().price(1234))));
+                .seats(java.util.List.of(new TicketingSeat().price(1234))));
 
         assertThatThrownBy(() -> resource.payOrder(orderId, payment))
                 .isInstanceOf(WebApplicationException.class)
@@ -209,7 +209,7 @@ class OrdersApiResourceTest {
                 .paymentChannel("paypal")
                 .paymentTransactionId("txn-456")
                 .paymentAmount(1234);
-        Order order = new Order().id(orderId).seats(java.util.List.of(new Seat().price(1234)));
+        Order order = new Order().id(orderId).seats(java.util.List.of(new TicketingSeat().price(1234)));
         when(repository.loadOrder(orderId)).thenReturn(order);
         when(repository.updateOrderPayment(orderId, "paypal", "txn-456", 1234))
                 .thenReturn(OrdersRepository.PaymentResult.ORDER_NOT_FOUND);
@@ -232,7 +232,7 @@ class OrdersApiResourceTest {
                 .paymentTransactionId("txn-123")
                 .paymentAmount(1000);
         Order order = new Order().id(orderId).userId("customer-sub")
-                .seats(java.util.List.of(new Seat().price(800), new Seat().price(500)));
+                .seats(java.util.List.of(new TicketingSeat().price(800), new TicketingSeat().price(500)));
         when(repository.loadOrder(orderId)).thenReturn(order);
         when(repository.updateOrderPayment(orderId, "paypal", "txn-123", 1000))
                 .thenReturn(OrdersRepository.PaymentResult.SUCCESS);
@@ -252,7 +252,7 @@ class OrdersApiResourceTest {
                 .paymentTransactionId("txn-123")
                 .paymentAmount(1000);
         when(repository.loadOrder(orderId)).thenReturn(new Order().id(orderId)
-                .seats(java.util.List.of(new Seat().price(800), new Seat().price(500))));
+                .seats(java.util.List.of(new TicketingSeat().price(800), new TicketingSeat().price(500))));
 
         assertThatThrownBy(() -> resource.payOrder(orderId, payment))
                 .isInstanceOf(WebApplicationException.class)

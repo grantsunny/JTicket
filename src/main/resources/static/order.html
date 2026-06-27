@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Welcome to StoneTicket!</title>
+    <link rel="stylesheet" href="style.css">
+    <script type="module" src="script.js"></script>
+</head>
+
+<body onload="stoneticket.showCurrentUser(document.getElementById('user-info'))
+        .then(() => stoneticket.refreshOrderEventList());">
+<h1><label id="user-info"></label>, welcome to JTicket!  </h1>
+
+<ul>
+    <li><a href="/venue.html">Venue Management </a></li>
+    <li><a href="/event.html">Event Management </a></li>
+    <li><a href="/order.html">Order Management </a></li>
+</ul>
+
+<div class="center">
+    <form id="orderEventForm">
+        <table>
+            <tr>
+                <td><label for="orderEventId">Event:</label></td>
+                <td>
+                    <select id="orderEventId" required
+                            onchange="stoneticket.fetchEventOrders(this.value)">
+                        <option value="">Select Event</option>
+                    </select>
+                </td>
+            </tr>
+        </table>
+    </form>
+
+    <div id="orderSummary"></div>
+
+    <table class="order-table">
+        <thead>
+        <tr>
+            <th>Order</th>
+            <th>User</th>
+            <th>Created</th>
+            <th>Payment</th>
+            <th>Seats</th>
+        </tr>
+        </thead>
+        <tbody id="orderList">
+        </tbody>
+    </table>
+</div>
+
+</body>
+</html>

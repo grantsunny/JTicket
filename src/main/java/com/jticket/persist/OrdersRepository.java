@@ -19,6 +19,7 @@ public interface OrdersRepository {
     List<Order> loadOrders(String userId, Date startTime, Date endTime) throws PersistenceException;
     List<Order> loadOrders(Date startTime, Date endTime) throws PersistenceException;
     List<Order> loadOrders(String userId) throws PersistenceException;
+    List<Order> loadOrders(UUID eventId) throws PersistenceException;
     List<Order> loadOrders() throws PersistenceException;
     Order loadOrder(UUID orderId) throws PersistenceException;
     PaymentResult updateOrderPayment(UUID orderId, String paymentChannel, String paymentTransactionId, Integer paymentAmount) throws PersistenceException;

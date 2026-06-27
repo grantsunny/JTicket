@@ -227,7 +227,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Seat'
+                $ref: '#/components/schemas/TicketingSeat'
         '400':
           description: check-in fail for any reason, this could be caused by invalid ticket token, etc.    
     
@@ -305,6 +305,34 @@ paths:
           description: invalid input
         '404':
           description: session not found
+
+  /events/{eventId}/sessions/{sessionId}/statistics:
+    get:
+      summary: Get check-in statistics for a given event session
+      operationId: getSessionStatistics
+      description: Retrieve simple seat and check-in counts for one session of an event.
+      parameters:
+        - name: eventId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: sessionId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Session statistics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionStatistics'
+        '404':
+          description: Event or session not found
 
   /events/{eventId}/prices:
     get:
@@ -643,9 +671,48 @@ paths:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/Seat'
+                  $ref: '#/components/schemas/TicketingSeat'
         404:
           description: Area or Venue not found
+
+  /events/{eventId}/sessions/{sessionId}/areas/{areaId}/seats:
+    get:
+      summary: List seat occupation in an area for one event session
+      operationId: getAllSeatsInAreaOfSession
+      description: Retrieve seats in an event area with session-specific occupation and check-in status.
+      parameters:
+        - name: eventId
+          in: path
+          required: true
+          description: Unique ID of the event
+          schema:
+            type: string
+            format: uuid
+        - name: sessionId
+          in: path
+          required: true
+          description: Unique ID of the session
+          schema:
+            type: string
+            format: uuid
+        - name: areaId
+          in: path
+          required: true
+          description: Unique ID of the area
+          schema:
+            type: string
+            format: uuid
+      responses:
+        200:
+          description: A list of seats with session-specific occupation status
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TicketingSeat'
+        404:
+          description: Event, session, or area not found
 
   /events/{eventId}/seats/{seatId}:
     get:
@@ -673,7 +740,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Seat'
+                $ref: '#/components/schemas/TicketingSeat'
         '404':
           description: Seat not found
 
@@ -1367,19 +1434,43 @@ components:
           type: integer
         available:
           type: boolean
-        checkedInTimestamp:
-          type: string
-          format: date-time
-          description: Only used when correlated with order. Not appliable for seat layout design within venue. 
-        price:
-          type: integer
-          description: Resolved seat price in cents when loaded in an event/order context.
-        priceName:
-          type: string
-          description: Name of the resolved ticket price when loaded in an event/order context.
         metadata:
           type: object
           additionalProperties: true
+
+    TicketingSeat:
+      allOf:
+        - $ref: '#/components/schemas/Seat'
+        - type: object
+          properties:
+            price:
+              type: integer
+              description: Resolved seat price in cents when loaded in a ticketing context.
+            priceName:
+              type: string
+              description: Name of the resolved ticket price when loaded in a ticketing context.
+            sessionId:
+              type: string
+              format: uuid
+              description: Session where this physical seat ticketing status applies.
+            status:
+              type: string
+              enum:
+                - open
+                - booked
+                - checkedIn
+              description: Ticketing status of this seat in the session context.
+            orderId:
+              type: string
+              format: uuid
+              description: Order occupying this seat for the session.
+            userId:
+              type: string
+              description: User owning the occupying order for the session.
+            checkedInTimestamp:
+              type: string
+              format: date-time
+              description: Check-in timestamp when this ticketing seat is correlated with an order.
 
     EventStatistics:
       type: object
@@ -1399,6 +1490,28 @@ components:
         uncheckedInSeats:
           type: integer
           description: Ordered seats that have not been checked in yet.
+
+    SessionStatistics:
+      type: object
+      properties:
+        eventId:
+          type: string
+          format: uuid
+        sessionId:
+          type: string
+          format: uuid
+        totalSeats:
+          type: integer
+          description: Total seats available in the event venue layout for this session.
+        orderedSeats:
+          type: integer
+          description: Seats currently associated with orders for this session.
+        checkedInSeats:
+          type: integer
+          description: Ordered seats that have already been checked in for this session.
+        uncheckedInSeats:
+          type: integer
+          description: Ordered seats that have not been checked in yet for this session.
 
     Order:
       type: object
@@ -1424,8 +1537,8 @@ components:
         seats:
           type: array
           items:
-            $ref: '#/components/schemas/Seat'
-          description: An array of seats with metadata booked in the order. (Required)
+            $ref: '#/components/schemas/TicketingSeat'
+          description: An array of session-context seats booked in the order. (Required)
         paymentChannel:
           type: string
           description: Payment vendor or channel, for example paypal, alipay, wechatpay, or applepay.

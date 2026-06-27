@@ -21,11 +21,13 @@ import com.jticket.api.model.Area;
 import com.jticket.api.model.Event;
 import com.jticket.api.model.EventStatistics;
 import com.jticket.api.model.Price;
-import com.jticket.api.model.Seat;
 import com.jticket.api.model.Session;
+import com.jticket.api.model.TicketingSeat;
+import com.jticket.api.model.SessionStatistics;
 import com.jticket.api.model.Venue;
 import com.jticket.persist.PersistenceException;
 import com.jticket.persist.mybatis.handlers.MetadataHandler;
+import com.jticket.persist.mybatis.handlers.TicketingSeatStatusHandler;
 
 @Mapper
 public interface EventsMapper {
@@ -35,15 +37,13 @@ public interface EventsMapper {
             "AND checkedInTimestamp IS NULL")
 	int checkInSeat(@Param("eventId") UUID eventId, @Param("sessionId") UUID sessionId, @Param("seatId") UUID seatId);
 
-    @Select("SELECT #{eventId} AS eventId, " +
-            "(SELECT COUNT(*) FROM Seats " +
-            "INNER JOIN Areas ON Seats.areaId = Areas.id " +
-            "INNER JOIN Events ON Events.venueId = Areas.venueId " +
-            "WHERE Events.id = #{eventId}) AS totalSeats, " +
-            "(SELECT COUNT(*) FROM OrderSeats WHERE eventId = #{eventId}) AS orderedSeats, " +
-            "(SELECT COUNT(*) FROM OrderSeats WHERE eventId = #{eventId} AND checkedInTimestamp IS NOT NULL) AS checkedInSeats, " +
-            "(SELECT COUNT(*) FROM OrderSeats WHERE eventId = #{eventId} AND checkedInTimestamp IS NULL) AS uncheckedInSeats")
+    @Select("SELECT eventId, totalSeats, orderedSeats, checkedInSeats, uncheckedInSeats " +
+            "FROM EventStatistics WHERE eventId = #{eventId}")
     EventStatistics loadEventStatistics(@Param("eventId") UUID eventId);
+
+    @Select("SELECT eventId, sessionId, totalSeats, orderedSeats, checkedInSeats, uncheckedInSeats " +
+            "FROM SessionStatistics WHERE eventId = #{eventId} AND sessionId = #{sessionId}")
+    SessionStatistics loadSessionStatistics(@Param("eventId") UUID eventId, @Param("sessionId") UUID sessionId);
 	
     @Select("SELECT Prices.id, name, (price / 100.0) AS price, eventId FROM PricesDistribution " +
             "INNER JOIN Prices ON Prices.id = PricesDistribution.priceId " +
@@ -54,10 +54,10 @@ public interface EventsMapper {
     @Select("SELECT id, name, (price / 100.0) AS price, eventId FROM Prices Where eventId = #{eventId}")
     List<Price> loadPrices(@Param("eventId") UUID eventId);
 
-    @Select("SELECT seatId AS id, areaId, venueId, row, col, available, metadata, (price / 100.0) AS price, priceName, orderId FROM " +
+    @Select("SELECT seatId AS id, areaId, venueId, row, col, available, metadata, (price * 100) AS price, priceName FROM " +
             "${SKU} WHERE seatId = #{seatId} AND eventId = #{eventId}")
     @Results({@Result(property = "metadata", column = "metadata", typeHandler = MetadataHandler.class)})
-    Seat loadSeatInEvent(@Param("eventId") UUID eventId, @Param("seatId") UUID seatId);
+    TicketingSeat loadSeatInEvent(@Param("eventId") UUID eventId, @Param("seatId") UUID seatId);
 
     @Select("SELECT Areas.id, Areas.venueId, Areas.name, Areas.metadata FROM Areas " +
             "INNER JOIN Venues ON Areas.venueId = Venues.id " +
@@ -66,10 +66,32 @@ public interface EventsMapper {
     @Results({@Result(property = "metadata", column = "metadata", typeHandler = MetadataHandler.class)})
     List<Area> loadAllAreasInEvent(@Param("eventId") UUID eventId);
 
-    @Select("SELECT id, areaId, venueId, row, col, available, metadata, (price / 100.0) AS price, priceName FROM "+
+    @Select("SELECT id, areaId, venueId, row, col, available, metadata, (price * 100) AS price, priceName FROM "+
             "${SEATSINEVENT} WHERE eventId = #{eventId} AND areaId = #{areaId}")
     @Results({@Result(property = "metadata", column = "metadata", typeHandler = MetadataHandler.class)})
-    List<Seat> loadSeatsInAreaOfEvent(@Param("eventId") UUID eventId, @Param("areaId") UUID areaId);
+    List<TicketingSeat> loadSeatsInAreaOfEvent(@Param("eventId") UUID eventId, @Param("areaId") UUID areaId);
+
+    @Select("SELECT seatId AS id, sessionId, areaId, venueId, row, col, available, checkedInTimestamp, status, orderId, userId, " +
+            "(price * 100) AS price, priceName, metadata FROM TicketingSeatStatus " +
+            "WHERE eventId = #{eventId} AND sessionId = #{sessionId} AND areaId = #{areaId} ORDER BY row, col")
+    @Results({
+            @Result(property = "metadata", column = "metadata", typeHandler = MetadataHandler.class),
+            @Result(property = "status", column = "status", typeHandler = TicketingSeatStatusHandler.class)
+    })
+    List<TicketingSeat> loadSeatsInAreaOfSession(@Param("eventId") UUID eventId,
+                                               @Param("sessionId") UUID sessionId,
+                                               @Param("areaId") UUID areaId);
+
+    @Select("SELECT seatId AS id, sessionId, areaId, venueId, row, col, available, checkedInTimestamp, status, orderId, userId, " +
+            "(price * 100) AS price, priceName, metadata FROM TicketingSeatStatus " +
+            "WHERE eventId = #{eventId} AND sessionId = #{sessionId} AND seatId = #{seatId}")
+    @Results({
+            @Result(property = "metadata", column = "metadata", typeHandler = MetadataHandler.class),
+            @Result(property = "status", column = "status", typeHandler = TicketingSeatStatusHandler.class)
+    })
+    TicketingSeat loadSeatInSession(@Param("eventId") UUID eventId,
+                                  @Param("sessionId") UUID sessionId,
+                                  @Param("seatId") UUID seatId);
 
     @Select("SELECT Areas.id, Areas.venueId, Areas.name, Areas.metadata FROM Areas " +
             "INNER JOIN Venues ON Areas.venueId = Venues.id " +

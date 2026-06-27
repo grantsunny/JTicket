@@ -17,8 +17,6 @@ import java.util.Date;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
-import java.util.function.Predicate;
-import java.util.function.Supplier;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.slf4j.Logger;
@@ -28,7 +26,7 @@ import com.jticket.api.OrdersApi;
 import com.jticket.api.model.LinkSeat;
 import com.jticket.api.model.Order;
 import com.jticket.api.model.Payment;
-import com.jticket.api.model.Seat;
+import com.jticket.api.model.TicketingSeat;
 import com.jticket.api.model.Ticket;
 import com.jticket.integration.OrderPluginHelper;
 import com.jticket.persist.OrdersRepository;
@@ -37,7 +35,6 @@ import io.jsonwebtoken.JwtBuilder;
 import io.jsonwebtoken.Jwts;
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.inject.Inject;
-import jakarta.validation.Valid;
 import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.WebApplicationException;
 import jakarta.ws.rs.core.Context;
@@ -141,7 +138,7 @@ public class OrdersApiResource implements OrdersApi {
             return null;
 
         int total = 0;
-        for (Seat seat : order.getSeats()) {
+        for (TicketingSeat seat : order.getSeats()) {
             if (seat.getPrice() == null)
                 return null;
             total += seat.getPrice();
@@ -224,19 +221,11 @@ public class OrdersApiResource implements OrdersApi {
         if (order.getPaymentAmount() == null || order.getPaymentAmount() <= 0)
             throw new WebApplicationException("Cannot get ticket token for unpaid order", Response.Status.PAYMENT_REQUIRED);
 
-        Seat seat = order.getSeats().stream()
-        		.filter(new Predicate<> () {
-					@Override
-					public boolean test(@Valid Seat t) {
-						return t.getId().equals(linkSeat.getSeatId());
-					}
-        			
-        		}).findFirst().orElseThrow(new Supplier<WebApplicationException> () {
-					@Override
-					public WebApplicationException get() {
-						return new WebApplicationException("Cannot find specified seat in given order", Response.Status.BAD_REQUEST);
-					}
-        		});
+	        TicketingSeat seat = order.getSeats().stream()
+                    .filter(t -> t.getId().equals(linkSeat.getSeatId()))
+                    .findFirst()
+                    .orElseThrow(() -> new WebApplicationException(
+                            "Cannot find specified seat in given order", Response.Status.BAD_REQUEST));
         
         //construct JWT token accordingly. 
         

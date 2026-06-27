@@ -137,3 +137,25 @@ button:hover {
 #eventList {
     text-align: left; /* Align form elements to the left */
 }
+
+#orderSummary {
+    margin: 20px 0 10px;
+}
+
+.order-table {
+    border-collapse: collapse;
+    margin-top: 10px;
+    min-width: 720px;
+    text-align: left;
+}
+
+.order-table th,
+.order-table td {
+    border: 1px solid #ccc;
+    padding: 8px 10px;
+    vertical-align: top;
+}
+
+.order-table th {
+    background-color: #e8eef5;
+}
