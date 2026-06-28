@@ -25,29 +25,71 @@
                 <td><label for="orderEventId">Event:</label></td>
                 <td>
                     <select id="orderEventId" required
-                            onchange="stoneticket.fetchEventOrders(this.value)">
+                            onchange="stoneticket.selectOrderEvent(this.value)">
                         <option value="">Select Event</option>
+                    </select>
+                </td>
+                <td><label for="orderSessionId">Session:</label></td>
+                <td>
+                    <select id="orderSessionId" required
+                            onchange="stoneticket.selectOrderSession(this.value)">
+                        <option value="">Select Session</option>
                     </select>
                 </td>
             </tr>
         </table>
     </form>
 
-    <div id="orderSummary"></div>
+    <div class="order-dashboard">
+        <div class="order-stat-card">
+            <h2>Event</h2>
+            <div id="orderEventStatistics">Select an event</div>
+        </div>
+        <div class="order-stat-card">
+            <h2>Session</h2>
+            <div id="orderSessionStatistics">Select a session</div>
+        </div>
+        <div class="order-stat-card">
+            <h2>Area</h2>
+            <div id="orderAreaStatistics">Select an area on the venue map</div>
+        </div>
+        <div class="order-stat-card">
+            <h2>Selection</h2>
+            <div id="orderSelectionDetails">No seat selected</div>
+        </div>
+    </div>
 
-    <table class="order-table">
-        <thead>
-        <tr>
-            <th>Order</th>
-            <th>User</th>
-            <th>Created</th>
-            <th>Payment</th>
-            <th>Seats</th>
-        </tr>
-        </thead>
-        <tbody id="orderList">
-        </tbody>
-    </table>
+    <div class="order-workspace">
+        <div class="order-seat-panel">
+            <div id="orderVenueContainer" class="svg-container order-venue-container"></div>
+            <div class="order-seat-header">
+                <div id="orderSelectedArea">Select an area on the venue map</div>
+                <div class="order-seat-legend">
+                    <span><span class="seat-legend-swatch open-seat"></span>Open</span>
+                    <span><span class="seat-legend-swatch booked-seat"></span>Booked</span>
+                    <span><span class="seat-legend-swatch checked-in-seat"></span>Checked in</span>
+                </div>
+            </div>
+            <div id="orderSeatsContainer"></div>
+        </div>
+
+        <div class="order-list-panel">
+            <div id="orderSummary"></div>
+            <table class="order-table">
+                <thead>
+                <tr>
+                    <th>Order</th>
+                    <th>User</th>
+                    <th>Created</th>
+                    <th>Payment</th>
+                    <th>Seats</th>
+                </tr>
+                </thead>
+                <tbody id="orderList">
+                </tbody>
+            </table>
+        </div>
+    </div>
 </div>
 
 </body>
