@@ -192,6 +192,15 @@ function response(body, status = 200) {
 test('order page renders mocked event orders', async () => {
     globalThis.window = {};
     globalThis.document = createDocument();
+    globalThis.document.visibilityState = "visible";
+    let liveRefreshCallback;
+    let liveRefreshDelay;
+    globalThis.setInterval = (callback, delay) => {
+        liveRefreshCallback = callback;
+        liveRefreshDelay = delay;
+        return { unref() {} };
+    };
+    globalThis.clearInterval = () => {};
 
     const calls = [];
     globalThis.fetch = (resource) => {
@@ -357,6 +366,7 @@ test('order page renders mocked event orders', async () => {
     const seatCells = document.querySelectorAll('#orderSeatsContainer td');
 
     assert(calls.includes('/api/events/event-1/sessions/session-1/areas/area-1/seats'));
+    assert.equal(liveRefreshDelay, 10000);
     assert.deepEqual(areaStatistics.children.map(row => row.textContent), [
         'Total seats: 3',
         'Booked seats: 2',
@@ -368,4 +378,12 @@ test('order page renders mocked event orders', async () => {
     assert.equal(seatCells[2].className, 'open-seat');
     assert(selectionDetails.children.map(row => row.textContent).includes('Seat: Front Left 1-2'));
     assert.equal(orderList.children[0].className, 'selected-order-row');
+
+    const areaSeatCallCount = calls
+        .filter(call => call === '/api/events/event-1/sessions/session-1/areas/area-1/seats')
+        .length;
+    await liveRefreshCallback();
+    assert.equal(calls
+        .filter(call => call === '/api/events/event-1/sessions/session-1/areas/area-1/seats')
+        .length, areaSeatCallCount + 1);
 });

@@ -1,5 +1,8 @@
 import {apiFetch, cleanUpContainer, drawEventVenueEx} from "./common.js";
 
+// Live check-in refresh interval. Keep this obvious until backend-backed UI config exists.
+const LIVE_REFRESH_INTERVAL_MS = 10000;
+
 const orderState = {
     eventId: "",
     sessionId: "",
@@ -11,7 +14,9 @@ const orderState = {
     sessions: [],
     areas: [],
     orders: [],
-    seats: []
+    seats: [],
+    liveRefreshTimer: null,
+    liveRefreshInFlight: false
 };
 
 window.stoneticket = {
@@ -44,14 +49,17 @@ function refreshOrderEventList() {
                 eventSelect.value = orderState.events[0].id;
                 return selectOrderEvent(orderState.events[0].id);
             }
+            stopLiveRefresh();
         })
         .catch(error => {
             console.error('Error fetching events:', error);
+            stopLiveRefresh();
             setOrderSummary("Unable to load events.");
         });
 }
 
 function selectOrderEvent(eventId) {
+    stopLiveRefresh();
     orderState.eventId = eventId || "";
     orderState.sessionId = "";
     orderState.areaId = "";
@@ -85,7 +93,7 @@ function selectOrderEvent(eventId) {
         fetchEventStatistics(eventId),
         fetchAreas(eventId),
         fetchSessions(eventId)
-    ]);
+    ]).then(startLiveRefresh);
 }
 
 function selectOrderSession(sessionId) {
@@ -111,7 +119,7 @@ function selectOrderSession(sessionId) {
     return Promise.all(work);
 }
 
-function fetchEventOrders(eventId) {
+function fetchEventOrders(eventId, refreshStatistics = true) {
     if (!eventId) {
         orderState.orders = [];
         renderOrders();
@@ -135,8 +143,10 @@ function fetchEventOrders(eventId) {
             if (orderState.eventId !== eventId) return;
             orderState.orders = orders || [];
             renderOrders();
-            updateEventPaidAmount();
-            updateSessionPaidAmount();
+            if (refreshStatistics) {
+                updateEventPaidAmount();
+                updateSessionPaidAmount();
+            }
         })
         .catch(error => {
             console.error('Error fetching orders:', error);
@@ -446,7 +456,54 @@ function updateSessionPaidAmount() {
         fetchSessionStatistics(orderState.eventId, orderState.sessionId);
 }
 
+function startLiveRefresh() {
+    stopLiveRefresh();
+    if (!orderState.eventId || LIVE_REFRESH_INTERVAL_MS <= 0) return;
+
+    orderState.liveRefreshTimer = setInterval(refreshLiveOrderScope, LIVE_REFRESH_INTERVAL_MS);
+    if (orderState.liveRefreshTimer.unref)
+        orderState.liveRefreshTimer.unref();
+}
+
+function stopLiveRefresh() {
+    if (orderState.liveRefreshTimer) {
+        clearInterval(orderState.liveRefreshTimer);
+        orderState.liveRefreshTimer = null;
+    }
+    orderState.liveRefreshInFlight = false;
+}
+
+function refreshLiveOrderScope() {
+    if (!orderState.eventId || orderState.liveRefreshInFlight) return Promise.resolve();
+    if (document.visibilityState === "hidden") return Promise.resolve();
+
+    orderState.liveRefreshInFlight = true;
+    const eventId = orderState.eventId;
+    const sessionId = orderState.sessionId;
+    const areaId = orderState.areaId;
+    const work = [
+        fetchEventOrders(eventId, false),
+        fetchEventStatistics(eventId)
+    ];
+    if (sessionId)
+        work.push(fetchSessionStatistics(eventId, sessionId));
+    if (sessionId && areaId)
+        work.push(refreshOrderArea(areaId));
+
+    return Promise.all(work)
+        .finally(() => {
+            orderState.liveRefreshInFlight = false;
+        });
+}
+
+function refreshOrderArea(areaId) {
+    const selectedSeatId = orderState.seatId;
+    orderState.pendingSeatId = selectedSeatId || "";
+    return selectOrderArea(areaId);
+}
+
 function resetPage() {
+    stopLiveRefresh();
     orderState.eventId = "";
     orderState.sessionId = "";
     orderState.areaId = "";
