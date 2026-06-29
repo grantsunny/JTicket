@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Welcome to StoneTicket!</title>
+    <title>Welcome to JTicket!</title>
     <link rel="stylesheet" href="style.css">
     <script type="module" src="script.js"></script>
 </head>
 
-<body onload="stoneticket.showCurrentUser(document.getElementById('user-info'))
-        .then(() => stoneticket.fetchVenues());">
+<body onload="jticket.showCurrentUser(document.getElementById('user-info'))
+        .then(() => jticket.fetchVenues());">
 <h1><label id="user-info"></label>, welcome to JTicket!  </h1>
 
 <ul>
@@ -21,7 +21,7 @@
 <p></p>
 <form id="templateUploadForm" action="/api/template" method="post" enctype="multipart/form-data">
     Upload venue template:  <input type="file" name="file"/>
-    <button type="button" onclick="stoneticket.uploadTemplate(this.form)">Upload</button>
+    <button type="button" onclick="jticket.uploadTemplate(this.form)">Upload</button>
     <button type="button" onclick="location.href='/api/template'">Template</button>
 </form>
 

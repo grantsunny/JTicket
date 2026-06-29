@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Welcome to StoneTicket!</title>
+    <title>Welcome to JTicket!</title>
     <link rel="stylesheet" href="style.css">
     <script type="module" src="script.js"></script>
 </head>
 
-<body onload="stoneticket.showCurrentUser(document.getElementById('user-info'))
-        .then(() => stoneticket.refreshOrderEventList());">
+<body onload="jticket.showCurrentUser(document.getElementById('user-info'))
+        .then(() => jticket.refreshOrderEventList());">
 <h1><label id="user-info"></label>, welcome to JTicket!  </h1>
 
 <ul>
@@ -25,14 +25,14 @@
                 <td><label for="orderEventId">Event:</label></td>
                 <td>
                     <select id="orderEventId" required
-                            onchange="stoneticket.selectOrderEvent(this.value)">
+                            onchange="jticket.selectOrderEvent(this.value)">
                         <option value="">Select Event</option>
                     </select>
                 </td>
                 <td><label for="orderSessionId">Session:</label></td>
                 <td>
                     <select id="orderSessionId" required
-                            onchange="stoneticket.selectOrderSession(this.value)">
+                            onchange="jticket.selectOrderSession(this.value)">
                         <option value="">Select Session</option>
                     </select>
                 </td>

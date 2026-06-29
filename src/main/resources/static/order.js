@@ -19,8 +19,8 @@ const orderState = {
     liveRefreshInFlight: false
 };
 
-window.stoneticket = {
-    ...window.stoneticket,
+window.jticket = {
+    ...window.jticket,
     refreshOrderEventList,
     fetchEventOrders,
     selectOrderEvent,
@@ -119,14 +119,15 @@ function selectOrderSession(sessionId) {
     return Promise.all(work);
 }
 
-function fetchEventOrders(eventId, refreshStatistics = true) {
+function fetchEventOrders(eventId, refreshStatistics = true, showLoading = true) {
     if (!eventId) {
         orderState.orders = [];
         renderOrders();
         return Promise.resolve();
     }
 
-    setOrderSummary("Loading orders...");
+    if (showLoading)
+        setOrderSummary("Loading orders...");
     return apiFetch(`/api/events/${eventId}/orders`)
         .then(response => {
             if (response.status === 404) {
@@ -192,6 +193,8 @@ function fetchSessions(eventId) {
                 sessionSelect.value = orderState.sessions[0].id;
                 return selectOrderSession(orderState.sessions[0].id);
             }
+            setText("orderSessionStatistics", "No sessions for this event.");
+            renderOrders();
         })
         .catch(error => {
             console.error('Error fetching sessions:', error);
@@ -481,16 +484,15 @@ function refreshLiveOrderScope() {
     const eventId = orderState.eventId;
     const sessionId = orderState.sessionId;
     const areaId = orderState.areaId;
-    const work = [
-        fetchEventOrders(eventId, false),
-        fetchEventStatistics(eventId)
-    ];
-    if (sessionId)
-        work.push(fetchSessionStatistics(eventId, sessionId));
-    if (sessionId && areaId)
-        work.push(refreshOrderArea(areaId));
-
-    return Promise.all(work)
+    return fetchEventOrders(eventId, false, false)
+        .then(() => {
+            const work = [fetchEventStatistics(eventId)];
+            if (sessionId)
+                work.push(fetchSessionStatistics(eventId, sessionId));
+            if (sessionId && areaId)
+                work.push(refreshOrderArea(areaId));
+            return Promise.all(work);
+        })
         .finally(() => {
             orderState.liveRefreshInFlight = false;
         });
@@ -530,7 +532,7 @@ function resetPage() {
 
 function sessionOrders() {
     if (!orderState.sessionId)
-        return orderState.orders;
+        return [];
     return orderState.orders.filter(order => order.sessionId === orderState.sessionId);
 }
 

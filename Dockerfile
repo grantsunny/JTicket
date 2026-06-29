@@ -5,7 +5,7 @@ RUN mvn clean package
 
 FROM eclipse-temurin:21-jre-noble
 LABEL authors="Grant Yang"
-LABEL description="Stoneticket Backend Image"
+LABEL description="JTicket Backend Image"
 ENV JAVA_OPTS="-XX:MinRAMPercentage=50 \
 -XX:InitialRAMPercentage=50 \
 -XX:MaxRAMPercentage=75 \

@@ -1,7 +1,7 @@
 import {apiFetch, cleanUpContainer, drawEventVenueEx, drawSeats, enforceNumericInput} from "./common.js";
 
-window.stoneticket = {
-    ...window.stoneticket,
+window.jticket = {
+    ...window.jticket,
     setupEventMetadata,
     setupEventPricing,
     setupEventSessions,
@@ -137,11 +137,11 @@ function fetchEvents() {
                 const row = document.createElement("tr");
                 row.innerHTML = `
                     <td>${event.name}</td>
-                    <td><a href="#" onclick="stoneticket.changeEventVenue('${event.name}','${event.id}', '${event.venueId}')">${venueName || 'Unknown Venue'}</td> <!-- Display venue name or 'Unknown Venue' if not found -->
-                    <td><button onclick="stoneticket.setupEventPricing('${event.name}','${event.id}')">Pricing</button></td>
-                    <td><button onclick="stoneticket.setupEventSessions('${event.name}','${event.id}')">Sessions</button></td>
-                    <td><button onclick="stoneticket.setupEventMetadata('${event.id}')">Metadata</button></td>
-                    <td><button onclick="stoneticket.deleteEvent('${event.id}')">Delete</button></td>
+                    <td><a href="#" onclick="jticket.changeEventVenue('${event.name}','${event.id}', '${event.venueId}')">${venueName || 'Unknown Venue'}</td> <!-- Display venue name or 'Unknown Venue' if not found -->
+                    <td><button onclick="jticket.setupEventPricing('${event.name}','${event.id}')">Pricing</button></td>
+                    <td><button onclick="jticket.setupEventSessions('${event.name}','${event.id}')">Sessions</button></td>
+                    <td><button onclick="jticket.setupEventMetadata('${event.id}')">Metadata</button></td>
+                    <td><button onclick="jticket.deleteEvent('${event.id}')">Delete</button></td>
                 `;
                 eventList.appendChild(row);
             });
@@ -238,10 +238,10 @@ function reloadEventPricing(eventId, container, selectedAreaId) {
             let trButton = document.createElement("tr");
             trButton.innerHTML = `
                     <td></td>
-                    <td align="right"><button onclick="stoneticket.setAreaPrice('${eventId}',
+                    <td align="right"><button onclick="jticket.setAreaPrice('${eventId}',
                         this.closest('#modalEventPricingList').querySelector('input[name=\\'radioEventPrice\\']:checked')?.id,
                         this.closest('#modalEventPricingList').querySelector('#containerPricingArea').selectedAreaId)">set area price</button></td>
-                    <td align="right"><button onclick="stoneticket.setSeatPrice('${eventId}',
+                    <td align="right"><button onclick="jticket.setSeatPrice('${eventId}',
                         this.closest('#modalEventPricingList').querySelector('input[name=\\'radioEventPrice\\']:checked')?.id,
                         this.closest('#modalEventPricingList').querySelector('#containerPricingArea').selectedAreaId,
                         this.closest('#modalEventPricingList').querySelector('#containerPricingSeats').selectedSeats)">set seat price</button></td>

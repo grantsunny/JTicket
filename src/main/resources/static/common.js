@@ -1,6 +1,6 @@
 
-window.stoneticket = {
-    ...window.stoneticket,
+window.jticket = {
+    ...window.jticket,
     showCurrentUser
 }
 

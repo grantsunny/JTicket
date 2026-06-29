@@ -33,7 +33,7 @@ class StaticUiReachabilityTest {
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(response.getBody())
-                .contains("<title>Welcome to StoneTicket!</title>")
+                .contains("<title>Welcome to JTicket!</title>")
                 .contains("welcome to JTicket!")
                 .contains("href=\"/venue.html\"")
                 .contains("href=\"/event.html\"")
@@ -46,7 +46,7 @@ class StaticUiReachabilityTest {
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(response.getBody())
-                .contains("<title>Welcome to StoneTicket!</title>")
+                .contains("<title>Welcome to JTicket!</title>")
                 .contains("welcome to JTicket!")
                 .contains("href=\"/venue.html\"")
                 .contains("href=\"/event.html\"")
@@ -59,7 +59,7 @@ class StaticUiReachabilityTest {
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(response.getBody())
-                .contains("<title>Welcome to StoneTicket!</title>")
+                .contains("<title>Welcome to JTicket!</title>")
                 .contains("Upload venue template")
                 .contains("id=\"venuePreview\"")
                 .contains("id=\"seatsContainer\"");
@@ -71,7 +71,7 @@ class StaticUiReachabilityTest {
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(response.getBody())
-                .contains("<title>Welcome to StoneTicket!</title>")
+                .contains("<title>Welcome to JTicket!</title>")
                 .contains("Order Management")
                 .contains("id=\"orderEventId\"")
                 .contains("id=\"orderList\"");
