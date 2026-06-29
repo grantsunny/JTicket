@@ -40,10 +40,10 @@ pipeline {
         stage('Deploy to Kubernetes') {
             steps {
                 script {
-                    withKubeConfig([credentialsId: 'stoneticket-dev-kubeconfig']) {
-                        sh './kubectl config set-context --current --namespace=tontix'
+                    withKubeConfig([credentialsId: 'jticket-dev-kubeconfig']) {
+                        sh './kubectl config set-context --current --namespace=jticket'
                         sh './kubectl apply -f ./kubernetes/.'
-                        sh './kubectl rollout restart deployment/JTicket'
+                        sh './kubectl rollout restart deployment/jticket'
                     }
                 }
             }

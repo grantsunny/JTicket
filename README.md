@@ -17,8 +17,10 @@ Please feel free to raise one issue or join me to contribute it.
 ## Usages
 This project can be built directly with command as simple as follows
 ```
-mvn clean package
+mvnd clean package
 ```
+If `mvnd` is not available, use `mvn clean package`.
+
 or if we wanted to build via Docker
 ```
 docker build
@@ -26,6 +28,7 @@ docker build
 Using `java -jar` or `docker run` to start the ticketing system.
 
 The back office UI will be listening at port of %HOST%/8080 and APIs will be available at %HOST/api. 
+Back-office pages include venue management, event/session/pricing management, and operator order management.
 Specified to API, you can download the swagger spec (OpenAPI v3) via endpoint of /api/swagger.
 There are two profiles for development and production, the development profile uses Apache Derby as persistence layer,
 whereas the production profile uses CockroachDB (compliance with PostgreSQL).
@@ -46,7 +49,7 @@ way to use technologies I believe!
 
 ### Roles 
 We assume following roles in the context of JTicket. 
-* **Operator**: On behalf the event organizer, maintain and design the venue and seat layout, supply the metadata of event and session, define the pricing of a given seat at venue, area or seat level.  
+* **Operator**: On behalf the event organizer, maintain and design the venue and seat layout, supply the metadata of event and session, define the pricing of a given seat at venue, area or seat level, and monitor event/session orders and check-in status.
 * **Customer**: The audience of the event, will check the overview and make seat selection and then place order to buy a ticket for one or more seats. 
 * **Attendant**: Could be a human or a gateway equipment. Check the evidence of attendance (mostly a QR code) on a ticket before approving the ticket holder to enter the venue for a event.  
 * **PaymentAgent**: A system handles the payment and cash-in from customer, expect to trigger API of JTicket upon a successful payment for a given order. Out of the scope of JTicket. 
@@ -65,6 +68,10 @@ We assume following roles in the context of JTicket.
 
 ### Ticket purchase
 ![Provision of event](https://www.plantuml.com/plantuml/proxy?cache=no&src=https://raw.githubusercontent.com/grantsunny/JTicket/refs/heads/main/uml/order.plantuml)
+
+Orders are associated with an event session. Create at least one session for an event before placing orders. Operators
+with `order:read:all` can use the Order Management UI to select an event and session, view matching orders, inspect paid
+totals, and drill into area seat occupation and check-in state.
 
 ### Ticket checkin
 ![Provision of event](https://www.plantuml.com/plantuml/proxy?cache=no&src=https://raw.githubusercontent.com/grantsunny/JTicket/refs/heads/main/uml/checkin.plantuml)
@@ -146,5 +153,5 @@ persistent storage, while JTicket deployment starts with memory-backed DB nodes 
 By such configuration, JTicket can scale horizontally and work with completely in-memory database! 
 
 ## What's next
-1. Portal: Implement the operator order UI behind `order:read:all`
+1. Customer-facing purchase portal
 2. The Attendance UI - will it be something like a Android application or SDK? 

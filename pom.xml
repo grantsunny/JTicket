@@ -15,6 +15,7 @@
     <properties>
         <java.version>21</java.version>
         <skipJavaScriptTests>false</skipJavaScriptTests>
+        <surefire.argLine></surefire.argLine>
     </properties>
     <dependencies>
         <dependency>
@@ -164,6 +165,14 @@
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <argLine>${surefire.argLine} -Djava.io.tmpdir=${project.build.directory} -Djansi.tmpdir=${project.build.directory} -Dserver.tomcat.basedir=${project.build.directory}</argLine>
+                </configuration>
             </plugin>
 
             <plugin>

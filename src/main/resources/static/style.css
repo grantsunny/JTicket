@@ -139,13 +139,111 @@ button:hover {
 }
 
 #orderSummary {
-    margin: 20px 0 10px;
+    margin: 0 0 10px;
+    font-weight: bold;
+}
+
+.order-dashboard {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(160px, 1fr));
+    gap: 12px;
+    width: min(1200px, calc(100% - 40px));
+    margin: 20px auto;
+    text-align: left;
+}
+
+.order-stat-card {
+    border: 1px solid #ccc;
+    background-color: #fff;
+    padding: 12px;
+}
+
+.order-stat-card h2 {
+    font-size: 16px;
+    margin: 0 0 8px;
+    color: #0066cc;
+}
+
+.order-stat-card div div {
+    margin: 4px 0;
+}
+
+.order-workspace {
+    display: grid;
+    grid-template-columns: minmax(360px, 1fr) minmax(420px, 1fr);
+    gap: 20px;
+    align-items: start;
+    width: min(1200px, calc(100% - 40px));
+    margin: 0 auto 30px;
+}
+
+.order-seat-panel,
+.order-list-panel {
+    width: 100%;
+    text-align: left;
+}
+
+.order-venue-container {
+    min-height: 160px;
+    margin-bottom: 12px;
+    overflow: auto;
+}
+
+.order-seat-header {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.order-seat-legend {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+    font-size: 14px;
+}
+
+.seat-legend-swatch {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border: 1px solid #333;
+    margin-right: 4px;
+    vertical-align: middle;
+}
+
+.order-status-seat-table td {
+    cursor: pointer;
+    min-width: 42px;
+    height: 34px;
+}
+
+.open-seat {
+    background-color: #d9ead3;
+}
+
+.booked-seat {
+    background-color: #fce5cd;
+}
+
+.checked-in-seat {
+    background-color: #cfe2f3;
+}
+
+.selected-order-seat {
+    outline: 3px solid #cc0000;
+    outline-offset: -3px;
+}
+
+.selected-order-row {
+    background-color: #fff2cc;
 }
 
 .order-table {
     border-collapse: collapse;
-    margin-top: 10px;
-    min-width: 720px;
+    width: 100%;
     text-align: left;
 }
 
@@ -158,4 +256,16 @@ button:hover {
 
 .order-table th {
     background-color: #e8eef5;
+}
+
+@media (max-width: 900px) {
+    .order-dashboard,
+    .order-workspace {
+        grid-template-columns: 1fr;
+    }
+
+    .order-seat-header {
+        align-items: flex-start;
+        flex-direction: column;
+    }
 }

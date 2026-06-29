@@ -1,7 +1,7 @@
 import {apiFetch, drawVenue, enforceNumericInput} from "./common.js";
 
-window.stoneticket = {
-    ...window.stoneticket,
+window.jticket = {
+    ...window.jticket,
     uploadTemplate,
     fetchVenues
 }
