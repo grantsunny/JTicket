@@ -274,6 +274,24 @@ class OrdersApiResourceTest {
                 .isEqualTo(400);
     }
 
+    @Test
+    void paidOrderCannotBeCanceled() throws Exception {
+        UUID orderId = UUID.randomUUID();
+        authenticateAs("customer-sub");
+        when(repository.isUserOrderExist("customer-sub", orderId)).thenReturn(true);
+        when(repository.loadOrder(orderId)).thenReturn(new Order().id(orderId)
+                .userId("customer-sub")
+                .paymentAmount(1234));
+
+        assertThatThrownBy(() -> resource.cancelOrder(orderId))
+                .isInstanceOf(WebApplicationException.class)
+                .extracting(ex -> ((WebApplicationException) ex).getResponse().getStatus())
+                .isEqualTo(404);
+
+        verify(plugin, never()).beforeCancelOrder(any());
+        verify(repository, never()).deleteOrder(orderId);
+    }
+
     private void authenticateAs(String userName) {
         when(securityContext.getUserPrincipal()).thenReturn(new Principal() {
             @Override

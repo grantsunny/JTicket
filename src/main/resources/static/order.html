@@ -40,7 +40,7 @@
         </table>
     </form>
 
-    <div class="order-dashboard">
+    <div id="orderDashboard" class="order-dashboard">
         <div class="order-stat-card">
             <h2>Event</h2>
             <div id="orderEventStatistics">Select an event</div>
@@ -59,7 +59,7 @@
         </div>
     </div>
 
-    <div class="order-workspace">
+    <div id="orderWorkspace" class="order-workspace">
         <div class="order-seat-panel">
             <div id="orderVenueContainer" class="svg-container order-venue-container"></div>
             <div class="order-seat-header">
@@ -68,6 +68,8 @@
                     <span><span class="seat-legend-swatch open-seat"></span>Open</span>
                     <span><span class="seat-legend-swatch booked-seat"></span>Booked</span>
                     <span><span class="seat-legend-swatch checked-in-seat"></span>Checked in</span>
+                    <span><span class="seat-legend-swatch unpriced-seat"></span>No price</span>
+                    <span><span class="seat-legend-swatch unavailable-seat"></span>Unavailable</span>
                 </div>
             </div>
             <div id="orderSeatsContainer"></div>

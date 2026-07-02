@@ -139,6 +139,8 @@ function displaySeats(seats) {
             const td = tr.insertCell();
             td.textContent = `${seat.row}-${seat.col}`;
             td.dataset.seatid = seat.id;
+            td.dataset.row = seat.row;
+            td.dataset.col = seat.col;
             td.dataset.selected = "false";
             td.className = seat.available ? 'available-seat' : 'unavailable-seat';
 
@@ -175,7 +177,7 @@ function updateOrderButtonState() {
 function handleOrderButtonClick() {
     const selectedSeats = Array.from(document.querySelectorAll('#seatsContainer td[data-selected="true"]'));
     const selectedSeatsInfo = selectedSeats.map(seat => {
-        return `Seat ID: ${seat.dataset.seatid}, Row: ${seat.parentNode.rowIndex + 1}, Column: ${seat.cellIndex + 1}`;
+        return `Seat ID: ${seat.dataset.seatid}, Row: ${seat.dataset.row}, Column: ${seat.dataset.col}`;
     }).join('\n');
 
     alert(`Selected Seats:\n${selectedSeatsInfo}`);

@@ -66,7 +66,7 @@ button:hover {
     pointer-events: none; /* This ensures the tooltip doesn't interfere with other mouse events */
 }
 
-#seatsContainer td, .svg-container svg rect {
+.seats-table td, .svg-container svg rect {
     cursor: pointer; /* Change cursor to a hand pointer */
 }
 
@@ -75,11 +75,161 @@ button:hover {
     border-collapse: collapse;
 }
 
+.pricing-seats-table {
+    table-layout: fixed;
+}
+
 .seats-table td {
     border: 1px solid #333;
     padding: 8px;
     text-align: center;
     min-width: 15px;
+}
+
+.pricing-seats-table td {
+    box-sizing: border-box;
+    height: 34px;
+    line-height: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    width: 34px;
+}
+
+.pricing-modal-content {
+    max-width: min(1120px, calc(100vw - 48px));
+}
+
+.pricing-workspace,
+.pricing-actions {
+    display: grid;
+    gap: 18px;
+    grid-template-columns: 240px 300px minmax(360px, 1fr);
+    align-items: start;
+}
+
+.pricing-workspace {
+    text-align: left;
+}
+
+.pricing-management-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-start;
+    margin-bottom: 12px;
+}
+
+.pricing-side-panel {
+    min-height: 180px;
+}
+
+.pricing-price-list {
+    border-collapse: collapse;
+    width: 100%;
+}
+
+.pricing-price-panel {
+    align-self: start;
+    max-height: 520px;
+    overflow: auto;
+}
+
+.pricing-price-list td {
+    padding: 6px 4px;
+}
+
+.pricing-price-option {
+    align-items: center;
+    cursor: pointer;
+    display: flex;
+    gap: 8px;
+    min-height: 28px;
+    text-align: left;
+}
+
+.pricing-venue-panel {
+    max-height: 520px;
+    overflow: auto;
+}
+
+#containerPricingArea svg rect {
+    cursor: pointer;
+}
+
+.pricing-seat-panel {
+    max-height: 520px;
+    min-height: 240px;
+    overflow: auto;
+}
+
+.pricing-actions {
+    margin-top: 12px;
+    align-items: start;
+}
+
+.pricing-area-actions,
+.pricing-seat-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.pricing-area-actions {
+    grid-column: 2;
+}
+
+.pricing-seat-actions {
+    grid-column: 3;
+}
+
+.seat-display-switch {
+    align-items: center;
+    display: inline-flex;
+    gap: 8px;
+    margin: 10px 0;
+    user-select: none;
+}
+
+.seat-display-switch input {
+    opacity: 0;
+    position: absolute;
+}
+
+.seat-display-slider {
+    background-color: #b9c2ca;
+    border-radius: 999px;
+    cursor: pointer;
+    display: inline-block;
+    height: 24px;
+    position: relative;
+    transition: background-color 0.2s ease;
+    width: 48px;
+}
+
+.seat-display-slider::before {
+    background-color: white;
+    border-radius: 50%;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+    content: "";
+    height: 18px;
+    left: 3px;
+    position: absolute;
+    top: 3px;
+    transition: transform 0.2s ease;
+    width: 18px;
+}
+
+.seat-display-switch input:checked + .seat-display-slider {
+    background-color: #0066cc;
+}
+
+.seat-display-switch input:checked + .seat-display-slider::before {
+    transform: translateX(24px);
+}
+
+.seat-display-switch input:focus-visible + .seat-display-slider {
+    outline: 2px solid #333;
+    outline-offset: 2px;
 }
 
 .available-seat {
@@ -90,12 +240,29 @@ button:hover {
     background-color: #ffcdd2;
 }
 
+.unpriced-seat {
+    background-color: #eeeeee;
+}
+
+.sold-seat {
+    background-color: #d7c6f3;
+}
+
+.seats-table td.unavailable-seat {
+    cursor: not-allowed;
+}
+
+.seats-table td.sold-seat {
+    cursor: not-allowed;
+}
+
 .seats-table td[data-selected="true"] {
-    border: 3px solid red;
+    outline: 3px solid red;
+    outline-offset: -3px;
 }
 
 .seats-table td[data-selected="false"] {
-    border: 1px solid #333;
+    outline: 0;
 }
 
 .center {
@@ -220,6 +387,66 @@ button:hover {
     height: 34px;
 }
 
+.order-status-seat-table td.unavailable-seat {
+    cursor: not-allowed;
+}
+
+.order-status-seat-table td.unpriced-seat {
+    cursor: not-allowed;
+}
+
+.pricing-statistics {
+    margin: 12px 0;
+    text-align: left;
+}
+
+.pricing-statistics-summary {
+    display: grid;
+    gap: 8px;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    margin-bottom: 10px;
+}
+
+.pricing-statistics-summary div {
+    border: 1px solid #c9c9c9;
+    border-radius: 6px;
+    padding: 8px;
+}
+
+.pricing-statistics-summary strong,
+.pricing-statistics-summary span {
+    display: block;
+}
+
+.pricing-statistics-summary span {
+    font-size: 1.1rem;
+    margin-top: 4px;
+}
+
+.pricing-statistics-table {
+    border-collapse: collapse;
+    width: 100%;
+}
+
+.pricing-statistics-table th,
+.pricing-statistics-table td {
+    border: 1px solid #d8d8d8;
+    padding: 6px 8px;
+}
+
+.pricing-seat-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 10px;
+}
+
+.pricing-seat-legend span {
+    align-items: center;
+    display: inline-flex;
+    gap: 5px;
+}
+
 .open-seat {
     background-color: #d9ead3;
 }
@@ -259,9 +486,20 @@ button:hover {
 }
 
 @media (max-width: 900px) {
+    .pricing-workspace,
+    .pricing-actions,
     .order-dashboard,
     .order-workspace {
         grid-template-columns: 1fr;
+    }
+
+    .pricing-actions > span {
+        display: none;
+    }
+
+    .pricing-area-actions,
+    .pricing-seat-actions {
+        grid-column: 1;
     }
 
     .order-seat-header {

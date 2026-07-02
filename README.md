@@ -1,18 +1,25 @@
 # JTicket - A Java based open source ticketing system
 
 ## Overview
-This is an open sourced ticketing system. 
-Given my background worked in multiple ticketing company, this project is built completely with my spare time. 
-I were trying to leverage latest Java technologies to build it as I found there are quite a lot 
-out of dated technologies being used in the ticketing business making it as an old-fashioned technology. 
+Many ticketing businesses still run on quite out-of-date technology stacks, but ticketing can be built with emerging
+technologies. JTicket is an open source ticketing system for exploring modern event ticketing architecture with Java.
 
-Ticketing can be with emerging technologies! So it ship with:
-* Pure cloud-native and Kubernetes way to package and deployment
-* Latest spring boot and spring security technologies 
-* In memory SQL database based on Java, distributed if needed 
+The project is built from hands-on experience in multiple ticketing companies and maintained in spare time. It covers
+the operator back office workflow, including venue layout management, event/session setup, hierarchical pricing, order
+monitoring, payment state, and check-in support. The goal of JTicket is to show that ticketing software does not have to
+stay tied to old-fashioned technology choices: it can be cloud-native, API-first, security-aware, and still pleasant to
+run locally.
 
-This project is open-sourced under the license of Apache 2.0 (https://www.apache.org/licenses/). 
-Please feel free to raise one issue or join me to contribute it. 
+Highlights:
+* Back-office UI for venue, event, session, pricing, and order management
+* OpenAPI-described REST APIs for integration and automation
+* Spring Boot and Spring Security with OAuth2/OIDC support
+* Derby-backed development mode for fast local testing
+* CockroachDB/PostgreSQL-compatible production persistence
+* Container-friendly packaging for cloud-native and Kubernetes deployment
+
+This project is open-sourced under the Apache 2.0 license (https://www.apache.org/licenses/). Contributions, issues,
+testing feedback, and architecture discussions are welcome.
 
 ## Usages
 This project can be built directly with command as simple as follows
@@ -65,6 +72,12 @@ We assume following roles in the context of JTicket.
 
 ### Ticket provision
 ![Provision of event](https://www.plantuml.com/plantuml/proxy?cache=no&src=https://raw.githubusercontent.com/grantsunny/JTicket/refs/heads/main/uml/provision.plantuml)
+
+Event pricing can be managed at default, area, and seat level. Seat-level pricing overrides area pricing, and area
+pricing overrides the event default. Pricing lookup APIs return both the direct price assignment, when one exists, and
+the effective resolved price with its source. Seats without an effective price are not sellable until an operator assigns
+pricing, but they remain selectable in the pricing UI so pricing can be restored. A price cannot be deleted while it is
+assigned to any default, area, or seat pricing rule, and pricing cannot be changed for seats that already have orders.
 
 ### Ticket purchase
 ![Provision of event](https://www.plantuml.com/plantuml/proxy?cache=no&src=https://raw.githubusercontent.com/grantsunny/JTicket/refs/heads/main/uml/order.plantuml)

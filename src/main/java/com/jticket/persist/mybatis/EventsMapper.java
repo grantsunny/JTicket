@@ -45,17 +45,17 @@ public interface EventsMapper {
             "FROM SessionStatistics WHERE eventId = #{eventId} AND sessionId = #{sessionId}")
     SessionStatistics loadSessionStatistics(@Param("eventId") UUID eventId, @Param("sessionId") UUID sessionId);
 	
-    @Select("SELECT Prices.id, name, (price / 100.0) AS price, eventId FROM PricesDistribution " +
+    @Select("SELECT Prices.id, name, price, eventId FROM PricesDistribution " +
             "INNER JOIN Prices ON Prices.id = PricesDistribution.priceId " +
             "AND eventId = #{eventId} " +
             "AND seatId = #{seatId}")
     Price loadSeatLevelPricingOfEvent(@Param("eventId") UUID eventId, @Param("seatId") UUID seatId);
 
-    @Select("SELECT id, name, (price / 100.0) AS price, eventId FROM Prices Where eventId = #{eventId}")
+    @Select("SELECT id, name, price, eventId FROM Prices Where eventId = #{eventId}")
     List<Price> loadPrices(@Param("eventId") UUID eventId);
 
-    @Select("SELECT seatId AS id, areaId, venueId, row, col, available, metadata, (price * 100) AS price, priceName FROM " +
-            "${SKU} WHERE seatId = #{seatId} AND eventId = #{eventId}")
+    @Select("SELECT id, areaId, venueId, row, col, available, metadata, price, priceName, sold FROM " +
+            "${SEATSINEVENT} WHERE id = #{seatId} AND eventId = #{eventId}")
     @Results({@Result(property = "metadata", column = "metadata", typeHandler = MetadataHandler.class)})
     TicketingSeat loadSeatInEvent(@Param("eventId") UUID eventId, @Param("seatId") UUID seatId);
 
@@ -66,13 +66,13 @@ public interface EventsMapper {
     @Results({@Result(property = "metadata", column = "metadata", typeHandler = MetadataHandler.class)})
     List<Area> loadAllAreasInEvent(@Param("eventId") UUID eventId);
 
-    @Select("SELECT id, areaId, venueId, row, col, available, metadata, (price * 100) AS price, priceName FROM "+
+    @Select("SELECT id, areaId, venueId, row, col, available, metadata, price, priceName, sold FROM "+
             "${SEATSINEVENT} WHERE eventId = #{eventId} AND areaId = #{areaId}")
     @Results({@Result(property = "metadata", column = "metadata", typeHandler = MetadataHandler.class)})
     List<TicketingSeat> loadSeatsInAreaOfEvent(@Param("eventId") UUID eventId, @Param("areaId") UUID areaId);
 
     @Select("SELECT seatId AS id, sessionId, areaId, venueId, row, col, available, checkedInTimestamp, status, orderId, userId, " +
-            "(price * 100) AS price, priceName, metadata FROM TicketingSeatStatus " +
+            "price, priceName, metadata FROM TKT.TicketingSeatStatus " +
             "WHERE eventId = #{eventId} AND sessionId = #{sessionId} AND areaId = #{areaId} ORDER BY row, col")
     @Results({
             @Result(property = "metadata", column = "metadata", typeHandler = MetadataHandler.class),
@@ -83,7 +83,7 @@ public interface EventsMapper {
                                                @Param("areaId") UUID areaId);
 
     @Select("SELECT seatId AS id, sessionId, areaId, venueId, row, col, available, checkedInTimestamp, status, orderId, userId, " +
-            "(price * 100) AS price, priceName, metadata FROM TicketingSeatStatus " +
+            "price, priceName, metadata FROM TKT.TicketingSeatStatus " +
             "WHERE eventId = #{eventId} AND sessionId = #{sessionId} AND seatId = #{seatId}")
     @Results({
             @Result(property = "metadata", column = "metadata", typeHandler = MetadataHandler.class),
@@ -100,20 +100,20 @@ public interface EventsMapper {
     @Results({@Result(property = "metadata", column = "metadata", typeHandler = MetadataHandler.class)})
     Area loadAreaInEvent(@Param("eventId") UUID eventId, @Param("areaId") UUID areaId);
 
-    @Select("SELECT Prices.id, name, (price / 100.0) AS price, eventId FROM PricesDistribution " +
+    @Select("SELECT Prices.id, name, price, eventId FROM PricesDistribution " +
             "INNER JOIN Prices ON Prices.id = PricesDistribution.priceId " +
             "AND eventId = #{eventId} " +
             "AND areaId = #{areaId}")
     Price loadAreaLevelPricingOfEvent(@Param("eventId") UUID eventId, @Param("areaId") UUID areaId);
 
-    @Select("SELECT Prices.id, Prices.name, (price / 100.0) AS price, Events.id AS eventId FROM PricesDistribution " +
+    @Select("SELECT Prices.id, Prices.name, price, Events.id AS eventId FROM PricesDistribution " +
             "INNER JOIN Prices ON Prices.id = PricesDistribution.priceId " +
             "INNER JOIN Events ON Events.venueId = PricesDistribution.venueId " +
             "AND Events.id = Prices.eventId " +
             "AND Events.id = #{eventId}")
     Price loadDefaultPricingOfEvent(@Param("eventId") UUID eventId);
 
-    @Select("SELECT id, eventId, name, (price / 100.0) AS price FROM Prices WHERE id = #{priceId} AND eventId = #{eventId}")
+    @Select("SELECT id, eventId, name, price FROM Prices WHERE id = #{priceId} AND eventId = #{eventId}")
     Price loadPriceOfEventById(@Param("eventId") UUID eventId, @Param("priceId") UUID priceId);
 
     @Select("SELECT id, venueId, name, metadata FROM Events WHERE id = #{eventId}")
@@ -140,7 +140,7 @@ public interface EventsMapper {
             "AND Events.id = #{eventId}")
     File loadEventVenueSvg(@Param("eventId") UUID eventId);
 
-    @Insert("INSERT INTO Prices (id, eventId, name, price) VALUES (#{price.id}, #{eventId}, #{price.name}, #{price.price} * 100)")
+    @Insert("INSERT INTO Prices (id, eventId, name, price) VALUES (#{price.id}, #{eventId}, #{price.name}, #{price.price})")
     int _saveTicketPriceOfEvent(@Param("eventId") UUID eventId, @Param("price") Price price);
 
     default void saveTicketPriceOfEvent(UUID eventId, Price price) throws PersistenceException {
@@ -166,7 +166,9 @@ public interface EventsMapper {
         _deleteEvent(eventId);
     }
 
-    @Delete("DELETE FROM Prices WHERE id = #{priceId} AND eventId = #{eventId}")
+    @Delete("DELETE FROM Prices " +
+            "WHERE id = #{priceId} AND eventId = #{eventId} " +
+            "AND NOT EXISTS (SELECT 1 FROM PricesDistribution WHERE priceId = #{priceId})")
     int _deleteTicketPriceOfEvent(@Param("eventId") UUID eventId, @Param("priceId") UUID priceId);
 
     default void deleteTicketPriceOfEvent(UUID eventId, UUID priceId) throws PersistenceException {
@@ -181,13 +183,16 @@ public interface EventsMapper {
             "WHERE priceId IN (SELECT id FROM Prices WHERE eventId = #{eventId}) " +
             "AND seatId IS NULL " +
             "AND areaId IS NULL " +
-            "AND venueId IN (SELECT venueId FROM Events WHERE id = #{eventId}) ")
+            "AND venueId IN (SELECT venueId FROM Events WHERE id = #{eventId}) " +
+            "AND NOT EXISTS (SELECT 1 FROM OrderSeats WHERE eventId = #{eventId}) ")
     int _updateDefaultPricingOfEvent(@Param("eventId") UUID eventId, @Param("priceId") UUID priceId);
 
     @Insert("INSERT INTO PricesDistribution (id, priceId, seatId, areaId, venueId) " +
-            "SELECT #{newId}, #{priceId}, NULL, NULL, Events.venueId FROM Prices " +
+            "SELECT #{newId}, #{priceId}, CAST(NULL AS VARCHAR(36)), CAST(NULL AS VARCHAR(36)), Events.venueId FROM Prices " +
             "INNER JOIN Events ON Events.id = Prices.eventId " +
-            "AND Events.id = #{eventId}")
+            "AND Events.id = #{eventId} " +
+            "WHERE Prices.id = #{priceId} " +
+            "AND NOT EXISTS (SELECT 1 FROM OrderSeats WHERE eventId = #{eventId})")
     int _saveDefaultPricingOfEvent(@Param("newId") UUID newId, @Param("eventId") UUID eventId, @Param("priceId") UUID priceId);
 
     @Transactional
@@ -204,11 +209,14 @@ public interface EventsMapper {
             "WHERE priceId IN (SELECT Prices.id FROM Prices WHERE eventId = #{eventId}) " +
             "AND seatId = #{seatId} " +
             "AND areaId IS NULL " +
-            "AND venueId IS NULL ")
+            "AND venueId IS NULL " +
+            "AND NOT EXISTS (SELECT 1 FROM OrderSeats WHERE eventId = #{eventId} AND seatId = #{seatId}) ")
     int _updateSeatLevelPricingOfEvent(@Param("eventId") UUID eventId, @Param("seatId") UUID seatId, @Param("priceId") UUID priceId);
 
     @Insert("INSERT INTO PricesDistribution (id, priceId, seatId, areaId, venueId) " +
-            "VALUES (#{newId}, #{priceId}, #{seatId}, NULL, NULL)")
+            "SELECT #{newId}, #{priceId}, #{seatId}, CAST(NULL AS VARCHAR(36)), CAST(NULL AS VARCHAR(36)) FROM Prices " +
+            "WHERE id = #{priceId} AND eventId = #{eventId} " +
+            "AND NOT EXISTS (SELECT 1 FROM OrderSeats WHERE eventId = #{eventId} AND seatId = #{seatId})")
     int _saveSeatLevelPricingOfEvent(@Param("newId") UUID newId, @Param("eventId") UUID eventId, @Param("seatId") UUID seatId, @Param("priceId") UUID priceId);
 
     @Transactional
@@ -220,16 +228,38 @@ public interface EventsMapper {
                 );
     }
 
+    @Delete("DELETE FROM PricesDistribution " +
+            "WHERE priceId IN (SELECT Prices.id FROM Prices WHERE eventId = #{eventId}) " +
+            "AND seatId = #{seatId} " +
+            "AND areaId IS NULL " +
+            "AND venueId IS NULL " +
+            "AND NOT EXISTS (SELECT 1 FROM OrderSeats WHERE eventId = #{eventId} AND seatId = #{seatId}) ")
+    int _deleteSeatLevelPricingOfEvent(@Param("eventId") UUID eventId, @Param("seatId") UUID seatId);
+
+    default void deleteSeatLevelPricingOfEvent(UUID eventId, UUID seatId) throws PersistenceException {
+        if (_deleteSeatLevelPricingOfEvent(eventId, seatId) < 1)
+            throw new PersistenceException(
+                    new SQLException("Not successfully deleted", "304")
+            );
+    }
+
     @Update("UPDATE PricesDistribution " +
             "SET priceId = #{priceId} " +
             "WHERE priceId IN (SELECT Prices.id FROM Prices WHERE eventId = #{eventId}) " +
             "AND seatId IS NULL " +
             "AND areaId = #{areaId} " +
-            "AND venueId IS NULL ")
+            "AND venueId IS NULL " +
+            "AND NOT EXISTS (" +
+            "SELECT 1 FROM OrderSeats INNER JOIN Seats ON Seats.id = OrderSeats.seatId " +
+            "WHERE OrderSeats.eventId = #{eventId} AND Seats.areaId = #{areaId}) ")
     int _updateAreaLevelPricingOfEvent(@Param("eventId") UUID eventId, @Param("areaId") UUID areaId, @Param("priceId") UUID priceId);
 
     @Insert("INSERT INTO PricesDistribution (id, priceId, seatId, areaId, venueId) " +
-            "VALUES (#{newId}, #{priceId}, NULL, #{areaId}, NULL)")
+            "SELECT #{newId}, #{priceId}, CAST(NULL AS VARCHAR(36)), #{areaId}, CAST(NULL AS VARCHAR(36)) FROM Prices " +
+            "WHERE id = #{priceId} AND eventId = #{eventId} " +
+            "AND NOT EXISTS (" +
+            "SELECT 1 FROM OrderSeats INNER JOIN Seats ON Seats.id = OrderSeats.seatId " +
+            "WHERE OrderSeats.eventId = #{eventId} AND Seats.areaId = #{areaId})")
     int _saveAreaLevelPricingOfEvent(@Param("newId") UUID newId, @Param("eventId") UUID eventId, @Param("areaId") UUID areaId, @Param("priceId") UUID priceId);
 
     @Transactional
@@ -239,6 +269,23 @@ public interface EventsMapper {
                 throw new PersistenceException(
                         new SQLException("Not successfully saved", "304")
                 );
+    }
+
+    @Delete("DELETE FROM PricesDistribution " +
+            "WHERE priceId IN (SELECT Prices.id FROM Prices WHERE eventId = #{eventId}) " +
+            "AND seatId IS NULL " +
+            "AND areaId = #{areaId} " +
+            "AND venueId IS NULL " +
+            "AND NOT EXISTS (" +
+            "SELECT 1 FROM OrderSeats INNER JOIN Seats ON Seats.id = OrderSeats.seatId " +
+            "WHERE OrderSeats.eventId = #{eventId} AND Seats.areaId = #{areaId}) ")
+    int _deleteAreaLevelPricingOfEvent(@Param("eventId") UUID eventId, @Param("areaId") UUID areaId);
+
+    default void deleteAreaLevelPricingOfEvent(UUID eventId, UUID areaId) throws PersistenceException {
+        if (_deleteAreaLevelPricingOfEvent(eventId, areaId) < 1)
+            throw new PersistenceException(
+                    new SQLException("Not successfully deleted", "304")
+            );
     }
 
     @Insert("INSERT INTO Events (id, name, venueId, metadata) " +

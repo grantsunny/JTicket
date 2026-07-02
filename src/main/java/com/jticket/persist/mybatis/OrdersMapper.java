@@ -29,7 +29,7 @@ public interface OrdersMapper {
     boolean isUserOrderExist(@Param("userId") String userId, @Param("orderId") UUID orderId);
     
     @Select("SELECT seatId AS id, sessionId, areaId, venueId, row, col, available, checkedInTimestamp, status, orderId, userId, "
-            + "(price * 100) AS price, priceName, metadata FROM TicketingSeatStatus "
+            + "price, priceName, metadata FROM TKT.TicketingSeatStatus "
             + "WHERE orderId = #{orderId} ORDER BY row, col")
     @Results({
             @Result(property = "metadata", column = "metadata", typeHandler = MetadataHandler.class),
@@ -130,11 +130,14 @@ public interface OrdersMapper {
             "#{seat.metadata, typeHandler=com.jticket.persist.mybatis.handlers.MetadataHandler}) " +
             "</foreach>" +
             "</script>")
-    int _saveOrderSeats(UUID orderId, UUID eventId, UUID sessionId, List<TicketingSeat> seats);
+    int _saveOrderSeats(@Param("orderId") UUID orderId,
+                        @Param("eventId") UUID eventId,
+                        @Param("sessionId") UUID sessionId,
+                        @Param("seats") List<TicketingSeat> seats);
 
     @Insert("INSERT INTO ORDERS(ID, EVENTID, SESSIONID, USERID, TIMESTAMP, METADATA) " +
-            "VALUES (#{order.Id}, #{order.eventId}, #{order.sessionId}, #{order.userId}, CURRENT_TIMESTAMP, " +
-            "#{order.metadata, typeHandler=com.jticket.persist.mybatis.handlers.MetadataHandler})")
+            "VALUES (#{id}, #{eventId}, #{sessionId}, #{userId}, CURRENT_TIMESTAMP, " +
+            "#{metadata, typeHandler=com.jticket.persist.mybatis.handlers.MetadataHandler})")
     int _saveNewOrder(Order order);
 
     @Transactional
