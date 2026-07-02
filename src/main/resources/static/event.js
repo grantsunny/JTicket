@@ -7,6 +7,8 @@ window.jticket = {
     setupEventSessions,
     enforceNumericInput,
     submitNewPricingForm,
+    showAddPricingModal,
+    deleteSelectedPricing,
     changeEventVenue,
     updateEventVenue,
     deleteEvent,
@@ -14,8 +16,11 @@ window.jticket = {
     deleteSession,
     setAreaPrice,
     setSeatPrice,
+    clearAreaPrice,
+    clearSeatPrice,
     addNewEvent,
     addNewSession,
+    showAddEventModal,
     refreshFormEventCopyFromList,
     refreshFormEventVenueList,
     submitEventMetadata,
@@ -36,7 +41,7 @@ function updateSession(container, eventId, sessionId) {
             if (selectedSession !== null) {
                 const selectedIndex= Array.from(container.querySelectorAll('input[name=\'selectedSession[]\']')).indexOf(selectedSession);
                 if (selectedIndex !== -1) {
-                    const sessionName = selectedSession.value;
+                    const sessionName = container.querySelectorAll('input[name="selectedSessionName[]"]')[selectedIndex].value;
                     const sessionStartTime = formatDateTime(new Date(container.querySelectorAll('input[name="selectedSessionStartTime[]"]')[selectedIndex].value));
                     const sessionEndTime = formatDateTime(new Date(container.querySelectorAll('input[name="selectedSessionEndTime[]"]')[selectedIndex].value));
 
@@ -153,8 +158,14 @@ function fetchEvents() {
 
 function submitNewPricingForm(eventId, newPricingForm) {
     const apiUrl = `/api/events/${eventId}/prices`;
-    const priceName = newPricingForm.querySelector("#newPriceName").value;
+    const priceName = newPricingForm.querySelector("#newPriceName").value.trim();
     const price = newPricingForm.querySelector("#newPrice").value;
+    const priceInCents = Math.round(Number(price) * 100);
+
+    if (!priceName || !Number.isFinite(priceInCents)) {
+        alert("Please enter a price name and amount.");
+        return;
+    }
 
     apiFetch(apiUrl, {
         method: 'POST',
@@ -165,15 +176,19 @@ function submitNewPricingForm(eventId, newPricingForm) {
             {
                 "eventId": eventId,
                 "name": priceName,
-                "price": price * 100
+                "price": priceInCents
             }
         )
     })
         .then(response => {
             if (response.ok) {
-                reloadEventPricing(eventId, newPricingForm.parentElement.parentElement.querySelector("#modalEventPricingList"), null);
+                const pricingContainer = document.querySelector("#modalEventPricingList");
+                const selectedAreaId = pricingContainer?.querySelector("#containerPricingArea")?.selectedAreaId || null;
+                const createdPriceId = response.headers.get("Location")?.split("/").pop() || "";
                 newPricingForm.querySelector("#newPriceName").value = "";
                 newPricingForm.querySelector("#newPrice").value = "";
+                newPricingForm.closest("#modalAddPricing").style.display = "none";
+                reloadEventPricing(eventId, pricingContainer, selectedAreaId, createdPriceId);
             } else {
                 console.error('Server returned ' + response.status);
             }
@@ -184,75 +199,163 @@ function submitNewPricingForm(eventId, newPricingForm) {
         });
 }
 
-function reloadEventPricing(eventId, container, selectedAreaId) {
+function showAddPricingModal(eventId) {
+    const modal = document.getElementById("modalAddPricing");
+    modal.eventId = eventId;
+    modal.querySelector("#newPriceName").value = "";
+    modal.querySelector("#newPrice").value = "";
+    modal.style.display = "block";
+    modal.querySelector("#newPriceName").focus();
+}
+
+function deleteSelectedPricing(eventId) {
+    const pricingContainer = document.querySelector("#modalEventPricingList");
+    const selectedPrice = pricingContainer?.querySelector('input[name="radioEventPrice"]:checked');
+    if (!selectedPrice) {
+        alert("Please select a price first.");
+        return;
+    }
+
+    const selectedLabel = selectedPrice.closest("label")?.textContent?.trim() || "the selected price";
+    if (!confirm(`Delete ${selectedLabel}?`)) {
+        return;
+    }
+
+    capturePricingUiState(pricingContainer);
+    const selectedAreaId = pricingContainer.querySelector("#containerPricingArea")?.selectedAreaId || null;
+    apiFetch(`/api/events/${eventId}/prices/${selectedPrice.id}`, {
+        method: 'DELETE'
+    })
+        .then(response => {
+            if (response.status === 204 || response.ok) {
+                pricingContainer.dataset.selectedPriceId = "";
+                reloadEventPricing(eventId, pricingContainer, selectedAreaId, "");
+            } else if (response.status === 304 || response.status === 409) {
+                alert("This price is already used and cannot be deleted.");
+            } else {
+                console.error('Server returned ' + response.status);
+            }
+        })
+        .catch(error => {
+            console.error('Error deleteSelectedPricing:', error);
+        });
+}
+
+function reloadEventPricing(eventId, container, selectedAreaId, selectedPriceId = container.dataset.selectedPriceId || "") {
 
     const apiUrl = `/api/events/${eventId}/prices`; // Replace with the actual endpoint URL
-    apiFetch(apiUrl)
-        .then(response => response.json())
-        .then(data => {
+    Promise.all([
+        apiFetch(apiUrl).then(response => response.ok ? response.json() : []),
+        apiFetch(`/api/events/${eventId}/areas`).then(response => response.ok ? response.json() : [])
+    ])
+        .then(([data, areas]) => {
+            const selectedPricingId = selectedPriceId || data[0]?.id || "";
+            const selectedPricingAreaId = selectedAreaId || areas[0]?.id || null;
             container.innerHTML = ''; // Clear existing content
-            
+            container.dataset.selectedPriceId = selectedPricingId;
+
             let tablePriceList = document.createElement("table");
-            tablePriceList.align = "center";
+            tablePriceList.className = "pricing-price-list";
             data.forEach(price => {
                 const row = document.createElement("tr");
-                row.innerHTML = `
-                    <td align="left"><input type="radio" id="${price.id}" name="radioEventPrice">${price.name} (${price.price / 100}) </input></td>
-                `;
+                const td = document.createElement("td");
+                const label = document.createElement("label");
+                label.className = "pricing-price-option";
+
+                const radio = document.createElement("input");
+                radio.type = "radio";
+                radio.id = price.id;
+                radio.name = "radioEventPrice";
+                radio.checked = price.id === selectedPricingId;
+                radio.addEventListener("change", function () {
+                    container.dataset.selectedPriceId = this.id;
+                });
+
+                const text = document.createElement("span");
+                text.textContent = `${price.name} (${price.price / 100})`;
+
+                label.append(radio, text);
+                td.appendChild(label);
+                row.appendChild(td);
                 tablePriceList.appendChild(row);
             });
+            const workspace = document.createElement("div");
+            workspace.className = "pricing-workspace";
+            container.appendChild(workspace);
 
-            container.appendChild(document.createElement("hr"));
-            let table = document.createElement("table");
-            table.style.width = "100%";
-            container.appendChild(table);
+            const pricePanel = document.createElement("div");
+            pricePanel.className = "pricing-price-panel pricing-side-panel";
+            workspace.appendChild(pricePanel);
+            const managementActions = document.createElement("div");
+            managementActions.className = "pricing-management-actions";
+            managementActions.innerHTML = `
+                <button type="button" onclick="jticket.showAddPricingModal('${eventId}')">Add Price</button>
+                <button type="button" onclick="jticket.deleteSelectedPricing('${eventId}')">Delete Price</button>
+            `;
+            pricePanel.appendChild(managementActions);
+            pricePanel.appendChild(tablePriceList);
+            tablePriceList.querySelector('input[name="radioEventPrice"]:checked')?.focus();
 
-            let tr = document.createElement("tr");
-            table.appendChild(tr);
-
-            let tdTablePriceList = document.createElement("td");
-            tdTablePriceList.style.align="left";
-            tdTablePriceList.style.width = "30%";
-            tr.appendChild(tdTablePriceList);
-            tdTablePriceList.appendChild(tablePriceList);
-
-            let tdArea = document.createElement("td");
-            tdArea.style.align = "right";
-            tdArea.style.width = "30%";
-            tr.appendChild(tdArea);
-
+            const venuePanel = document.createElement("div");
+            venuePanel.className = "pricing-venue-panel pricing-side-panel";
+            workspace.appendChild(venuePanel);
             let containerArea = document.createElement("div");
-            containerArea.style.align = "center";
             containerArea.id = "containerPricingArea";
-            containerArea.selectedAreaId = selectedAreaId;
-            tdArea.appendChild(containerArea);
+            containerArea.selectedAreaId = selectedPricingAreaId;
+            venuePanel.appendChild(containerArea);
 
-            let tdSeats = document.createElement("td");
-            tdSeats.style.width = "40%";
-            tr.appendChild(tdSeats);
+            const seatPanel = document.createElement("div");
+            seatPanel.className = "pricing-seat-panel";
+            workspace.appendChild(seatPanel);
 
             let containerSeats = document.createElement("div");
             containerSeats.id = "containerPricingSeats";
-            tdSeats.appendChild(containerSeats);
+            seatPanel.appendChild(containerSeats);
 
-            let trButton = document.createElement("tr");
-            trButton.innerHTML = `
-                    <td></td>
-                    <td align="right"><button onclick="jticket.setAreaPrice('${eventId}',
+            const actions = document.createElement("div");
+            actions.className = "pricing-actions";
+            actions.innerHTML = `
+                <span></span>
+                <div class="pricing-area-actions">
+                    <button onclick="jticket.setAreaPrice('${eventId}',
                         this.closest('#modalEventPricingList').querySelector('input[name=\\'radioEventPrice\\']:checked')?.id,
-                        this.closest('#modalEventPricingList').querySelector('#containerPricingArea').selectedAreaId)">set area price</button></td>
-                    <td align="right"><button onclick="jticket.setSeatPrice('${eventId}',
+                        this.closest('#modalEventPricingList').querySelector('#containerPricingArea').selectedAreaId)">set area price</button>
+                    <button onclick="jticket.clearAreaPrice('${eventId}',
+                        this.closest('#modalEventPricingList').querySelector('#containerPricingArea').selectedAreaId)">clear area price</button>
+                </div>
+                <div class="pricing-seat-actions">
+                    <button onclick="jticket.setSeatPrice('${eventId}',
                         this.closest('#modalEventPricingList').querySelector('input[name=\\'radioEventPrice\\']:checked')?.id,
                         this.closest('#modalEventPricingList').querySelector('#containerPricingArea').selectedAreaId,
-                        this.closest('#modalEventPricingList').querySelector('#containerPricingSeats').selectedSeats)">set seat price</button></td>
-                `;
+                        this.closest('#modalEventPricingList').querySelector('#containerPricingSeats').selectedSeats)">set seat price</button>
+                    <button onclick="jticket.clearSeatPrice('${eventId}',
+                        this.closest('#modalEventPricingList').querySelector('#containerPricingArea').selectedAreaId,
+                        this.closest('#modalEventPricingList').querySelector('#containerPricingSeats').selectedSeats)">clear seat price</button>
+                </div>
+            `;
+            container.appendChild(actions);
 
-            table.appendChild(trButton);
+            const statisticsContainer = document.createElement("div");
+            statisticsContainer.className = "pricing-statistics";
+            container.appendChild(statisticsContainer);
+            renderPricingStatistics(eventId, data, statisticsContainer);
+
+            const selectedSeatIds = container.dataset.selectedSeatIds
+                ? container.dataset.selectedSeatIds.split(',').filter(Boolean)
+                : [];
+            const displayMode = container.dataset.displayMode || "rowCol";
             drawEventVenueEx(eventId,
                 containerArea,
                 function (eventId, areaId) {
-                    drawSeats(eventId, areaId, containerSeats);
+                    containerArea.selectedAreaId = areaId;
+                    container.dataset.selectedSeatIds = "";
+                    drawSeats(eventId, areaId, containerSeats, {
+                        displayMode: seatsContainerDisplayMode(container, containerSeats)
+                    });
                 });
+            if (selectedPricingAreaId) {
+                drawSeats(eventId, selectedPricingAreaId, containerSeats, {displayMode, selectedSeatIds});
+            }
 
         })
         .catch(error => {
@@ -260,7 +363,114 @@ function reloadEventPricing(eventId, container, selectedAreaId) {
         });
 }
 
+function renderPricingStatistics(eventId, prices, container) {
+    container.textContent = "Loading pricing statistics...";
+
+    apiFetch(`/api/events/${eventId}/areas`)
+        .then(response => response.json())
+        .then(areas => Promise.all(areas.map(area =>
+            apiFetch(`/api/events/${eventId}/areas/${area.id}/seats`)
+                .then(response => response.json())
+                .then(seats => seats.map(seat => ({...seat, areaName: area.name})))
+        )))
+        .then(areaSeats => {
+            const seats = areaSeats.flat();
+            const stats = calculatePricingStatistics(seats, prices);
+            renderPricingStatisticsSummary(container, stats);
+        })
+        .catch(error => {
+            console.error('Error loading pricing statistics:', error);
+            container.textContent = "Pricing statistics unavailable.";
+        });
+}
+
+function calculatePricingStatistics(seats, prices) {
+    const byPrice = new Map(prices.map(price => [price.name, {
+        name: price.name,
+        price: price.price || 0,
+        count: 0
+    }]));
+    const stats = {
+        totalSeats: seats.length,
+        pricedSeats: 0,
+        unpricedSeats: 0,
+        soldSeats: 0,
+        totalSellablePrice: 0,
+        byPrice
+    };
+
+    seats.forEach(seat => {
+        const hasPrice = seat.price !== null && seat.price !== undefined;
+        if (hasPrice) {
+            stats.pricedSeats++;
+            const priceName = seat.priceName || "Unnamed";
+            if (!stats.byPrice.has(priceName)) {
+                stats.byPrice.set(priceName, {
+                    name: priceName,
+                    price: seat.price || 0,
+                    count: 0
+                });
+            }
+            stats.byPrice.get(priceName).count++;
+        } else {
+            stats.unpricedSeats++;
+        }
+
+        if (seat.sold) {
+            stats.soldSeats++;
+        }
+        if (seat.available !== false && !seat.sold && hasPrice) {
+            stats.totalSellablePrice += seat.price || 0;
+        }
+    });
+
+    return stats;
+}
+
+function renderPricingStatisticsSummary(container, stats) {
+    const priceRows = Array.from(stats.byPrice.values())
+        .map(price => `
+            <tr>
+                <td>${price.name}</td>
+                <td>${price.count}</td>
+                <td>${formatMoney(price.price)}</td>
+            </tr>
+        `)
+        .join("");
+
+    container.innerHTML = `
+        <div class="pricing-statistics-summary">
+            <div><strong># of seats</strong><span>${stats.totalSeats}</span></div>
+            <div><strong>Priced / Unpriced</strong><span>${stats.pricedSeats} / ${stats.unpricedSeats}</span></div>
+            <div><strong>Sold out</strong><span>${stats.soldSeats}</span></div>
+            <div><strong>Total sellable prices</strong><span>${formatMoney(stats.totalSellablePrice)}</span></div>
+        </div>
+        <table class="pricing-statistics-table">
+            <thead>
+                <tr><th>Price</th><th># seats</th><th>Unit</th></tr>
+            </thead>
+            <tbody>${priceRows}</tbody>
+        </table>
+        <div class="pricing-seat-legend">
+            <span><span class="seat-legend-swatch available-seat"></span>Available</span>
+            <span><span class="seat-legend-swatch unpriced-seat"></span>No price</span>
+            <span><span class="seat-legend-swatch sold-seat"></span>Sold out</span>
+            <span><span class="seat-legend-swatch unavailable-seat"></span>Physically unavailable</span>
+        </div>
+    `;
+}
+
+function formatMoney(priceInCents) {
+    return ((priceInCents || 0) / 100).toFixed(2);
+}
+
 function setAreaPrice(eventId, priceId, areaId) {
+    if (!priceId || !areaId) {
+        alert("Please select a price and an area first.");
+        return;
+    }
+    const container = document.querySelector('#modalEventPricingList');
+    capturePricingUiState(container);
     apiFetch(`/api/events/${eventId}/areas/${areaId}/pricing`, {
         method: 'PATCH',
         headers: {
@@ -270,7 +480,7 @@ function setAreaPrice(eventId, priceId, areaId) {
     })
         .then(response => {
             if (response.ok) {
-                reloadEventPricing(eventId, document.querySelector('#modalEventPricingList'), areaId);
+                reloadEventPricing(eventId, container, areaId, priceId);
             } else {
                 console.error('Server returned ' + response.status);
             }
@@ -281,6 +491,24 @@ function setAreaPrice(eventId, priceId, areaId) {
 }
 
 function setSeatPrice(eventId, priceId, areaId, seatIds) {
+    if (!priceId) {
+        alert("Please select a price first.");
+        return;
+    }
+    if (!areaId) {
+        alert("Please select an area first.");
+        return;
+    }
+    if (!seatIds || seatIds.length === 0) {
+        alert("Please select at least one seat first.");
+        return;
+    }
+    if (!confirm(`Set the selected price for ${seatIds.length} seat${seatIds.length === 1 ? "" : "s"}?`)) {
+        return;
+    }
+
+    const container = document.querySelector('#modalEventPricingList');
+    capturePricingUiState(container);
     let apiPromises = [];
     seatIds.forEach(seatId => {
         apiPromises.push(
@@ -303,8 +531,94 @@ function setSeatPrice(eventId, priceId, areaId, seatIds) {
                     console.log('Failure:', result.reason);
                 }
             });
-            reloadEventPricing(eventId, document.querySelector('#modalEventPricingList'), areaId);
+            reloadEventPricing(eventId, container, areaId, priceId);
         });
+}
+
+function clearAreaPrice(eventId, areaId) {
+    if (!areaId) {
+        alert("Please select an area first.");
+        return;
+    }
+    if (!confirm("Clear the area price? Seats without a seat-level price may become unpriced.")) {
+        return;
+    }
+
+    const container = document.querySelector('#modalEventPricingList');
+    capturePricingUiState(container);
+    apiFetch(`/api/events/${eventId}/areas/${areaId}/pricing`, {
+        method: 'PATCH',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ "priceId": null })
+    })
+        .then(response => {
+            if (response.ok || response.status === 304) {
+                reloadEventPricing(eventId, container, areaId, container.dataset.selectedPriceId || "");
+            } else {
+                console.error('Server returned ' + response.status);
+            }
+        })
+        .catch(error => {
+            console.error('Error clearAreaPrice:', error);
+        });
+}
+
+function clearSeatPrice(eventId, areaId, seatIds) {
+    if (!areaId) {
+        alert("Please select an area first.");
+        return;
+    }
+    if (!seatIds || seatIds.length === 0) {
+        alert("Please select at least one seat first.");
+        return;
+    }
+    if (!confirm(`Clear seat-level price for ${seatIds.length} seat${seatIds.length === 1 ? "" : "s"}?`)) {
+        return;
+    }
+
+    const container = document.querySelector('#modalEventPricingList');
+    capturePricingUiState(container);
+    const apiPromises = seatIds.map(seatId =>
+        apiFetch(`/api/events/${eventId}/seats/${seatId}/pricing`, {
+            method: 'PATCH',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ "priceId": null })
+        })
+    );
+
+    Promise.allSettled(apiPromises)
+        .then(results => {
+            results.forEach(result => {
+                if (result.status === 'rejected') {
+                    console.log('Failure:', result.reason);
+                }
+            });
+            reloadEventPricing(eventId, container, areaId, container.dataset.selectedPriceId || "");
+        });
+}
+
+function capturePricingUiState(container) {
+    if (!container) return;
+
+    const seatsContainer = container.querySelector('#containerPricingSeats');
+    if (seatsContainer) {
+        container.dataset.displayMode = seatsContainer.dataset.displayMode || container.dataset.displayMode || "rowCol";
+        const selectedSeats = seatsContainer.selectedSeats || [];
+        container.dataset.selectedSeatIds = selectedSeats.join(',');
+    }
+
+    const selectedPrice = container.querySelector('input[name="radioEventPrice"]:checked');
+    if (selectedPrice) {
+        container.dataset.selectedPriceId = selectedPrice.id;
+    }
+}
+
+function seatsContainerDisplayMode(container, seatsContainer) {
+    return seatsContainer?.dataset.displayMode || container?.dataset.displayMode || "rowCol";
 }
 
 
@@ -314,8 +628,9 @@ function setupEventPricing(eventName, eventId) {
 
     modal.eventId = eventId;
     modal.querySelector("#modelSetupEventPricingTitle").textContent = "Event Pricing for " + eventName;
-    modal.querySelector("#newPriceName").value = "";
-    modal.querySelector("#newPrice").value = "";
+    modalEventPricingList.dataset.selectedPriceId = "";
+    modalEventPricingList.dataset.selectedSeatIds = "";
+    modalEventPricingList.dataset.displayMode = "rowCol";
 
     cleanUpContainer(modalEventPricingList);
     reloadEventPricing(eventId, modalEventPricingList, null);
@@ -344,16 +659,19 @@ function refreshEventSessions(container, eventId) {
                     radioSelectedSession.type = 'radio';
                     radioSelectedSession.id = session.id;
                     radioSelectedSession.name = 'selectedSession[]';
-                    radioSelectedSession.value = session.name;
+                    radioSelectedSession.value = session.id;
 
                     row.appendChild(document.createElement("td")).append(radioSelectedSession);
-                    let labelSession = document.createElement("label");
-                    labelSession.textContent = session.name;
-                    row.appendChild(document.createElement("td")).append(labelSession);
+                    let inputSessionName = document.createElement("input");
+                    inputSessionName.type = 'text';
+                    inputSessionName.id = 'selectedSessionName';
+                    inputSessionName.name = "selectedSessionName[]";
+                    inputSessionName.value = session.name;
+                    row.appendChild(document.createElement("td")).append(inputSessionName);
 
                     sessionNameWidth = Math.max(
                         sessionNameWidth,
-                        radioSelectedSession.offsetWidth + labelSession.offsetWidth);
+                        radioSelectedSession.offsetWidth + inputSessionName.offsetWidth);
 
                     let inputSessionFrom = document.createElement("input");
                     inputSessionFrom.type = 'datetime-local';
@@ -569,6 +887,14 @@ function addNewSession(form) {
         });
 }
 
+function showAddEventModal() {
+    const modal = document.getElementById("modalAddEvent");
+    modal.querySelector("#eventName").value = "";
+    modal.querySelector("#venueId").value = "";
+    modal.querySelector("#copyEventFromVenue").innerHTML = '<option value="">Select Event</option>';
+    modal.style.display = "block";
+}
+
 // Function to handle the form submission
 function addNewEvent(form) {
 
@@ -583,12 +909,14 @@ function addNewEvent(form) {
         venueId: venueId,
     };
 
-    // Call the submitEvent function with the event data
-    submitEvent(eventData, copyEventFrom);
-
-    // Clear the form inputs
-    document.getElementById("eventName").value = "";
-    document.getElementById("venueId").value = "";
+    submitEvent(eventData, copyEventFrom)
+        .then(created => {
+            if (!created) return;
+            form.querySelector("#eventName").value = "";
+            form.querySelector("#venueId").value = "";
+            form.querySelector("#copyEventFromVenue").innerHTML = '<option value="">Select Event</option>';
+            form.closest("#modalAddEvent").style.display = "none";
+        });
 }
 
 function formatDateTime(date) {
@@ -609,7 +937,7 @@ function submitEvent(eventData, copyEventFrom) {
     if (copyEventFrom) headers.append('X-Copy-From-Id', copyEventFrom);
 
     // Make a POST request to the API
-    apiFetch(apiUrl, {
+    return apiFetch(apiUrl, {
         method: 'POST',
         headers: headers,
         body: JSON.stringify(eventData)
@@ -618,12 +946,15 @@ function submitEvent(eventData, copyEventFrom) {
             if (response.status === 201) {
                 // Event created successfully, refresh the event list
                 fetchEvents();
+                return true;
             } else {
                 console.error('Error creating event. Status:', response.status);
+                return false;
             }
         })
         .catch(error => {
             console.error('Error creating event:', error);
+            return false;
         });
 }
 

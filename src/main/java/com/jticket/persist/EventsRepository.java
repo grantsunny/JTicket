@@ -29,6 +29,8 @@ public interface EventsRepository {
     void saveDefaultPricingOfEvent(UUID eventId, UUID priceId) throws PersistenceException;
     void saveSeatLevelPricingOfEvent(UUID eventId, UUID seatId, UUID priceId) throws PersistenceException;
     void saveAreaLevelPricingOfEvent(UUID eventId, UUID areaId, UUID priceId) throws PersistenceException;
+    void deleteSeatLevelPricingOfEvent(UUID eventId, UUID seatId) throws PersistenceException;
+    void deleteAreaLevelPricingOfEvent(UUID eventId, UUID areaId) throws PersistenceException;
     void saveEvent(Event event) throws PersistenceException;
     Event loadEvent(UUID eventId) throws PersistenceException;
     List<Event> loadEventsByVenue(String venueId) throws PersistenceException;

@@ -11,7 +11,7 @@ spring:
       connection-timeout: 3000
   sql:
     init:
-      mode: embedded
+      mode: always
       schema-locations: classpath:derby.sql
       continue-on-error: true
 

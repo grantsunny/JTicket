@@ -21,6 +21,7 @@ import java.util.UUID;
 import org.springframework.beans.factory.annotation.Value;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.dao.DataIntegrityViolationException;
 
 import com.jticket.api.OrdersApi;
 import com.jticket.api.model.LinkSeat;
@@ -296,6 +297,8 @@ public class OrdersApiResource implements OrdersApi {
             return Response.created(uriBuilder.build()).build();
         } catch (SQLException e) {
             throw new BadRequestException(e);
+        } catch (DataIntegrityViolationException e) {
+            throw new WebApplicationException("Order conflicts with existing seat booking", Response.Status.CONFLICT);
         }
     }
 
@@ -330,8 +333,9 @@ public class OrdersApiResource implements OrdersApi {
     @Override
     @RolesAllowed({ORDER_READ, ORDER_READ_ALL})
     public Response getOrder(UUID orderId) {
-        if (!canReadAllOrders())
-            verifyOrderAndUser(currentUserId(), orderId);
+        String userId = currentUserIdOrNull();
+        if (!canReadAllOrders() && userId != null)
+            verifyOrderAndUser(userId, orderId);
         try {
             Order order = loadOrder(orderId);
             return Response.ok(order).build();
@@ -383,10 +387,13 @@ public class OrdersApiResource implements OrdersApi {
     @Override
     @RolesAllowed({ORDER_WRITE, ORDER_WRITE_ALL})
     public Response cancelOrder(UUID orderId) {
-        if (!canWriteAllOrders())
-            verifyOrderAndUser(currentUserId(), orderId);
+        String userId = currentUserIdOrNull();
+        if (!canWriteAllOrders() && userId != null)
+            verifyOrderAndUser(userId, orderId);
         try {
             Order order = loadOrder(orderId);
+            if (order.getPaymentAmount() != null && order.getPaymentAmount() > 0)
+                throw new WebApplicationException("Paid order cannot be canceled", Response.Status.NOT_FOUND);
             plugin.beforeCancelOrder(order);
             repository.deleteOrder(orderId);
             return Response.noContent().build();

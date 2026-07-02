@@ -23,43 +23,17 @@
 
 
 <div class="center">
-    <form id="eventForm">
-        <table>
-            <tr>
-            <td><label for="eventName">Event Name:</label></td>
-            <td><input type="text" id="eventName" required></td>
-            </tr>
-            <tr>
-            <td><label for="venueId">Venue:</label></td>
-            <td><select id="venueId" required
-                        onchange="jticket.refreshFormEventCopyFromList(
-                            this.form.querySelector('#copyEventFromVenue'), this.value)">
-                <option value="">Select Venue</option>
-            </select></td>
-            </tr>
-            <tr>
-                <td><label for="copyEventFromVenue">Replicate Metadata & Pricing from: </label></td>
-                <td><select id="copyEventFromVenue" required>
-                    <option value="">Select Event</option>
-                </select></td>
-            </tr>
-            <tr>
-                <td></td>
-                <td align="right">
-                    <button id="addEventButton" type="button"
-                            onclick="jticket.addNewEvent(this.form)">Add Event</button></td>
-            </tr>
-        </table>
-    </form>
-
     <!-- List of Existing Events -->
     <div>
         <h2>List of Events</h2>
+        <div align="right">
+            <button type="button" onclick="jticket.showAddEventModal()">Add Event</button>
+        </div>
         <table>
             <thead>
             <tr>
                 <th>Name</th>
-                <th>Location</th>
+                <th>Venue</th>
                 <th>Actions</th>
             </tr>
             </thead>
@@ -69,22 +43,57 @@
         </table>
     </div>
 
+    <div id="modalAddEvent" class="modal">
+        <div class="modal-content" style="max-width: 460px;">
+            <span class="close" onclick="this.parentElement.parentElement.style.display='none'">&times;</span>
+            <p>Add Event</p>
+            <form id="eventForm">
+                <table>
+                    <tr>
+                        <td><label for="eventName">Event Name:</label></td>
+                        <td><input type="text" id="eventName" required></td>
+                    </tr>
+                    <tr>
+                        <td><label for="venueId">Venue:</label></td>
+                        <td><select id="venueId" required
+                                    onchange="jticket.refreshFormEventCopyFromList(
+                                        this.form.querySelector('#copyEventFromVenue'), this.value)">
+                            <option value="">Select Venue</option>
+                        </select></td>
+                    </tr>
+                    <tr>
+                        <td><label for="copyEventFromVenue">Replicate Metadata & Pricing from: </label></td>
+                        <td><select id="copyEventFromVenue">
+                            <option value="">Select Event</option>
+                        </select></td>
+                    </tr>
+                    <tr>
+                        <td></td>
+                        <td align="right">
+                            <button id="addEventButton" type="button"
+                                    onclick="jticket.addNewEvent(this.form)">Add Event</button></td>
+                    </tr>
+                </table>
+            </form>
+        </div>
+    </div>
+
     <div id="modalSetupEventSessions" class="modal">
-        <div class="modal-content" style="max-width: 600px;">
+        <div class="modal-content" style="max-width: 820px;">
             <span class="close" onclick="this.parentElement.parentElement.style.display='none'">&times;</span>
             <p id="modalSetupEventSessionsTitle">Event Session Management</p>
             <div>
                 <table id="tableEventSessions">
                 </table>
                 <div align = "right" id="editSessionButtons">
-                    <button onclick="jticket.updateSession(
+                    <button type="button" onclick="jticket.updateSession(
                         this.closest('#modalSetupEventSessions'),
-                        this.dataset.eventId,
-                        this.closest('#modalSetupEventSessions').querySelector('input[name=\'selectedSession[]\']:checked').value)">Update</button>
-                    <button onclick="jticket.deleteSession(
+                        this.closest('#modalSetupEventSessions').dataset.eventId,
+                        this.closest('#modalSetupEventSessions').querySelector('input[name=\'selectedSession[]\']:checked')?.value)">Update</button>
+                    <button type="button" onclick="jticket.deleteSession(
                         this.closest('#modalSetupEventSessions'),
-                        this.dataset.eventId,
-                        this.closest('#modalSetupEventSessions').querySelector('input[name=\'selectedSession[]\']:checked').value)">Delete</button>
+                        this.closest('#modalSetupEventSessions').dataset.eventId,
+                        this.closest('#modalSetupEventSessions').querySelector('input[name=\'selectedSession[]\']:checked')?.value)">Delete</button>
                     <hr>
                 </div>
                 <form id="formNewSession">
@@ -102,7 +111,7 @@
                     </tr>
                 </table>
                 <div align = "right">
-                    <button onclick="jticket.addNewSession(this.form)">Add</button>
+                    <button type="button" onclick="jticket.addNewSession(this.form)">Add</button>
                 </div>
                 </form>
             </div>
@@ -140,10 +149,18 @@
     </div>
 
     <div id="modelSetupEventPricing" class="modal">
-        <div class="modal-content" style="max-width: 600px;">
+        <div class="modal-content pricing-modal-content">
             <span class="close" onclick="this.parentElement.parentElement.style.display='none'">&times;</span>
             <p id="modelSetupEventPricingTitle">Event Pricing Management</p>
-            <div><form id="newPricingForm">
+            <div id="modalEventPricingList"></div>
+        </div>
+    </div>
+
+    <div id="modalAddPricing" class="modal">
+        <div class="modal-content" style="max-width: 400px;">
+            <span class="close" onclick="this.parentElement.parentElement.style.display='none'">&times;</span>
+            <p>Add Price</p>
+            <form id="newPricingForm">
                 <table align="center">
                     <tr>
                         <th>PriceName</th>
@@ -158,13 +175,12 @@
                         <td></td>
                         <td align="right"><button id="addPriceButton" type="button"
                                     onclick="jticket.submitNewPricingForm(
-                                        this.closest('#modelSetupEventPricing').eventId,
+                                        this.closest('#modalAddPricing').eventId,
                                         this.closest('form'))">Add</button>
                         </td>
                     </tr>
                 </table>
-            </form></div>
-            <div id="modalEventPricingList"></div>
+            </form>
         </div>
     </div>
 </div>

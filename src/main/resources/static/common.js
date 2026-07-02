@@ -57,13 +57,27 @@ export function drawVenue(venueId, svgContainer) {
         });
 }
 
-export function drawSeats(eventId, areaId, seatsContainer) {
-    apiFetch(`/api/events/${eventId}/areas/${areaId}/seats`)
-        .then(response => response.json())
-        .then(seats => {
+export function drawSeats(eventId, areaId, seatsContainer, options = {}) {
+    Promise.all([
+        apiFetch(`/api/events/${eventId}/areas/${areaId}/pricing`)
+            .then(response => response.ok ? response.json() : null)
+            .catch(() => null),
+        apiFetch(`/api/events/${eventId}/areas/${areaId}/seats`)
+            .then(response => response.json())
+    ])
+        .then(([areaPricing, seats]) => {
+            const areaPriceName = effectivePricingName(areaPricing);
+            const selectedSeatIds = new Set(options.selectedSeatIds || seatsContainer.selectedSeats || []);
+            if (options.displayMode)
+                seatsContainer.dataset.displayMode = options.displayMode;
             cleanUpContainer(seatsContainer);
+            seatsContainer.dataset.displayMode = seatsContainer.dataset.displayMode || "rowCol";
+
+            const displayModeSwitch = createSeatDisplayModeSwitch(seatsContainer);
+            seatsContainer.appendChild(displayModeSwitch);
+
             const table = document.createElement('table');
-            table.className = 'seats-table'; // Add class for styling
+            table.className = 'seats-table pricing-seats-table';
 
             // Organize seats by rows
             const seatRows = seats.reduce((rows, seat) => {
@@ -77,48 +91,111 @@ export function drawSeats(eventId, areaId, seatsContainer) {
                 const tr = table.insertRow();
                 seatRows[row].sort((a, b) => a.col - b.col).forEach(seat => {
                     const td= tr.insertCell();
-                    td.textContent = `${seat.row}-${seat.col}`;
+                    const rowColText = `${seat.row}-${seat.col}`;
                     td.dataset.seatid = seat.id;
-                    td.dataset.selected = "false";
-                    td.className = seat.available ? 'available-seat' : 'unavailable-seat';
-
-                    // Store the original border for restoration later
-                    const originalBorder = td.style.border;
+                    td.dataset.selected = selectedSeatIds.has(seat.id) ? "true" : "false";
+                    td.dataset.rowcol = rowColText;
+                    td.dataset.pricing = seat.priceName || areaPriceName || "";
+                    td.dataset.price = seat.price || "";
+                    td.dataset.sold = seat.sold ? "true" : "false";
+                    td.dataset.availabilityreason = ticketingAvailabilityReason(seat);
+                    td.className = pricingSeatClass(seat);
+                    renderSeatText(td, seatsContainer.dataset.displayMode);
 
                     // Add click event listener for seat selection
-                    if (seat.available) {
+                    if (isPricingSeatSelectable(seat)) {
                         td.addEventListener('click', function () {
                             this.dataset.selected = this.dataset.selected === "false" ? "true" : "false";
-                            this.style.border = this.dataset.selected === "true" ? "3px solid red" : originalBorder;
                             markSelectedSeats(seatsContainer);
                         });
 
-                        //Add pricing information to the seat display. Perhaps with toolTips?
                         apiFetch(`/api/events/${eventId}/seats/${seat.id}/pricing`)
                             .then(response => {
                                 if (response.ok)
                                     response.json().then (pricing => {
-                                        td.dataset.pricing = pricing.name;
+                                        td.dataset.pricing = effectivePricingName(pricing);
+                                        renderSeatText(td, seatsContainer.dataset.displayMode);
                                     })
-                                else
-                                    td.dataset.pricing = "undefined";
                             })
                     }
                 });
 
-            });
+           });
            seatsContainer.appendChild(table);
+           markSelectedSeats(seatsContainer);
            enableSeatToolTips(seatsContainer);
         });
 }
 
+function createSeatDisplayModeSwitch(seatsContainer) {
+    const wrapper = document.createElement("label");
+    wrapper.className = "seat-display-switch";
+
+    const rowColLabel = document.createElement("span");
+    rowColLabel.textContent = "Row-Col";
+
+    const input = document.createElement("input");
+    input.type = "checkbox";
+    input.checked = seatsContainer.dataset.displayMode === "price";
+    input.setAttribute("aria-label", "Show seat price on grid");
+
+    const slider = document.createElement("span");
+    slider.className = "seat-display-slider";
+
+    const priceLabel = document.createElement("span");
+    priceLabel.textContent = "Price";
+
+    input.addEventListener("change", function () {
+        seatsContainer.dataset.displayMode = this.checked ? "price" : "rowCol";
+        seatsContainer.querySelectorAll("td").forEach(td => renderSeatText(td, seatsContainer.dataset.displayMode));
+    });
+
+    wrapper.append(rowColLabel, input, slider, priceLabel);
+    return wrapper;
+}
+
+function renderSeatText(td, displayMode) {
+    const rowCol = td.dataset.rowcol || "";
+    const pricing = td.dataset.pricing || "";
+    td.textContent = displayMode === "price" ? priceInitial(pricing) || rowCol : rowCol;
+    td.title = displayMode === "price" ? rowCol : pricing;
+}
+
+function priceInitial(priceName) {
+    const value = (priceName || "").trim();
+    return value ? value.charAt(0).toUpperCase() : "";
+}
+
+function effectivePricingName(pricingState) {
+    return pricingState?.effectivePricing?.name || "";
+}
+
+function pricingSeatClass(seat) {
+    if (seat.sold)
+        return "sold-seat";
+    const reason = ticketingAvailabilityReason(seat);
+    if (reason === "unpriced")
+        return "unpriced-seat";
+    if (seat.available === false)
+        return "unavailable-seat";
+    return "available-seat";
+}
+
+function isPricingSeatSelectable(seat) {
+    return !seat.sold && (seat.available !== false || ticketingAvailabilityReason(seat) === "unpriced");
+}
+
+function ticketingAvailabilityReason(seat) {
+    return seat.metadata?.ticketingAvailabilityReason || "";
+}
+
 function enableSeatToolTips(seatContainer) {
-    seatContainer.addEventListener('mouseover', function(event) {
+    seatContainer.onmouseover = function(event) {
         if (event.target.tagName.toLowerCase() === 'td' && event.target.getAttribute('data-pricing')) {
-            const pricing = event.target.getAttribute('data-pricing');
-            if (pricing) {
+            const tooltipText = seatTooltipText(event.target, seatContainer.dataset.displayMode);
+            if (tooltipText) {
                 const tooltip = document.createElement('div');
-                tooltip.textContent = pricing;
+                tooltip.textContent = tooltipText;
                 tooltip.id="seatToolTip";
                 tooltip.style.cssText = `
                     position: absolute;
@@ -134,17 +211,23 @@ function enableSeatToolTips(seatContainer) {
                 seatContainer.appendChild(tooltip);
             }
         }
-    });
+    };
 
     // Event delegation for mouseout on SVG rect elements
-    seatContainer.addEventListener('mouseout', function(event) {
+    seatContainer.onmouseout = function(event) {
         if (event.target.tagName.toLowerCase() === 'td' && event.target.getAttribute('data-pricing')) {
             const tooltip = seatContainer.querySelector('#seatToolTip');
             if (tooltip) {
                 tooltip.remove();
             }
         }
-    });
+    };
+}
+
+function seatTooltipText(td, displayMode) {
+    if (displayMode === "price")
+        return td.dataset.rowcol || "";
+    return td.dataset.pricing || "";
 }
 
 function markSelectedSeats(seatsContainer) {
@@ -170,7 +253,7 @@ export function drawEventVenueEx(eventId, svgContainer, onAreaClick) {
                     .then(response => {
                         if (response.ok)
                             response.json().then (pricing => {
-                                areaPrices[area.id] = pricing.name;
+                                areaPrices[area.id] = effectivePricingName(pricing);
                             })
                     })
             });
@@ -183,7 +266,7 @@ export function drawEventVenueEx(eventId, svgContainer, onAreaClick) {
             const pricing = areaPrices[areaId];
             if (name) {
                 const tooltip = document.createElement('div');
-                tooltip.textContent = `${name} (${pricing})`;
+                tooltip.textContent = pricing ? `${name} (${pricing})` : name;
                 tooltip.id="areaToolTip";
                 tooltip.style.cssText = `
                     position: absolute;

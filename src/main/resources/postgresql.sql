@@ -1,6 +1,17 @@
 CREATE SCHEMA TKT;
 SET search_path TO TKT;
 
+DROP VIEW IF EXISTS TKT.TicketingSeatStatus;
+DROP VIEW IF EXISTS TKT.SessionStatistics;
+DROP VIEW IF EXISTS TKT.EventStatistics;
+DROP VIEW IF EXISTS TKT.SKU;
+DROP VIEW IF EXISTS TKT.SeatsInEvent;
+DROP VIEW IF EXISTS TKT.SeatDetails;
+DROP TRIGGER IF EXISTS prevent_paid_order_removal_trigger ON TKT.Orders;
+DROP TRIGGER IF EXISTS prevent_event_time_overlap_trigger ON TKT.Sessions;
+DROP FUNCTION IF EXISTS prevent_paid_order_removal();
+DROP FUNCTION IF EXISTS prevent_event_time_overlap();
+
 -- Create the Venue table
 CREATE TABLE TKT.Venues (
                     id VARCHAR(36) PRIMARY KEY NOT NULL,
@@ -152,24 +163,55 @@ CREATE VIEW TKT.SeatDetails AS
 ;
 
 CREATE VIEW TKT.SeatsInEvent AS
-    SELECT 
-    SEATS.ID, 
-    AREAID, 
-    EVENTS.ID AS EVENTID,
-    AREAS.VENUEID, 
-    ROW, 
-    COL, 
-    AVAILABLE,
-    SEATS.METADATA,
-    PRICES.PRICE, 
-    PRICES.NAME AS PRICENAME
-FROM SEATS
-         INNER JOIN AREAS ON AREAS.ID = SEATS.AREAID
-         INNER JOIN EVENTS ON EVENTS.VENUEID = AREAS.VENUEID
-         LEFT OUTER JOIN PRICES ON PRICES.EVENTID = EVENTS.ID
-    AND PRICES.ID IN (
-        SELECT PRICEID FROM PRICESDISTRIBUTION
-        WHERE PRICESDISTRIBUTION.SEATID = SEATS.ID)
+SELECT
+    T.seatId AS id,
+    T.areaId,
+    T.eventId,
+    T.venueId,
+    Seats.ROW,
+    Seats.COL,
+    CASE
+        WHEN Seats.AVAILABLE = FALSE THEN FALSE
+        WHEN T.priceId IS NULL THEN FALSE
+        ELSE TRUE
+    END AS available,
+    CASE
+        WHEN Seats.AVAILABLE = FALSE THEN '{"ticketingAvailabilityReason":"physicalUnavailable"}'
+        WHEN T.priceId IS NULL THEN '{"ticketingAvailabilityReason":"unpriced"}'
+        ELSE Seats.METADATA
+    END AS metadata,
+    PRICES.PRICE,
+    PRICES.NAME AS priceName,
+    EXISTS (
+        SELECT 1 FROM ORDERSEATS
+        WHERE ORDERSEATS.eventId = T.eventId
+        AND ORDERSEATS.seatId = T.seatId
+    ) AS sold
+FROM (SELECT
+        EVENTS.ID AS eventId,
+        VENUES.ID AS venueId,
+        AREAS.ID AS areaId,
+        SEATS.ID AS seatId,
+        COALESCE(
+            (SELECT priceId FROM PRICESDISTRIBUTION INNER JOIN PRICES
+                ON PRICESDISTRIBUTION.PRICEID = PRICES.ID
+                WHERE PRICESDISTRIBUTION.SEATID = SEATS.ID
+                AND PRICES.EVENTID = EVENTS.ID),
+            (SELECT priceId FROM PRICESDISTRIBUTION INNER JOIN PRICES
+                ON PRICESDISTRIBUTION.PRICEID = PRICES.ID
+                WHERE PRICESDISTRIBUTION.AREAID = AREAS.ID
+                AND PRICES.EVENTID = EVENTS.ID),
+            (SELECT priceId FROM PRICESDISTRIBUTION INNER JOIN PRICES
+                ON PRICESDISTRIBUTION.PRICEID = PRICES.ID
+                WHERE PRICESDISTRIBUTION.VENUEID = VENUES.ID
+                AND PRICES.EVENTID = EVENTS.ID)
+          ) AS priceId
+        FROM EVENTS
+            INNER JOIN VENUES ON VENUES.ID = EVENTS.VENUEID
+            INNER JOIN AREAS ON AREAS.VENUEID = VENUES.ID
+            INNER JOIN SEATS ON SEATS.AREAID = AREAS.ID) T
+INNER JOIN SEATS ON SEATS.ID = T.seatId
+LEFT JOIN PRICES ON PRICES.ID = T.priceId
 ;
 
 CREATE VIEW TKT.SKU AS
@@ -177,11 +219,23 @@ SELECT
     T.*,
     Seats.ROW,
     Seats.COL,
-    Seats.AVAILABLE,
-    Seats.METADATA,
+    CASE
+        WHEN Seats.AVAILABLE = FALSE THEN FALSE
+        WHEN T.priceId IS NULL THEN FALSE
+        ELSE TRUE
+    END AS available,
+    CASE
+        WHEN Seats.AVAILABLE = FALSE THEN '{"ticketingAvailabilityReason":"physicalUnavailable"}'
+        WHEN T.priceId IS NULL THEN '{"ticketingAvailabilityReason":"unpriced"}'
+        ELSE Seats.METADATA
+    END AS metadata,
     PRICES.NAME AS priceName,
     PRICES.PRICE AS price,
     ORDERSEATS.ORDERID AS orderId,
+    CASE
+        WHEN ORDERSEATS.ORDERID IS NULL THEN FALSE
+        ELSE TRUE
+    END AS sold,
     ORDERSEATS.checkedInTimestamp
 FROM (SELECT
         EVENTS.ID AS eventId,
@@ -208,8 +262,8 @@ FROM (SELECT
             INNER JOIN VENUES ON VENUES.ID = EVENTS.VENUEID
             INNER JOIN AREAS ON AREAS.VENUEID = VENUES.ID
             INNER JOIN SEATS ON SEATS.AREAID = AREAS.ID) T
-INNER JOIN PRICES ON PRICES.ID = T.priceId
 INNER JOIN SEATS ON SEATS.ID = seatId
+LEFT JOIN PRICES ON PRICES.ID = T.priceId
 LEFT JOIN ORDERSEATS ON
     ORDERSEATS.EVENTID = T.eventId
     AND OrderSeats.sessionId = T.sessionId
@@ -269,12 +323,16 @@ SELECT
     TKT.SKU.price,
     TKT.SKU.orderId,
     TKT.Orders.userId,
-    TKT.SKU.checkedInTimestamp,
+    TKT.OrderSeats.checkedInTimestamp,
     CASE
         WHEN TKT.SKU.orderId IS NULL THEN 'open'
-        WHEN TKT.SKU.checkedInTimestamp IS NOT NULL THEN 'checkedIn'
+        WHEN TKT.OrderSeats.checkedInTimestamp IS NOT NULL THEN 'checkedIn'
         ELSE 'booked'
     END AS status
 FROM TKT.SKU
 LEFT JOIN TKT.Orders ON TKT.Orders.id = TKT.SKU.orderId
+LEFT JOIN TKT.OrderSeats ON
+    TKT.OrderSeats.eventId = TKT.SKU.eventId
+    AND TKT.OrderSeats.sessionId = TKT.SKU.sessionId
+    AND TKT.OrderSeats.seatId = TKT.SKU.seatId
 ;

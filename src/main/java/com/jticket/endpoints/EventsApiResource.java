@@ -19,12 +19,14 @@ import org.springframework.beans.factory.annotation.Value;
 
 import com.jticket.api.EventsApi;
 import com.jticket.api.model.Area;
+import com.jticket.api.model.EffectivePricing;
 import com.jticket.api.model.Event;
 import com.jticket.api.model.EventStatistics;
 import com.jticket.api.model.LinkPrice;
 import com.jticket.api.model.LinkVenue;
 import com.jticket.api.model.Order;
 import com.jticket.api.model.Price;
+import com.jticket.api.model.PricingState;
 import com.jticket.api.model.Session;
 import com.jticket.api.model.TicketingSeat;
 import com.jticket.api.model.SessionStatistics;
@@ -155,11 +157,15 @@ public class EventsApiResource implements EventsApi {
 	@RolesAllowed(EVENT_READ)
 	public Response getSeatLevelPricingOfEvent(UUID eventId, UUID seatId) {
 		try {
-			Price price = repository.loadSeatLevelPricingOfEvent(eventId, seatId);
-			if (price == null)
+			TicketingSeat seat = repository.loadSeatInEvent(eventId, seatId);
+			if (seat == null)
 				return Response.status(Response.Status.NOT_FOUND).build();
-			else
-				return Response.ok(price).build();
+
+			Price seatPrice = repository.loadSeatLevelPricingOfEvent(eventId, seatId);
+			Price areaPrice = repository.loadAreaLevelPricingOfEvent(eventId, seat.getAreaId());
+			Price defaultPrice = repository.loadDefaultPricingOfEvent(eventId);
+
+			return Response.ok(buildSeatPricingState(seat, seatPrice, areaPrice, defaultPrice)).build();
 		} catch (SQLException e) {
 			throw new BadRequestException(e);
 		}
@@ -225,11 +231,13 @@ public class EventsApiResource implements EventsApi {
 	@RolesAllowed(EVENT_READ)
 	public Response getAreaLevelPricingOfEvent(UUID eventId, UUID areaId) {
 		try {
-			Price price = repository.loadAreaLevelPricingOfEvent(eventId, areaId);
-			if (price == null)
+			Area area = repository.loadAreaInEvent(eventId, areaId);
+			if (area == null)
 				return Response.status(Response.Status.NOT_FOUND).build();
-			else
-				return Response.ok(price).build();
+
+			Price areaPrice = repository.loadAreaLevelPricingOfEvent(eventId, areaId);
+			Price defaultPrice = repository.loadDefaultPricingOfEvent(eventId);
+			return Response.ok(buildAreaPricingState(areaPrice, defaultPrice)).build();
 		} catch (SQLException e) {
 			throw new BadRequestException(e);
 		}
@@ -352,7 +360,14 @@ public class EventsApiResource implements EventsApi {
 	public Response assignSeatLevelPricingOfEvent(UUID eventId, UUID seatId, LinkPrice linkPrice) {
 		UUID priceId = linkPrice.getPriceId();
 		try {
-			repository.saveSeatLevelPricingOfEvent(eventId, seatId, priceId);
+			if (priceId == null) {
+				if (repository.loadSeatInEvent(eventId, seatId) == null)
+					return Response.status(Response.Status.NOT_FOUND).build();
+				if (repository.loadSeatLevelPricingOfEvent(eventId, seatId) != null)
+					repository.deleteSeatLevelPricingOfEvent(eventId, seatId);
+			} else {
+				repository.saveSeatLevelPricingOfEvent(eventId, seatId, priceId);
+			}
 			return Response.accepted().build();
 
 		} catch (SQLException e) {
@@ -373,7 +388,14 @@ public class EventsApiResource implements EventsApi {
 	public Response assignAreaLevelPricingOfEvent(UUID eventId, UUID areaId, LinkPrice linkPrice) {
 		UUID priceId = linkPrice.getPriceId();
 		try {
-			repository.saveAreaLevelPricingOfEvent(eventId, areaId, priceId);
+			if (priceId == null) {
+				if (repository.loadAreaInEvent(eventId, areaId) == null)
+					return Response.status(Response.Status.NOT_FOUND).build();
+				if (repository.loadAreaLevelPricingOfEvent(eventId, areaId) != null)
+					repository.deleteAreaLevelPricingOfEvent(eventId, areaId);
+			} else {
+				repository.saveAreaLevelPricingOfEvent(eventId, areaId, priceId);
+			}
 			return Response.accepted().build();
 
 		} catch (SQLException e) {
@@ -403,6 +425,43 @@ public class EventsApiResource implements EventsApi {
 		} catch (SQLException e) {
 			throw new BadRequestException(e);
 		}
+	}
+
+	private PricingState buildAreaPricingState(Price areaPrice, Price defaultPrice) {
+		PricingState state = directPricingState(areaPrice);
+		Price effectivePrice = areaPrice != null ? areaPrice : defaultPrice;
+		EffectivePricing.SourceEnum source = areaPrice != null ? EffectivePricing.SourceEnum.AREA :
+				defaultPrice != null ? EffectivePricing.SourceEnum.DEFAULT : EffectivePricing.SourceEnum.NONE;
+		return applyEffectivePricing(state, effectivePrice, source);
+	}
+
+	private PricingState buildSeatPricingState(TicketingSeat seat, Price seatPrice, Price areaPrice, Price defaultPrice) {
+		PricingState state = directPricingState(seatPrice);
+		Price effectivePrice = seatPrice != null ? seatPrice : areaPrice != null ? areaPrice : defaultPrice;
+		EffectivePricing.SourceEnum source = seatPrice != null ? EffectivePricing.SourceEnum.SEAT :
+				areaPrice != null ? EffectivePricing.SourceEnum.AREA :
+						defaultPrice != null ? EffectivePricing.SourceEnum.DEFAULT : EffectivePricing.SourceEnum.NONE;
+		if (effectivePrice == null && seat.getPrice() != null)
+			effectivePrice = new Price().name(seat.getPriceName()).price(seat.getPrice());
+		return applyEffectivePricing(state, effectivePrice, source);
+	}
+
+	private PricingState directPricingState(Price directPrice) {
+		PricingState state = new PricingState();
+		if (directPrice != null) {
+			state.priceId(directPrice.getId());
+		}
+		return state;
+	}
+
+	private PricingState applyEffectivePricing(PricingState state, Price effectivePrice, EffectivePricing.SourceEnum source) {
+		EffectivePricing effectivePricing = new EffectivePricing().source(source);
+		if (effectivePrice != null) {
+			effectivePricing.priceId(effectivePrice.getId())
+					.name(effectivePrice.getName())
+					.price(effectivePrice.getPrice());
+		}
+		return state.effectivePricing(effectivePricing);
 	}
 
 	@Override

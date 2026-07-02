@@ -601,15 +601,15 @@ paths:
             format: uuid
       responses:
         '200':
-          description: Venue level price for the event
+          description: Area pricing state for the event
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Price'
+                $ref: '#/components/schemas/PricingState'
         '404':
-          description: There is no venue level price for this event, or venue is not assigned.
+          description: Event or area not found.
     patch:
-      summary: Assign a area level price to the event.
+      summary: Assign or clear an area level price for the event.
       operationId: assignAreaLevelPricingOfEvent
       parameters:
         - name: eventId
@@ -637,7 +637,7 @@ paths:
                   format: uuid
       responses:
         '202':
-          description: Assigned the price successfully
+          description: Updated the area pricing state successfully
         '400':
           description: Invalid input
         '404':
@@ -763,15 +763,15 @@ paths:
             format: uuid
       responses:
         '200':
-          description: Seat level price for the event
+          description: Seat pricing state for the event
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Price'
+                $ref: '#/components/schemas/PricingState'
         '404':
-          description: There is no venue level price for this event, or venue is not assigned.
+          description: Event or seat not found.
     patch:
-      summary: Assign a seat level price to the event.
+      summary: Assign or clear a seat level price for the event.
       operationId: assignSeatLevelPricingOfEvent
       parameters:
         - name: eventId
@@ -799,7 +799,7 @@ paths:
                   format: uuid
       responses:
         '202':
-          description: Assigned the price successfully
+          description: Updated the seat pricing state successfully
         '400':
           description: Invalid input
         '404':
@@ -1164,6 +1164,8 @@ paths:
                 $ref: '#/components/schemas/Order'
         '400':
           description: Bad request
+        '409':
+          description: Order conflicts with an existing booking, such as a seat already booked for the same session.
 
   /orders/{orderId}:
     get:
@@ -1384,6 +1386,39 @@ components:
           format: uuid
         price:
           type: integer
+          description: Price in cents.
+
+    PricingState:
+      type: object
+      properties:
+        priceId:
+          type: string
+          format: uuid
+          description: Directly assigned price ID for this seat or area.
+        effectivePricing:
+          $ref: '#/components/schemas/EffectivePricing'
+
+    EffectivePricing:
+      type: object
+      properties:
+        priceId:
+          type: string
+          format: uuid
+          description: Resolved price ID after applying seat, area, and default event pricing.
+        name:
+          type: string
+          description: Resolved price name after applying seat, area, and default event pricing.
+        price:
+          type: integer
+          description: Resolved price in cents after applying seat, area, and default event pricing.
+        source:
+          type: string
+          enum:
+            - seat
+            - area
+            - default
+            - none
+          description: Source of the effective price.
 
     Venue:
       type: object
@@ -1449,6 +1484,9 @@ components:
             priceName:
               type: string
               description: Name of the resolved ticket price when loaded in a ticketing context.
+            sold:
+              type: boolean
+              description: True when this seat has at least one order in the event ticketing context.
             sessionId:
               type: string
               format: uuid

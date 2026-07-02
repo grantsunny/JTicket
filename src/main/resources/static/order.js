@@ -50,6 +50,7 @@ function refreshOrderEventList() {
                 return selectOrderEvent(orderState.events[0].id);
             }
             stopLiveRefresh();
+            updateOrderVisibility();
         })
         .catch(error => {
             console.error('Error fetching events:', error);
@@ -70,6 +71,7 @@ function selectOrderEvent(eventId) {
     orderState.areas = [];
     orderState.orders = [];
     orderState.seats = [];
+    updateOrderVisibility();
 
     cleanUpContainer(document.getElementById("orderList"));
     cleanUpContainer(document.getElementById("orderSeatsContainer"));
@@ -102,6 +104,7 @@ function selectOrderSession(sessionId) {
     orderState.orderId = "";
     orderState.pendingSeatId = "";
     orderState.seats = [];
+    updateOrderVisibility();
 
     cleanUpContainer(document.getElementById("orderSeatsContainer"));
     setText("orderSelectionDetails", "No seat selected");
@@ -195,6 +198,7 @@ function fetchSessions(eventId) {
             }
             setText("orderSessionStatistics", "No sessions for this event.");
             renderOrders();
+            updateOrderVisibility();
         })
         .catch(error => {
             console.error('Error fetching sessions:', error);
@@ -310,11 +314,14 @@ function renderSeats(seats) {
             td.dataset.seatid = seat.id || "";
             td.dataset.orderid = seat.orderId || "";
             td.dataset.status = seat.status || "open";
+            td.dataset.available = seat.available === false ? "false" : "true";
+            td.dataset.availabilityreason = ticketingAvailabilityReason(seat);
             td.className = seatClass(seat);
             td.title = seatTooltip(seat);
-            td.addEventListener("click", function () {
-                selectSeat(seat);
-            });
+            if (seat.available !== false)
+                td.addEventListener("click", function () {
+                    selectSeat(seat);
+                });
         });
     });
 
@@ -517,6 +524,7 @@ function resetPage() {
     orderState.areas = [];
     orderState.orders = [];
     orderState.seats = [];
+    updateOrderVisibility();
 
     cleanUpContainer(document.getElementById("orderList"));
     cleanUpContainer(document.getElementById("orderSeatsContainer"));
@@ -528,6 +536,18 @@ function resetPage() {
     setText("orderSelectionDetails", "No seat selected");
     setText("orderSelectedArea", "Select an area on the venue map");
     setOrderSummary("");
+}
+
+function updateOrderVisibility() {
+    const hasEvent = !!orderState.eventId;
+    const hasSession = !!orderState.sessionId;
+    const dashboard = document.getElementById("orderDashboard");
+    const workspace = document.getElementById("orderWorkspace");
+
+    if (dashboard)
+        dashboard.style.display = hasEvent ? "" : "none";
+    if (workspace)
+        workspace.style.display = hasEvent && hasSession ? "" : "none";
 }
 
 function sessionOrders() {
@@ -625,9 +645,13 @@ function seatLabel(seat) {
 
 function seatTooltip(seat) {
     const lines = [
-        seatLocationText(seat),
-        statusText(seat.status)
+        `Seat: ${seatLocationText(seat)}`,
+        `Status: ${statusText(seat.status)}`
     ];
+    if (seat.available === false)
+        lines.push(`Availability: ${ticketingAvailabilityReasonText(ticketingAvailabilityReason(seat))}`);
+    if (seat.priceName || seat.price)
+        lines.push(`Price: ${seat.priceName || ""}${seat.price ? " " + moneyText(seat.price) : ""}`.trim());
     if (seat.orderId)
         lines.push(`Order ${shortId(seat.orderId)}`);
     if (seat.userId)
@@ -636,12 +660,29 @@ function seatTooltip(seat) {
 }
 
 function seatClass(seat) {
+    const reason = ticketingAvailabilityReason(seat);
+    if (reason === "unpriced")
+        return "unpriced-seat";
+    if (seat.available === false)
+        return "unavailable-seat";
     const status = seat.status || "open";
     if (status === "checkedIn")
         return "checked-in-seat";
     if (status === "booked")
         return "booked-seat";
     return "open-seat";
+}
+
+function ticketingAvailabilityReasonText(reason) {
+    if (reason === "unpriced")
+        return "No price assigned";
+    if (reason === "physicalUnavailable")
+        return "Physically unavailable";
+    return "Unavailable";
+}
+
+function ticketingAvailabilityReason(seat) {
+    return seat.metadata?.ticketingAvailabilityReason || "";
 }
 
 function statusText(status) {

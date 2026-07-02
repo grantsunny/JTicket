@@ -58,8 +58,11 @@ public class JdbcHelper {
         return metadataJson;
     }
 
-    @SuppressWarnings("unchecked")
+	@SuppressWarnings("unchecked")
 	private Map<String, Object> parseMetadata(String rawMetadata) {
+        if (rawMetadata == null || rawMetadata.isBlank()) {
+            return new HashMap<>();
+        }
         Map<String, Object> metadata;
         try {
             metadata = new ObjectMapper().readValue(
@@ -672,7 +675,7 @@ public class JdbcHelper {
                     prices.add(new Price().id(UUID.fromString(id))
                             .name(name)
                             .eventId(eventId)
-                            .price((price == null) ? null : price.multiply(BigDecimal.valueOf(100L)).intValue()));
+                            .price((price == null) ? null : price.intValue()));
                 }
                 return prices;
             }
@@ -701,7 +704,7 @@ public class JdbcHelper {
                     return new Price().id(UUID.fromString(id))
                             .name(name)
                             .eventId(eventId)
-                            .price((price == null) ? null : price.multiply(BigDecimal.valueOf(100L)).intValue());
+                            .price((price == null) ? null : price.intValue());
                 }
                 return null;
             }
@@ -730,7 +733,7 @@ public class JdbcHelper {
                     return new Price().id(UUID.fromString(id))
                             .name(name)
                             .eventId(eventId)
-                            .price((price == null) ? null : price.multiply(BigDecimal.valueOf(100L)).intValue());
+                            .price((price == null) ? null : price.intValue());
                 }
                 return null;
             }
@@ -759,7 +762,7 @@ public class JdbcHelper {
                     return new Price().id(UUID.fromString(id))
                             .name(name)
                             .eventId(eventId)
-                            .price((price == null) ? null : price.multiply(BigDecimal.valueOf(100L)).intValue());
+                            .price((price == null) ? null : price.intValue());
                 }
                 return null;
             }
@@ -785,7 +788,7 @@ public class JdbcHelper {
                     return new Price().id(UUID.fromString(id))
                             .eventId(eventId)
                             .name(name)
-                            .price((price == null) ? null : price.multiply(BigDecimal.valueOf(100L)).intValue());
+                            .price((price == null) ? null : price.intValue());
                 }
                 return null;
             }
@@ -795,12 +798,14 @@ public class JdbcHelper {
 
 
     public void deleteTicketPriceOfEvent(UUID eventId, UUID priceId) throws SQLException {
-        String sql = "DELETE FROM TKT.Prices WHERE id = ? AND eventId = ?";
+        String sql = "DELETE FROM TKT.Prices WHERE id = ? AND eventId = ? " +
+                "AND NOT EXISTS (SELECT 1 FROM TKT.PricesDistribution WHERE priceId = ?)";
         try (Connection conn = dataSource.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
 
             pstmt.setString(1, priceId.toString());
             pstmt.setString(2, eventId.toString());
+            pstmt.setString(3, priceId.toString());
             pstmt.executeUpdate();
 
             if (pstmt.getUpdateCount() < 1)
@@ -848,11 +853,11 @@ public class JdbcHelper {
         boolean available = rs.getBoolean("available");
         String priceName = rs.getString("priceName");
         BigDecimal price = rs.getBigDecimal("price");
-        Integer priceInCents = (price == null) ? null : price.multiply(BigDecimal.valueOf(100L)).intValue();
+        Integer priceInCents = (price == null) ? null : price.intValue();
 
         Map<String, Object> metadata = parseMetadata(rs.getString("metadata"));
 
-        return new TicketingSeat().id(UUID.fromString(id))
+        TicketingSeat seat = new TicketingSeat().id(UUID.fromString(id))
                 .areaId(UUID.fromString(areaId))
                 .venueId(UUID.fromString(venueId))
                 .row(row)
@@ -860,13 +865,15 @@ public class JdbcHelper {
                 .available(available)
                 .price(priceInCents)
                 .priceName(priceName)
+                .sold(rs.getBoolean("sold"))
                 .metadata(metadata);
+        return seat;
     }
 
     public TicketingSeat loadSeatInEvent(UUID eventId, UUID seatId) throws SQLException {
         String sql =
-                "SELECT seatId, areaId, venueId, row, col, available, metadata, price, priceName, orderId FROM " +
-                        "TKT.SKU WHERE seatId = ? AND eventId = ?";
+                "SELECT id AS seatId, areaId, venueId, row, col, available, metadata, price, priceName, sold FROM " +
+                        "TKT.SeatsInEvent WHERE id = ? AND eventId = ?";
 
         try (Connection conn = dataSource.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
@@ -886,7 +893,7 @@ public class JdbcHelper {
     public List<TicketingSeat> loadSeatsInAreaOfEvent(UUID eventId, UUID areaId) throws SQLException {
 
         String sql =
-                "SELECT id AS seatId, areaId, venueId, row, col, available, metadata, price, priceName, NULL AS orderId FROM " +
+                "SELECT id AS seatId, areaId, venueId, row, col, available, metadata, price, priceName, sold FROM " +
                 "TKT.SEATSINEVENT WHERE eventId = ? AND areaId = ?";
 
         List<TicketingSeat> seats = new LinkedList<>();
@@ -943,7 +950,7 @@ public class JdbcHelper {
             pstmt.setString(2, eventId.toString());
             pstmt.setString(3, price.getName());
 
-            pstmt.setBigDecimal(4, BigDecimal.valueOf(price.getPrice(), 2));
+            pstmt.setBigDecimal(4, BigDecimal.valueOf(price.getPrice()));
 
             pstmt.executeUpdate();
             if (pstmt.getUpdateCount() < 1)
@@ -960,13 +967,16 @@ public class JdbcHelper {
                 "WHERE priceId IN (SELECT id FROM TKT.Prices WHERE eventId = ?) " +
                 "AND seatId IS NULL " +
                 "AND areaId IS NULL " +
-                "AND venueId IN (SELECT venueId FROM TKT.Events WHERE id = ?) ";
+                "AND venueId IN (SELECT venueId FROM TKT.Events WHERE id = ?) " +
+                "AND NOT EXISTS (SELECT 1 FROM TKT.OrderSeats WHERE eventId = ?) ";
 
         String sql2 =
                 "INSERT INTO TKT.PricesDistribution (id, priceId, seatId, areaId, venueId) " +
-                "SELECT ?, ?, NULL, NULL, TKT.Events.venueId FROM TKT.Prices " +
+                "SELECT ?, ?, CAST(NULL AS VARCHAR(36)), CAST(NULL AS VARCHAR(36)), TKT.Events.venueId FROM TKT.Prices " +
                 "INNER JOIN TKT.Events ON TKT.Events.id = TKT.Prices.eventId " +
-                "AND TKT.Events.id = ?";
+                "AND TKT.Events.id = ? " +
+                "WHERE TKT.Prices.id = ? " +
+                "AND NOT EXISTS (SELECT 1 FROM TKT.OrderSeats WHERE eventId = ?)";
 
         try (Connection conn = dataSource.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
@@ -974,12 +984,15 @@ public class JdbcHelper {
             pstmt.setString(1, priceId.toString());
             pstmt.setString(2, eventId.toString());
             pstmt.setString(3, eventId.toString());
+            pstmt.setString(4, eventId.toString());
 
             if (pstmt.executeUpdate() < 1) {
                 try (PreparedStatement pstmt2 = conn.prepareStatement(sql2)) {
                     pstmt2.setString(1, UUID.randomUUID().toString());
                     pstmt2.setString(2, priceId.toString());
                     pstmt2.setString(3, eventId.toString());
+                    pstmt2.setString(4, priceId.toString());
+                    pstmt2.setString(5, eventId.toString());
 
                     pstmt2.executeUpdate();
                 }
@@ -995,11 +1008,14 @@ public class JdbcHelper {
                         "WHERE priceId IN (SELECT TKT.Prices.id FROM TKT.Prices WHERE eventId = ?) " +
                         "AND seatId = ? " +
                         "AND areaId IS NULL " +
-                        "AND venueId IS NULL ";
+                        "AND venueId IS NULL " +
+                        "AND NOT EXISTS (SELECT 1 FROM TKT.OrderSeats WHERE eventId = ? AND seatId = ?) ";
 
         String sql2 =
                 "INSERT INTO TKT.PricesDistribution (id, priceId, seatId, areaId, venueId) " +
-                        "VALUES (?, ?, ?, NULL, NULL)";
+                        "SELECT ?, ?, ?, CAST(NULL AS VARCHAR(36)), CAST(NULL AS VARCHAR(36)) FROM TKT.Prices " +
+                        "WHERE id = ? AND eventId = ? " +
+                        "AND NOT EXISTS (SELECT 1 FROM TKT.OrderSeats WHERE eventId = ? AND seatId = ?)";
 
         try (Connection conn = dataSource.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
@@ -1007,15 +1023,44 @@ public class JdbcHelper {
             pstmt.setString(1, priceId.toString());
             pstmt.setString(2, eventId.toString());
             pstmt.setString(3, seatId.toString());
+            pstmt.setString(4, eventId.toString());
+            pstmt.setString(5, seatId.toString());
 
             if (pstmt.executeUpdate() < 1) {
                 try (PreparedStatement pstmt2 = conn.prepareStatement(sql2)) {
                     pstmt2.setString(1, UUID.randomUUID().toString());
                     pstmt2.setString(2, priceId.toString());
                     pstmt2.setString(3, seatId.toString());
+                    pstmt2.setString(4, priceId.toString());
+                    pstmt2.setString(5, eventId.toString());
+                    pstmt2.setString(6, eventId.toString());
+                    pstmt2.setString(7, seatId.toString());
 
                     pstmt2.executeUpdate();
                 }
+            }
+        }
+    }
+
+    public void deleteSeatLevelPricingOfEvent(UUID eventId, UUID seatId) throws SQLException {
+        String sql =
+                "DELETE FROM TKT.PricesDistribution " +
+                        "WHERE priceId IN (SELECT TKT.Prices.id FROM TKT.Prices WHERE eventId = ?) " +
+                        "AND seatId = ? " +
+                        "AND areaId IS NULL " +
+                        "AND venueId IS NULL " +
+                        "AND NOT EXISTS (SELECT 1 FROM TKT.OrderSeats WHERE eventId = ? AND seatId = ?) ";
+
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            pstmt.setString(1, eventId.toString());
+            pstmt.setString(2, seatId.toString());
+            pstmt.setString(3, eventId.toString());
+            pstmt.setString(4, seatId.toString());
+
+            if (pstmt.executeUpdate() < 1) {
+                throw new SQLException("Not successfully deleted", "304");
             }
         }
     }
@@ -1029,11 +1074,18 @@ public class JdbcHelper {
                         "WHERE priceId IN (SELECT TKT.Prices.id FROM TKT.Prices WHERE eventId = ?) " +
                         "AND seatId IS NULL " +
                         "AND areaId = ? " +
-                        "AND venueId IS NULL ";
+                        "AND venueId IS NULL " +
+                        "AND NOT EXISTS (" +
+                        "SELECT 1 FROM TKT.OrderSeats INNER JOIN TKT.Seats ON TKT.Seats.id = TKT.OrderSeats.seatId " +
+                        "WHERE TKT.OrderSeats.eventId = ? AND TKT.Seats.areaId = ?) ";
 
         String sql2 =
                 "INSERT INTO TKT.PricesDistribution (id, priceId, seatId, areaId, venueId) " +
-                        "VALUES (?, ?, NULL, ?, NULL)";
+                        "SELECT ?, ?, CAST(NULL AS VARCHAR(36)), ?, CAST(NULL AS VARCHAR(36)) FROM TKT.Prices " +
+                        "WHERE id = ? AND eventId = ? " +
+                        "AND NOT EXISTS (" +
+                        "SELECT 1 FROM TKT.OrderSeats INNER JOIN TKT.Seats ON TKT.Seats.id = TKT.OrderSeats.seatId " +
+                        "WHERE TKT.OrderSeats.eventId = ? AND TKT.Seats.areaId = ?)";
 
         try (Connection conn = dataSource.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
@@ -1041,15 +1093,46 @@ public class JdbcHelper {
             pstmt.setString(1, priceId.toString());
             pstmt.setString(2, eventId.toString());
             pstmt.setString(3, areaId.toString());
+            pstmt.setString(4, eventId.toString());
+            pstmt.setString(5, areaId.toString());
 
             if (pstmt.executeUpdate() < 1) {
                 try (PreparedStatement pstmt2 = conn.prepareStatement(sql2)) {
                     pstmt2.setString(1, UUID.randomUUID().toString());
                     pstmt2.setString(2, priceId.toString());
                     pstmt2.setString(3, areaId.toString());
+                    pstmt2.setString(4, priceId.toString());
+                    pstmt2.setString(5, eventId.toString());
+                    pstmt2.setString(6, eventId.toString());
+                    pstmt2.setString(7, areaId.toString());
 
                     pstmt2.executeUpdate();
                 }
+            }
+        }
+    }
+
+    public void deleteAreaLevelPricingOfEvent(UUID eventId, UUID areaId) throws SQLException {
+        String sql =
+                "DELETE FROM TKT.PricesDistribution " +
+                        "WHERE priceId IN (SELECT TKT.Prices.id FROM TKT.Prices WHERE eventId = ?) " +
+                        "AND seatId IS NULL " +
+                        "AND areaId = ? " +
+                        "AND venueId IS NULL " +
+                        "AND NOT EXISTS (" +
+                        "SELECT 1 FROM TKT.OrderSeats INNER JOIN TKT.Seats ON TKT.Seats.id = TKT.OrderSeats.seatId " +
+                        "WHERE TKT.OrderSeats.eventId = ? AND TKT.Seats.areaId = ?) ";
+
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            pstmt.setString(1, eventId.toString());
+            pstmt.setString(2, areaId.toString());
+            pstmt.setString(3, eventId.toString());
+            pstmt.setString(4, areaId.toString());
+
+            if (pstmt.executeUpdate() < 1) {
+                throw new SQLException("Not successfully deleted", "304");
             }
         }
     }
@@ -1210,7 +1293,7 @@ public class JdbcHelper {
                 .checkedInTimestamp(rs.getTimestamp("checkedInTimestamp"))
                 .status(TicketingSeat.StatusEnum.fromValue(rs.getString("status")))
                 .userId(rs.getString("userId"))
-                .price((price == null) ? null : price.multiply(BigDecimal.valueOf(100L)).intValue())
+                .price((price == null) ? null : price.intValue())
                 .priceName(rs.getString("priceName"))
                 .metadata(parseMetadata(rs.getString("metadata")));
 
