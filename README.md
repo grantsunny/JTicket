@@ -14,6 +14,11 @@ monitoring, payment state, and check-in support. The goal of JTicket is to show 
 stay tied to old-fashioned technology choices: it can be cloud-native, API-first, security-aware, and still pleasant to
 run locally.
 
+| | |
+|-|-|
+| <img src="docs/images/backoffice-venue.png" alt="JTicket venue management screen" width="360"> | <img src="docs/images/backoffice-events.png" alt="JTicket event management screen" width="360"> |
+| <img src="docs/images/backoffice-pricing.png" alt="JTicket pricing management screen" width="360"> | <img src="docs/images/backoffice-orders.png" alt="JTicket order management screen" width="360"> |
+
 Highlights:
 * Back-office UI for venue, event, session, pricing, poster, and order management
 * OpenAPI-described REST APIs for integration and automation
