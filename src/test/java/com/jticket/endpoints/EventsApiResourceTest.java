@@ -1,11 +1,14 @@
 package com.jticket.endpoints;
 
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Proxy;
+import java.io.File;
+import java.nio.file.Files;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.util.Base64;
@@ -23,11 +26,14 @@ import com.jticket.api.model.Order;
 import com.jticket.api.model.Session;
 import com.jticket.api.model.TicketingSeat;
 import com.jticket.api.model.SessionStatistics;
+import com.jticket.persist.EventPoster;
 import com.jticket.persist.EventsRepository;
 import com.jticket.persist.OrdersRepository;
 
 import io.jsonwebtoken.Jwts;
 import jakarta.ws.rs.BadRequestException;
+import jakarta.ws.rs.core.HttpHeaders;
+import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 
 class EventsApiResourceTest {
@@ -52,6 +58,10 @@ class EventsApiResourceTest {
     private List<Order> loadedOrders;
     private UUID loadedOrdersEventId;
     private int loadOrdersCalls;
+    private EventPoster loadedPoster;
+    private EventPoster savedPoster;
+    private UUID savedPosterEventId;
+    private UUID deletedPosterEventId;
 
     @BeforeEach
     void setUp() throws Exception {
@@ -84,6 +94,17 @@ class EventsApiResourceTest {
                         return loadedStatistics;
                     if ("loadSessionStatistics".equals(method.getName()))
                         return loadedSessionStatistics;
+                    if ("loadEventPoster".equals(method.getName()))
+                        return loadedPoster;
+                    if ("saveEventPoster".equals(method.getName())) {
+                        savedPosterEventId = (UUID) args[0];
+                        savedPoster = (EventPoster) args[1];
+                        return null;
+                    }
+                    if ("deleteEventPoster".equals(method.getName())) {
+                        deletedPosterEventId = (UUID) args[0];
+                        return null;
+                    }
                     return null;
                 });
         ordersRepository = (OrdersRepository) Proxy.newProxyInstance(
@@ -103,6 +124,7 @@ class EventsApiResourceTest {
         setField(resource, "publicKeyPem",
                 Base64.getEncoder().encodeToString(keyPair.getPublic().getEncoded()));
         setField(resource, "keyAlgorithm", "RSA");
+        setField(resource, "httpHeaders", httpHeaders("application/octet-stream"));
     }
 
     @Test
@@ -200,6 +222,79 @@ class EventsApiResourceTest {
     }
 
     @Test
+    void posterUploadStoresSupportedImageForExistingEvent() throws Exception {
+        UUID eventId = UUID.randomUUID();
+        loadedEvent = new Event().id(eventId);
+        setField(resource, "httpHeaders", httpHeaders("image/png"));
+        File poster = Files.createTempFile("poster", ".png").toFile();
+        Files.write(poster.toPath(), pngBytes());
+
+        Response response = resource.uploadEventPoster(eventId, poster);
+
+        assertEquals(204, response.getStatus());
+        assertEquals(eventId, savedPosterEventId);
+        assertEquals("image/png", savedPoster.contentType());
+        assertEquals(pngBytes().length, savedPoster.content().length);
+    }
+
+    @Test
+    void posterUploadRejectsUnsupportedImageType() throws Exception {
+        UUID eventId = UUID.randomUUID();
+        loadedEvent = new Event().id(eventId);
+        setField(resource, "httpHeaders", httpHeaders("image/gif"));
+        File poster = Files.createTempFile("poster", ".gif").toFile();
+        Files.writeString(poster.toPath(), "gif");
+
+        Response response = resource.uploadEventPoster(eventId, poster);
+
+        assertEquals(415, response.getStatus());
+    }
+
+    @Test
+    void posterUploadRejectsOversizedImage() throws Exception {
+        UUID eventId = UUID.randomUUID();
+        loadedEvent = new Event().id(eventId);
+        setField(resource, "httpHeaders", httpHeaders("image/png"));
+        setField(resource, "maxEventPosterBytes", 1L);
+        File poster = Files.createTempFile("poster-large", ".png").toFile();
+        Files.write(poster.toPath(), pngBytes());
+
+        Response response = resource.uploadEventPoster(eventId, poster);
+
+        assertEquals(413, response.getStatus());
+    }
+
+    @Test
+    void posterDownloadReturnsStoredContentTypeAndBytes() {
+        byte[] content = pngBytes();
+        loadedPoster = new EventPoster("image/png", content);
+
+        Response response = resource.getEventPoster(UUID.randomUUID());
+
+        assertEquals(200, response.getStatus());
+        assertEquals("image/png", response.getMediaType().toString());
+        assertArrayEquals(content, (byte[]) response.getEntity());
+    }
+
+    @Test
+    void posterDownloadReturnsNotFoundWhenMissing() {
+        Response response = resource.getEventPoster(UUID.randomUUID());
+
+        assertEquals(404, response.getStatus());
+    }
+
+    @Test
+    void posterDeleteClearsPosterForExistingEvent() {
+        UUID eventId = UUID.randomUUID();
+        loadedEvent = new Event().id(eventId);
+
+        Response response = resource.deleteEventPoster(eventId);
+
+        assertEquals(204, response.getStatus());
+        assertEquals(eventId, deletedPosterEventId);
+    }
+
+    @Test
     void sessionStatisticsReturnsCountsForExistingSession() {
         UUID eventId = UUID.randomUUID();
         UUID sessionId = UUID.randomUUID();
@@ -278,5 +373,24 @@ class EventsApiResourceTest {
         Field field = target.getClass().getDeclaredField(fieldName);
         field.setAccessible(true);
         field.set(target, value);
+    }
+
+    private static HttpHeaders httpHeaders(String contentType) {
+        return (HttpHeaders) Proxy.newProxyInstance(
+                HttpHeaders.class.getClassLoader(),
+                new Class<?>[]{HttpHeaders.class},
+                (proxy, method, args) -> {
+                    if ("getMediaType".equals(method.getName()))
+                        return MediaType.valueOf(contentType);
+                    return null;
+                });
+    }
+
+    private static byte[] pngBytes() {
+        return new byte[]{
+                (byte) 0x89, 'P', 'N', 'G',
+                0x0d, 0x0a, 0x1a, 0x0a,
+                0x00
+        };
     }
 }

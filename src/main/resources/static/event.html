@@ -29,11 +29,13 @@
         <div align="right">
             <button type="button" onclick="jticket.showAddEventModal()">Add Event</button>
         </div>
-        <table>
+        <table class="order-table event-table">
             <thead>
             <tr>
                 <th>Name</th>
+                <th>Poster</th>
                 <th>Venue</th>
+                <th>Sessions</th>
                 <th>Actions</th>
             </tr>
             </thead>
@@ -78,43 +80,55 @@
         </div>
     </div>
 
-    <div id="modalSetupEventSessions" class="modal">
-        <div class="modal-content" style="max-width: 820px;">
+    <div id="modalPosterPreview" class="modal">
+        <div class="modal-content poster-preview-modal-content">
             <span class="close" onclick="this.parentElement.parentElement.style.display='none'">&times;</span>
-            <p id="modalSetupEventSessionsTitle">Event Session Management</p>
-            <div>
-                <table id="tableEventSessions">
-                </table>
-                <div align = "right" id="editSessionButtons">
-                    <button type="button" onclick="jticket.updateSession(
-                        this.closest('#modalSetupEventSessions'),
-                        this.closest('#modalSetupEventSessions').dataset.eventId,
-                        this.closest('#modalSetupEventSessions').querySelector('input[name=\'selectedSession[]\']:checked')?.value)">Update</button>
-                    <button type="button" onclick="jticket.deleteSession(
-                        this.closest('#modalSetupEventSessions'),
-                        this.closest('#modalSetupEventSessions').dataset.eventId,
-                        this.closest('#modalSetupEventSessions').querySelector('input[name=\'selectedSession[]\']:checked')?.value)">Delete</button>
-                    <hr>
-                </div>
-                <form id="formNewSession">
+            <img id="posterPreviewImage" alt="Event poster preview">
+        </div>
+    </div>
+
+    <div id="modalSessionEditor" class="modal">
+        <div class="modal-content session-editor-modal-content">
+            <span class="close" onclick="this.parentElement.parentElement.style.display='none'">&times;</span>
+            <p id="modalSessionEditorTitle">Session</p>
+            <form id="sessionEditorForm">
                 <table>
                     <tr>
-                        <td>
-                            <input type = "text" id="newSessionName"></input>
+                        <td><label for="sessionEditorName">Name:</label></td>
+                        <td><input type="text" id="sessionEditorName" required></td>
+                    </tr>
+                    <tr>
+                        <td><label for="sessionEditorStartYear">Start:</label></td>
+                        <td class="session-start-duration-fields">
+                            <span class="session-date-time-fields">
+                                <select id="sessionEditorStartYear" required></select>
+                                <span>-</span>
+                                <select id="sessionEditorStartMonth" required></select>
+                                <span>-</span>
+                                <select id="sessionEditorStartDay" required></select>
+                                <select id="sessionEditorStartTime" required></select>
+                            </span>
+                            <span class="session-duration-fields">
+                                <input type="range" id="sessionEditorDuration"
+                                       min="900" max="28800" step="900" required>
+                                <span id="sessionEditorDurationLabel"></span>
+                            </span>
                         </td>
+                    </tr>
+                    <tr>
+                        <td><label for="sessionEditorEndDisplay">End:</label></td>
                         <td>
-                            <input type="datetime-local" id="newSessionStartTime">
+                            <input type="text" id="sessionEditorEndDisplay" readonly>
                         </td>
-                        <td>
-                            <input type="datetime-local" id="newSessionEndTime">
+                    </tr>
+                    <tr>
+                        <td></td>
+                        <td align="right">
+                            <button type="submit">Save</button>
                         </td>
                     </tr>
                 </table>
-                <div align = "right">
-                    <button type="button" onclick="jticket.addNewSession(this.form)">Add</button>
-                </div>
-                </form>
-            </div>
+            </form>
         </div>
     </div>
 
@@ -131,20 +145,28 @@
     </div>
 
     <div id="modalSetupEventMetadata" class="modal">
-        <div class="modal-content" style="max-width: 400px;">
+        <div class="modal-content metadata-modal-content">
             <span class="close" onclick="this.parentElement.parentElement.style.display='none'">&times;</span>
             <p id="modalSetupEventMetadataTitle">Event Metadata Management</p>
 
-            <div id="jsonEditor" style="width: 400px; height: 400px;"></div>
+            <table class="metadata-editor-table">
+                <thead>
+                <tr>
+                    <th></th>
+                    <th>Key</th>
+                    <th>Value</th>
+                    <th>Type</th>
+                </tr>
+                </thead>
+                <tbody id="metadataEditorRows"></tbody>
+            </table>
 
-            <button onclick="jticket.submitEventMetadata(
-                this.parentElement.querySelector('#jsonEditor').editor.get(),
-                this.parentElement.parentElement,
-                false)">Save</button>
-            <button onclick="jticket.submitEventMetadata(
-                this.parentElement.querySelector('#jsonEditor').editor.get(),
-                this.parentElement.parentElement,
-                true)">Save & Close</button>
+            <div class="metadata-editor-actions">
+                <button type="button" onclick="jticket.addMetadataRow(this.closest('#modalSetupEventMetadata'))">ADD</button>
+                <button type="button" onclick="jticket.deleteSelectedMetadataRows(this.closest('#modalSetupEventMetadata'))">DELETE</button>
+                <button type="button" onclick="jticket.saveEventMetadata(this.closest('#modalSetupEventMetadata'), false)">Save</button>
+                <button type="button" onclick="jticket.saveEventMetadata(this.closest('#modalSetupEventMetadata'), true)">Save & Close</button>
+            </div>
         </div>
     </div>
 

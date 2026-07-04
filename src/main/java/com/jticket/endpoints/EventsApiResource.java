@@ -4,6 +4,9 @@ import static com.jticket.security.OAuth2Scopes.EVENT_READ;
 import static com.jticket.security.OAuth2Scopes.EVENT_WRITE;
 import static com.jticket.security.OAuth2Scopes.ORDER_READ_ALL;
 
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
 import java.security.KeyFactory;
 import java.security.NoSuchAlgorithmException;
 import java.security.PublicKey;
@@ -13,6 +16,7 @@ import java.sql.SQLException;
 import java.util.Base64;
 import java.util.Date;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 import org.springframework.beans.factory.annotation.Value;
@@ -31,6 +35,7 @@ import com.jticket.api.model.Session;
 import com.jticket.api.model.TicketingSeat;
 import com.jticket.api.model.SessionStatistics;
 import com.jticket.api.model.Venue;
+import com.jticket.persist.EventPoster;
 import com.jticket.persist.EventsRepository;
 import com.jticket.persist.OrdersRepository;
 import com.jticket.persist.PersistenceException;
@@ -45,6 +50,7 @@ import jakarta.ws.rs.ClientErrorException;
 import jakarta.ws.rs.NotAuthorizedException;
 import jakarta.ws.rs.WebApplicationException;
 import jakarta.ws.rs.core.Context;
+import jakarta.ws.rs.core.HttpHeaders;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.UriBuilder;
 import jakarta.ws.rs.core.UriInfo;
@@ -53,6 +59,9 @@ public class EventsApiResource implements EventsApi {
 
 	@Context
 	private UriInfo uriInfo;
+
+	@Context
+	private HttpHeaders httpHeaders;
 
 	@Inject
 	private EventsRepository repository;
@@ -65,6 +74,9 @@ public class EventsApiResource implements EventsApi {
 
 	@Value("${ticket.jwt.algorithm:RSA}")
 	private String keyAlgorithm;
+
+	@Value("${ticket.event.poster.max-bytes:5242880}")
+	private long maxEventPosterBytes = 5L * 1024L * 1024L;
 
 	private PublicKey publicKey;
 
@@ -639,6 +651,61 @@ public class EventsApiResource implements EventsApi {
 	}
 
 	@Override
+	@RolesAllowed(EVENT_READ)
+	public Response getEventPoster(UUID eventId) {
+		try {
+			EventPoster poster = repository.loadEventPoster(eventId);
+			if (poster == null)
+				return Response.status(Response.Status.NOT_FOUND).build();
+
+			return Response.ok(poster.content(), poster.contentType()).build();
+		} catch (SQLException e) {
+			throw new BadRequestException(e);
+		}
+	}
+
+	@Override
+	@RolesAllowed(EVENT_WRITE)
+	public Response uploadEventPoster(UUID eventId, File body) {
+		try {
+			if (repository.loadEvent(eventId) == null)
+				return Response.status(Response.Status.NOT_FOUND).build();
+
+			if (Files.size(body.toPath()) > maxEventPosterBytes)
+				return Response.status(413).build();
+
+			byte[] content = Files.readAllBytes(body.toPath());
+			if (content.length == 0)
+				throw new BadRequestException("Poster image is empty");
+
+			String contentType = validatedPosterContentType(content);
+			if (contentType == null)
+				return Response.status(Response.Status.UNSUPPORTED_MEDIA_TYPE).build();
+
+			repository.saveEventPoster(eventId, new EventPoster(contentType, content));
+			return Response.noContent().build();
+		} catch (IOException e) {
+			throw new BadRequestException(e);
+		} catch (SQLException e) {
+			throw new BadRequestException(e);
+		}
+	}
+
+	@Override
+	@RolesAllowed(EVENT_WRITE)
+	public Response deleteEventPoster(UUID eventId) {
+		try {
+			if (repository.loadEvent(eventId) == null)
+				return Response.status(Response.Status.NOT_FOUND).build();
+
+			repository.deleteEventPoster(eventId);
+			return Response.noContent().build();
+		} catch (SQLException e) {
+			throw new BadRequestException(e);
+		}
+	}
+
+	@Override
 	@RolesAllowed(EVENT_WRITE)
 	public Response createSession(UUID eventId, Session session) {
 		session = session.id(UUID.randomUUID());
@@ -650,6 +717,56 @@ public class EventsApiResource implements EventsApi {
 		} catch (SQLException e) {
 			throw new BadRequestException(e);
 		}
+	}
+
+	private String validatedPosterContentType(byte[] content) {
+		Set<String> supportedTypes = Set.of("image/png", "image/jpeg", "image/webp");
+		String contentType = httpHeaders == null || httpHeaders.getMediaType() == null
+				? null
+				: httpHeaders.getMediaType().toString().toLowerCase();
+
+		if ("image/jpg".equals(contentType))
+			contentType = "image/jpeg";
+
+		if (supportedTypes.contains(contentType))
+			return contentType;
+
+		if (contentType != null && !"application/octet-stream".equals(contentType))
+			return null;
+
+		return inferPosterContentType(content);
+	}
+
+	private String inferPosterContentType(byte[] content) {
+		if (content.length >= 8
+				&& (content[0] & 0xff) == 0x89
+				&& content[1] == 'P'
+				&& content[2] == 'N'
+				&& content[3] == 'G'
+				&& (content[4] & 0xff) == 0x0d
+				&& (content[5] & 0xff) == 0x0a
+				&& (content[6] & 0xff) == 0x1a
+				&& (content[7] & 0xff) == 0x0a)
+			return "image/png";
+
+		if (content.length >= 3
+				&& (content[0] & 0xff) == 0xff
+				&& (content[1] & 0xff) == 0xd8
+				&& (content[2] & 0xff) == 0xff)
+			return "image/jpeg";
+
+		if (content.length >= 12
+				&& content[0] == 'R'
+				&& content[1] == 'I'
+				&& content[2] == 'F'
+				&& content[3] == 'F'
+				&& content[8] == 'W'
+				&& content[9] == 'E'
+				&& content[10] == 'B'
+				&& content[11] == 'P')
+			return "image/webp";
+
+		return null;
 	}
 
 	@Override

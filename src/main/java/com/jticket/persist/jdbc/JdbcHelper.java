@@ -22,6 +22,7 @@ import java.util.UUID;
 import javax.sql.DataSource;
 
 import org.springframework.context.annotation.Profile;
+import org.springframework.jdbc.datasource.DataSourceUtils;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -37,6 +38,7 @@ import com.jticket.api.model.Session;
 import com.jticket.api.model.TicketingSeat;
 import com.jticket.api.model.SessionStatistics;
 import com.jticket.api.model.Venue;
+import com.jticket.persist.EventPoster;
 import com.jticket.persist.OrdersRepository.PaymentResult;
 
 import jakarta.inject.Inject;
@@ -655,6 +657,58 @@ public class JdbcHelper {
 
             if (pstmt.getUpdateCount() < 1)
                 throw new SQLException("Not successfully modified", "304");
+        }
+    }
+
+    public EventPoster loadEventPoster(UUID eventId) throws SQLException {
+        String sql = "SELECT contentType, content FROM TKT.EventPosters WHERE eventId = ?";
+
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            pstmt.setString(1, eventId.toString());
+            try (ResultSet rs = pstmt.executeQuery()) {
+                if (rs.next())
+                    return new EventPoster(rs.getString("contentType"), rs.getBytes("content"));
+            }
+        }
+        return null;
+    }
+
+    @Transactional
+    public void saveEventPoster(UUID eventId, EventPoster poster) throws SQLException {
+        String deleteSql = "DELETE FROM TKT.EventPosters WHERE eventId = ?";
+        String insertSql = "INSERT INTO TKT.EventPosters (id, eventId, contentType, content) VALUES (?, ?, ?, ?)";
+        Connection conn = DataSourceUtils.getConnection(dataSource);
+
+        try {
+            try (PreparedStatement pstmt = conn.prepareStatement(deleteSql)) {
+                pstmt.setString(1, eventId.toString());
+                pstmt.executeUpdate();
+            }
+            try (PreparedStatement pstmt = conn.prepareStatement(insertSql)) {
+                pstmt.setString(1, UUID.randomUUID().toString());
+                pstmt.setString(2, eventId.toString());
+                pstmt.setString(3, poster.contentType());
+                pstmt.setBytes(4, poster.content());
+                pstmt.executeUpdate();
+
+                if (pstmt.getUpdateCount() < 1)
+                    throw new SQLException("Not successfully modified", "304");
+            }
+        } finally {
+            DataSourceUtils.releaseConnection(conn, dataSource);
+        }
+    }
+
+    public void deleteEventPoster(UUID eventId) throws SQLException {
+        String sql = "DELETE FROM TKT.EventPosters WHERE eventId = ?";
+
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            pstmt.setString(1, eventId.toString());
+            pstmt.executeUpdate();
         }
     }
 

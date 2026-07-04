@@ -25,6 +25,7 @@ import com.jticket.api.model.Session;
 import com.jticket.api.model.TicketingSeat;
 import com.jticket.api.model.SessionStatistics;
 import com.jticket.api.model.Venue;
+import com.jticket.persist.EventPoster;
 import com.jticket.persist.PersistenceException;
 import com.jticket.persist.mybatis.handlers.MetadataHandler;
 import com.jticket.persist.mybatis.handlers.TicketingSeatStatusHandler;
@@ -315,6 +316,31 @@ public interface EventsMapper {
             throw new PersistenceException(
                     new SQLException("Not successfully updated", "304")
             );
+    }
+
+    @Select("SELECT contentType, content FROM EventPosters WHERE eventId = #{eventId}")
+    EventPoster loadEventPoster(@Param("eventId") UUID eventId);
+
+    @Delete("DELETE FROM EventPosters WHERE eventId = #{eventId}")
+    void _deleteEventPoster(@Param("eventId") UUID eventId);
+
+    @Insert("INSERT INTO EventPosters (id, eventId, contentType, content) " +
+            "VALUES (#{posterId}, #{eventId}, #{poster.contentType}, #{poster.content})")
+    int _insertEventPoster(@Param("posterId") UUID posterId,
+                           @Param("eventId") UUID eventId,
+                           @Param("poster") EventPoster poster);
+
+    @Transactional
+    default void saveEventPoster(UUID eventId, EventPoster poster) throws PersistenceException {
+        _deleteEventPoster(eventId);
+        if (_insertEventPoster(UUID.randomUUID(), eventId, poster) < 1)
+            throw new PersistenceException(
+                    new SQLException("Not successfully saved", "304")
+            );
+    }
+
+    default void deleteEventPoster(UUID eventId) {
+        _deleteEventPoster(eventId);
     }
 
     @Select("SELECT priceId, seatId, areaId, venueId FROM PricesDistribution " +
