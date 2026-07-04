@@ -51,6 +51,15 @@ CREATE TABLE TKT.Events (
                     UNIQUE(name)
 );
 
+CREATE TABLE TKT.EventPosters (
+                    id VARCHAR(36) PRIMARY KEY NOT NULL,
+                    eventId VARCHAR(36) NOT NULL,
+                    contentType VARCHAR(100) NOT NULL,
+                    content BLOB NOT NULL,
+                    FOREIGN KEY (eventId) REFERENCES TKT.Events(id) ON DELETE CASCADE,
+                    UNIQUE(eventId)
+);
+
 CREATE TABLE TKT.Sessions (
                     id VARCHAR(36) PRIMARY KEY NOT NULL,
                     name VARCHAR(255) NOT NULL,

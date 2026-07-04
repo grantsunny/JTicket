@@ -39,6 +39,9 @@ public interface EventsRepository {
     File loadEventVenueSvg(UUID eventId) throws PersistenceException;
     void updateVenueOfEvent(UUID eventId, UUID venueId) throws PersistenceException;
     void updateEvent(UUID eventId, Event event) throws PersistenceException;
+    EventPoster loadEventPoster(UUID eventId) throws PersistenceException;
+    void saveEventPoster(UUID eventId, EventPoster poster) throws PersistenceException;
+    void deleteEventPoster(UUID eventId) throws PersistenceException;
     void saveEventAndCopyPrices(Event event, String copyFromEventId) throws PersistenceException;
     void saveSession(UUID eventId, Session session) throws PersistenceException;
     void updateSession(UUID eventId, UUID sessionId, Session session) throws PersistenceException;

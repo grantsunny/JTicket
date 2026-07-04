@@ -1,10 +1,16 @@
 import {apiFetch, cleanUpContainer, drawEventVenueEx, drawSeats, enforceNumericInput} from "./common.js";
 
+const SESSION_DURATION_DEFAULT_SECONDS = 90 * 60;
+const SESSION_DURATION_MIN_SECONDS = 15 * 60;
+const SESSION_DURATION_MAX_SECONDS = 8 * 60 * 60;
+const SESSION_DURATION_STEP_SECONDS = 15 * 60;
+const SESSION_START_STEP_MINUTES = 15;
+const SESSION_START_YEAR_RANGE = 5;
+
 window.jticket = {
     ...window.jticket,
     setupEventMetadata,
     setupEventPricing,
-    setupEventSessions,
     enforceNumericInput,
     submitNewPricingForm,
     showAddPricingModal,
@@ -12,87 +18,26 @@ window.jticket = {
     changeEventVenue,
     updateEventVenue,
     deleteEvent,
-    updateSession,
-    deleteSession,
+    uploadEventPoster,
+    showPosterPreview,
+    showAddSessionModal,
+    showEditSessionModal,
+    submitSessionModal,
+    deleteSelectedSession,
     setAreaPrice,
     setSeatPrice,
     clearAreaPrice,
     clearSeatPrice,
     addNewEvent,
-    addNewSession,
     showAddEventModal,
     refreshFormEventCopyFromList,
     refreshFormEventVenueList,
     submitEventMetadata,
+    saveEventMetadata,
+    addMetadataRow,
+    deleteSelectedMetadataRows,
+    collectEventMetadata,
 }
-
-function updateSession(container, eventId, sessionId) {
-    if ((!sessionId) || (!eventId)) return;
-
-    apiFetch(`/api/events/${eventId}/sessions/${sessionId}`, {
-        method: 'GET',
-        headers: {
-            'Accept': 'application/json',
-        }
-    })
-        .then(response => response.json())
-        .then(session => {
-            const selectedSession = container.querySelector('input[name=\'selectedSession[]\']:checked');
-            if (selectedSession !== null) {
-                const selectedIndex= Array.from(container.querySelectorAll('input[name=\'selectedSession[]\']')).indexOf(selectedSession);
-                if (selectedIndex !== -1) {
-                    const sessionName = container.querySelectorAll('input[name="selectedSessionName[]"]')[selectedIndex].value;
-                    const sessionStartTime = formatDateTime(new Date(container.querySelectorAll('input[name="selectedSessionStartTime[]"]')[selectedIndex].value));
-                    const sessionEndTime = formatDateTime(new Date(container.querySelectorAll('input[name="selectedSessionEndTime[]"]')[selectedIndex].value));
-
-                    session.name = sessionName;
-                    session.startTime = sessionStartTime;
-                    session.endTime = sessionEndTime;
-                } else
-                    return;
-            } else
-                return;
-
-            apiFetch(`/api/events/${eventId}/sessions/${sessionId}`, {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(session)
-            })
-                .then(response => {
-                    if (response.ok) {
-                        refreshEventSessions(container, eventId);
-                    }
-                })
-                .catch(error => {
-                    console.error('Error updating session:', error);
-                });
-        })
-        .catch(error => {
-            console.error('Error loading session:', error);
-        });
-}
-
-function deleteSession(container, eventId, sessionId) {
-    if ((!sessionId) || (!eventId)) return;
-
-    apiFetch(`/api/events/${eventId}/sessions/${sessionId}`, {
-        method: 'DELETE'
-    })
-        .then(response => {
-            if (response.status === 204) {
-                // Event deleted successfully, refresh the event list
-                refreshEventSessions(container, eventId);
-            } else {
-                console.error('Error deleting session. Status:', response.status);
-            }
-        })
-        .catch(error => {
-            console.error('Error deleting session:', error);
-        });
-}
-
 
 function refreshFormEventCopyFromList(selectContainer, venueId) {
     if (venueId) {
@@ -138,17 +83,49 @@ function fetchEvents() {
                 const selectedVenueOption = document.querySelector(`#venueId option[value="${venueId}"]`);
                 const venueName = selectedVenueOption ? selectedVenueOption.textContent : 'Unknown Venue';
 
-                // Display event and venue information in the table row
                 const row = document.createElement("tr");
+                row.className = "event-list-row";
                 row.innerHTML = `
-                    <td>${event.name}</td>
-                    <td><a href="#" onclick="jticket.changeEventVenue('${event.name}','${event.id}', '${event.venueId}')">${venueName || 'Unknown Venue'}</td> <!-- Display venue name or 'Unknown Venue' if not found -->
-                    <td><button onclick="jticket.setupEventPricing('${event.name}','${event.id}')">Pricing</button></td>
-                    <td><button onclick="jticket.setupEventSessions('${event.name}','${event.id}')">Sessions</button></td>
-                    <td><button onclick="jticket.setupEventMetadata('${event.id}')">Metadata</button></td>
-                    <td><button onclick="jticket.deleteEvent('${event.id}')">Delete</button></td>
+                    <td class="event-name-cell"></td>
+                    <td class="event-poster-cell"></td>
+                    <td class="event-venue-cell"></td>
+                    <td class="event-sessions-cell">
+                        <div class="event-sessions-panel" data-event-id="${event.id}">
+                            <div class="event-session-list"></div>
+                            <div class="event-session-actions">
+                                <button type="button" class="add-session-button">ADD</button>
+                                <button type="button" class="delete-session-button">DELETE</button>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="event-actions-column"><div class="event-actions-cell"></div></td>
                 `;
+                renderEditableEventName(row.querySelector(".event-name-cell"), event);
+                renderEventPoster(row.querySelector(".event-poster-cell"), event.id);
+
+                const venueLink = document.createElement("a");
+                venueLink.href = "#";
+                venueLink.textContent = venueName || 'Unknown Venue';
+                venueLink.addEventListener("click", function (clickEvent) {
+                    clickEvent.preventDefault();
+                    changeEventVenue(event.name, event.id, event.venueId);
+                });
+                row.querySelector(".event-venue-cell").appendChild(venueLink);
+
+                const actions = row.querySelector(".event-actions-cell");
+                actions.append(
+                    buildEventActionButton("Pricing", () => setupEventPricing(event.name, event.id)),
+                    buildEventActionButton("Metadata", () => setupEventMetadata(event.id)),
+                    buildEventActionButton("Delete", () => deleteEvent(event.id))
+                );
+
+                const sessionPanel = row.querySelector(".event-sessions-panel");
+                row.querySelector(".add-session-button").addEventListener("click", () => showAddSessionModal(event.id));
+                row.querySelector(".delete-session-button").addEventListener("click", function () {
+                    deleteSelectedSession(sessionPanel);
+                });
                 eventList.appendChild(row);
+                refreshEventSessions(sessionPanel, event.id);
             });
         })
         .catch(error => {
@@ -621,6 +598,234 @@ function seatsContainerDisplayMode(container, seatsContainer) {
     return seatsContainer?.dataset.displayMode || container?.dataset.displayMode || "rowCol";
 }
 
+function buildEventActionButton(label, action) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.textContent = label;
+    button.addEventListener("click", action);
+    return button;
+}
+
+function renderEditableEventName(cell, event) {
+    cell.textContent = "";
+    const nameLink = document.createElement("a");
+    nameLink.href = "#";
+    nameLink.className = "event-name-link";
+    nameLink.textContent = event.name;
+    nameLink.addEventListener("click", function (clickEvent) {
+        clickEvent.preventDefault();
+        showEventNameEditor(cell, event);
+    });
+    cell.appendChild(nameLink);
+}
+
+function showEventNameEditor(cell, event) {
+    cell.textContent = "";
+    const input = document.createElement("input");
+    input.type = "text";
+    input.className = "event-name-editor";
+    input.value = event.name;
+    cell.appendChild(input);
+    input.focus();
+    input.select();
+
+    let finished = false;
+    const finish = (save) => {
+        if (finished) return;
+        finished = true;
+        if (!save) {
+            renderEditableEventName(cell, event);
+            return;
+        }
+        const newName = input.value.trim();
+        if (!newName || newName === event.name) {
+            renderEditableEventName(cell, event);
+            return;
+        }
+        const updatedEvent = {...event, name: newName};
+        apiFetch(`/api/events/${event.id}`, {
+            method: 'PUT',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(updatedEvent)
+        })
+            .then(response => {
+                if (response.ok || response.status === 204) {
+                    event.name = newName;
+                } else {
+                    alert("Event name was not updated.");
+                }
+                renderEditableEventName(cell, event);
+            })
+            .catch(error => {
+                console.error('Error updating event name:', error);
+                alert("Event name was not updated.");
+                renderEditableEventName(cell, event);
+            });
+    };
+
+    input.addEventListener("keydown", function (event) {
+        if (event.key === "Enter") {
+            event.preventDefault();
+            finish(true);
+        } else if (event.key === "Escape") {
+            event.preventDefault();
+            finish(false);
+        }
+    });
+    input.addEventListener("blur", () => finish(true));
+}
+
+function renderEventPoster(cell, eventId) {
+    cell.textContent = "";
+    const container = document.createElement("div");
+    container.className = "event-poster-panel";
+
+    const missing = document.createElement("div");
+    missing.className = "event-poster-empty";
+    missing.textContent = "No poster";
+
+    const thumbnail = document.createElement("img");
+    thumbnail.className = "event-poster-thumbnail";
+    thumbnail.alt = "Event poster";
+    thumbnail.src = eventPosterUrl(eventId);
+    thumbnail.addEventListener("click", () => showPosterPreview(thumbnail.src));
+    thumbnail.addEventListener("load", function () {
+        missing.style.display = "none";
+        thumbnail.style.display = "block";
+    });
+    thumbnail.addEventListener("error", function () {
+        thumbnail.style.display = "none";
+        missing.style.display = "block";
+    });
+
+    const fileInput = document.createElement("input");
+    fileInput.type = "file";
+    fileInput.accept = "image/png,image/jpeg,image/webp";
+    fileInput.style.display = "none";
+    fileInput.addEventListener("change", function () {
+        if (this.files?.[0]) {
+            uploadEventPoster(eventId, this.files[0], cell);
+            this.value = "";
+        }
+    });
+
+    const uploadLink = document.createElement("a");
+    uploadLink.href = "#";
+    uploadLink.textContent = "Upload";
+    uploadLink.addEventListener("click", function (event) {
+        event.preventDefault();
+        fileInput.click();
+    });
+
+    container.append(thumbnail, missing, uploadLink, fileInput);
+    cell.appendChild(container);
+}
+
+function eventPosterUrl(eventId) {
+    return `/api/events/${eventId}/poster`;
+}
+
+function uploadEventPoster(eventId, file, cell) {
+    const supportedTypes = new Set(["image/png", "image/jpeg", "image/webp"]);
+    if (!supportedTypes.has(file.type)) {
+        alert("Please choose a PNG, JPEG, or WebP image.");
+        return;
+    }
+
+    apiFetch(eventPosterUrl(eventId), {
+        method: 'POST',
+        headers: {'Content-Type': file.type},
+        body: file
+    })
+        .then(response => {
+            if (response.ok || response.status === 204) {
+                renderEventPoster(cell, eventId);
+                const thumbnail = cell.querySelector(".event-poster-thumbnail");
+                thumbnail.src = `${eventPosterUrl(eventId)}?t=${Date.now()}`;
+            } else {
+                alert("Poster was not uploaded.");
+            }
+        })
+        .catch(error => {
+            console.error('Error uploading event poster:', error);
+            alert("Poster was not uploaded.");
+        });
+}
+
+function showPosterPreview(src) {
+    const modal = document.getElementById("modalPosterPreview");
+    const image = modal.querySelector("#posterPreviewImage");
+    image.src = src;
+    modal.style.display = "block";
+}
+
+function getSessionPanel(element) {
+    return element?.closest?.(".event-sessions-panel") || element;
+}
+
+function getSessionEditorModal() {
+    const modal = document.getElementById("modalSessionEditor");
+    const form = modal.querySelector("#sessionEditorForm");
+    populateSessionStartDateOptions(form);
+    populateSessionStartTimeOptions(form.querySelector("#sessionEditorStartTime"));
+    if (!form.dataset.bound) {
+        form.addEventListener("submit", function (event) {
+            event.preventDefault();
+            submitSessionModal(this);
+        });
+        form
+            .querySelectorAll("#sessionEditorStartYear, #sessionEditorStartMonth, #sessionEditorStartDay")
+            .forEach(control => control.addEventListener("change", function () {
+                if (control.id !== "sessionEditorStartDay")
+                    refreshSessionStartDayOptions(form);
+                updateSessionEndPreview(form);
+            }));
+        form.querySelector("#sessionEditorStartTime").addEventListener("change", function () {
+            updateSessionEndPreview(form);
+        });
+        form.querySelector("#sessionEditorDuration").addEventListener("input", function () {
+            updateSessionDurationDisplay(form);
+            updateSessionEndPreview(form);
+        });
+        form.dataset.bound = "true";
+    }
+    return modal;
+}
+
+function populateSessionStartDateOptions(form) {
+    const yearSelect = form.querySelector("#sessionEditorStartYear");
+    if (yearSelect.dataset.bound) return;
+
+    const thisYear = new Date().getFullYear();
+    for (let year = thisYear - SESSION_START_YEAR_RANGE; year <= thisYear + SESSION_START_YEAR_RANGE; year += 1) {
+        const option = document.createElement("option");
+        option.value = String(year);
+        option.textContent = String(year);
+        yearSelect.appendChild(option);
+    }
+    for (let month = 1; month <= 12; month += 1) {
+        const option = document.createElement("option");
+        option.value = String(month).padStart(2, "0");
+        option.textContent = String(month).padStart(2, "0");
+        form.querySelector("#sessionEditorStartMonth").appendChild(option);
+    }
+    yearSelect.dataset.bound = "true";
+}
+
+function populateSessionStartTimeOptions(select) {
+    if (select.dataset.bound) return;
+    for (let hour = 0; hour < 24; hour += 1) {
+        for (let minute = 0; minute < 60; minute += SESSION_START_STEP_MINUTES) {
+            const value = `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
+            const option = document.createElement("option");
+            option.value = value;
+            option.textContent = value;
+            select.appendChild(option);
+        }
+    }
+    select.dataset.bound = "true";
+}
+
 
 function setupEventPricing(eventName, eventId) {
     var modal = document.getElementById("modelSetupEventPricing");
@@ -639,8 +844,9 @@ function setupEventPricing(eventName, eventId) {
 }
 
 function refreshEventSessions(container, eventId) {
-    let tableSessions = container.querySelector("#tableEventSessions");
-    cleanUpContainer(tableSessions);
+    container = getSessionPanel(container);
+    let sessionList = container.querySelector(".event-session-list");
+    cleanUpContainer(sessionList);
 
     apiFetch(`/api/events/${eventId}/sessions`, {
         method: 'GET',
@@ -650,50 +856,44 @@ function refreshEventSessions(container, eventId) {
     })
         .then(response => response.json())
         .then(data => {
-            let sessionNameWidth = 65;
             if (data.length > 0) {
-                container.querySelector("#editSessionButtons").style.display = "block";
                 data.forEach(session => {
-                    let row = tableSessions.appendChild(document.createElement("tr"));
-                    let radioSelectedSession = document.createElement("input");
-                    radioSelectedSession.type = 'radio';
-                    radioSelectedSession.id = session.id;
-                    radioSelectedSession.name = 'selectedSession[]';
-                    radioSelectedSession.value = session.id;
+                    const item = document.createElement("label");
+                    item.className = "event-session-item";
+                    item.dataset.sessionId = session.id;
 
-                    row.appendChild(document.createElement("td")).append(radioSelectedSession);
-                    let inputSessionName = document.createElement("input");
-                    inputSessionName.type = 'text';
-                    inputSessionName.id = 'selectedSessionName';
-                    inputSessionName.name = "selectedSessionName[]";
-                    inputSessionName.value = session.name;
-                    row.appendChild(document.createElement("td")).append(inputSessionName);
+                    const checkbox = document.createElement("input");
+                    checkbox.type = "checkbox";
+                    checkbox.name = `selectedSession-${eventId}`;
+                    checkbox.value = session.id;
+                    checkbox.addEventListener("change", function () {
+                        if (!this.checked) return;
+                        sessionList
+                            .querySelectorAll(`input[name="${this.name}"]`)
+                            .forEach(candidate => {
+                                if (candidate !== this) candidate.checked = false;
+                            });
+                    });
 
-                    sessionNameWidth = Math.max(
-                        sessionNameWidth,
-                        radioSelectedSession.offsetWidth + inputSessionName.offsetWidth);
+                    const link = document.createElement("a");
+                    link.href = "#";
+                    link.className = "event-session-link";
+                    link.textContent = formatSessionCaption(session);
+                    link.title = session.name || "";
+                    link.addEventListener("click", function (event) {
+                        event.preventDefault();
+                        showEditSessionModal(eventId, session.id);
+                    });
 
-                    let inputSessionFrom = document.createElement("input");
-                    inputSessionFrom.type = 'datetime-local';
-                    inputSessionFrom.id = 'selectedSessionStartTime';
-                    inputSessionFrom.name = "selectedSessionStartTime[]";
-                    inputSessionFrom.value = session.startTime;
-                    row.appendChild(document.createElement("td")).append(inputSessionFrom);
-
-                    let inputSessionTo = document.createElement("input");
-                    inputSessionTo.type = 'datetime-local';
-                    inputSessionTo.id = 'selectedSessionEndTime';
-                    inputSessionTo.name = "selectedSessionEndTime[]";
-                    inputSessionTo.value = session.endTime;
-                    row.appendChild(document.createElement("td")).append(inputSessionTo);
+                    item.append(checkbox, link);
+                    sessionList.appendChild(item);
                 });
-            } else
-                container.querySelector("#editSessionButtons").style.display = "none";
-
-            container.querySelector("#newSessionName").style.width = `${sessionNameWidth}px`;
-            container.querySelector("#newSessionName").value = "";
-            container.querySelector("#newSessionStartTime").value = new Date().toISOString().slice(0,19);
-            container.querySelector("#newSessionEndTime").value = new Date().toISOString().slice(0,19);
+            } else {
+                const empty = document.createElement("div");
+                empty.className = "event-session-empty";
+                empty.textContent = "No sessions yet";
+                sessionList.appendChild(empty);
+            }
 
         })
         .catch(error => {
@@ -703,20 +903,278 @@ function refreshEventSessions(container, eventId) {
 
 }
 
-function setupEventSessions(eventName, eventId) {
-    let modal = document.getElementById("modalSetupEventSessions");
-    modal.querySelector("#modalSetupEventSessionsTitle").textContent = "Sessions of Event: " + eventName;
-    modal.style.display = "inline-block";
+function showAddSessionModal(eventId) {
+    const modal = getSessionEditorModal();
     modal.dataset.eventId = eventId;
+    delete modal.dataset.sessionId;
+    delete modal.dataset.session;
+    modal.querySelector("#modalSessionEditorTitle").textContent = "Add Session";
+    const startTime = nextQuarterDate(new Date());
+    setSessionEditorValues(modal, {
+        name: "",
+        startTime,
+        endTime: addSeconds(startTime, SESSION_DURATION_DEFAULT_SECONDS)
+    });
+    modal.style.display = "block";
+    modal.querySelector("#sessionEditorName").focus();
+}
 
-    refreshEventSessions(modal, eventId);
+function showEditSessionModal(eventId, sessionId) {
+    const modal = getSessionEditorModal();
+    modal.dataset.eventId = eventId;
+    modal.dataset.sessionId = sessionId;
+    modal.querySelector("#modalSessionEditorTitle").textContent = "Edit Session";
+
+    apiFetch(`/api/events/${eventId}/sessions/${sessionId}`, {
+        method: 'GET',
+        headers: {'Accept': 'application/json'}
+    })
+        .then(response => response.json())
+        .then(session => {
+            modal.dataset.session = JSON.stringify(session);
+            setSessionEditorValues(modal, session);
+            modal.style.display = "block";
+            modal.querySelector("#sessionEditorName").focus();
+        })
+        .catch(error => {
+            console.error('Error loading session:', error);
+        });
+}
+
+function submitSessionModal(form) {
+    const modal = form.closest("#modalSessionEditor");
+    const eventId = modal.dataset.eventId;
+    const sessionId = modal.dataset.sessionId;
+    const sessionPayload = modal.dataset.session ? JSON.parse(modal.dataset.session) : {};
+
+    sessionPayload.name = form.querySelector("#sessionEditorName").value.trim();
+    sessionPayload.eventId = eventId;
+    const startDate = sessionStartDateValue(form);
+    const durationSeconds = sessionDurationSeconds(form);
+    sessionPayload.startTime = startDate ? formatDateTime(startDate) : "";
+    sessionPayload.endTime = startDate ? formatDateTime(addSeconds(startDate, durationSeconds)) : "";
+
+    if (!sessionPayload.name || !sessionPayload.startTime || !sessionPayload.endTime) {
+        alert("Please enter a session name, start date/time, and duration.");
+        return;
+    }
+    if (startDate < new Date() && !isOriginalPastSessionStart(modal, startDate)) {
+        alert("Session start time cannot be earlier than now.");
+        return;
+    }
+
+    const url = sessionId
+        ? `/api/events/${eventId}/sessions/${sessionId}`
+        : `/api/events/${eventId}/sessions`;
+    const method = sessionId ? 'PUT' : 'POST';
+
+    apiFetch(url, {
+        method,
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(sessionPayload)
+    })
+        .then(response => {
+            if (response.ok || response.status === 201) {
+                modal.style.display = "none";
+                refreshEventSessions(document.querySelector(`.event-sessions-panel[data-event-id="${eventId}"]`), eventId);
+            } else {
+                console.error('Error saving session. Status:', response.status);
+            }
+        })
+        .catch(error => {
+            console.error('Error saving session:', error);
+        });
+}
+
+function deleteSelectedSession(container) {
+    const sessionPanel = getSessionPanel(container);
+    const eventId = sessionPanel.dataset.eventId;
+    const selected = sessionPanel.querySelector(".event-session-list input:checked");
+    if (!selected) {
+        alert("Please select a session first.");
+        return;
+    }
+    if (!confirm("Delete selected session?")) return;
+
+    apiFetch(`/api/events/${eventId}/sessions/${selected.value}`, {
+        method: 'DELETE'
+    })
+        .then(response => {
+            if (response.status === 204) {
+                refreshEventSessions(sessionPanel, eventId);
+            } else {
+                console.error('Error deleting session. Status:', response.status);
+            }
+        })
+        .catch(error => {
+            console.error('Error deleting session:', error);
+        });
+}
+
+function formatSessionCaption(session) {
+    const sessionName = session.name || "Session";
+    const startTime = String(session.startTime || "").replace("T", " ").slice(0, 16);
+    return `${sessionName} [${startTime}]`;
+}
+
+function setSessionEditorValues(modal, session) {
+    const form = modal.querySelector("#sessionEditorForm");
+    const startDate = dateFromSessionValue(session.startTime) || nextQuarterDate(new Date());
+    const rawEndDate = dateFromSessionValue(session.endTime);
+    const durationSeconds = normalizeDurationSeconds(
+        rawEndDate && rawEndDate > startDate
+            ? Math.round((rawEndDate.getTime() - startDate.getTime()) / 1000)
+            : SESSION_DURATION_DEFAULT_SECONDS
+    );
+    const start = splitDateTimeValue(startDate);
+
+    modal.querySelector("#sessionEditorName").value = session.name || "";
+    setSessionStartDateControls(form, start.date);
+    ensureSelectOption(form.querySelector("#sessionEditorStartTime"), start.time);
+    modal.querySelector("#sessionEditorStartTime").value = start.time;
+    modal.querySelector("#sessionEditorDuration").value = String(durationSeconds);
+    updateSessionDurationDisplay(form);
+    updateSessionEndPreview(form);
+}
+
+function splitDateTimeValue(value) {
+    const localValue = toDateTimeLocalValue(value || new Date());
+    const [date, time] = localValue.split("T");
+    return {date: date || "", time: time || ""};
+}
+
+function dateFromSessionValue(value) {
+    if (!value) return null;
+    const date = value instanceof Date ? value : new Date(String(value).replace(" ", "T"));
+    return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function nextQuarterDate(value) {
+    const now = new Date();
+    const date = new Date(value);
+    date.setSeconds(0, 0);
+    const minutes = date.getMinutes();
+    const remainder = minutes % SESSION_START_STEP_MINUTES;
+    if (remainder !== 0) {
+        date.setMinutes(minutes + SESSION_START_STEP_MINUTES - remainder);
+    }
+    while (date < now) {
+        date.setMinutes(date.getMinutes() + SESSION_START_STEP_MINUTES);
+    }
+    return date;
+}
+
+function sessionStartDateValue(form) {
+    const date = sessionStartDateControlValue(form);
+    const time = form.querySelector("#sessionEditorStartTime").value;
+    if (!date || !time) return null;
+    const value = new Date(`${date}T${time}`);
+    if (Number.isNaN(value.getTime())) return null;
+    return formatDateTimeForSessionDisplay(value).startsWith(`${date} ${time}`) ? value : null;
+}
+
+function sessionStartDateControlValue(form) {
+    const year = form.querySelector("#sessionEditorStartYear").value;
+    const month = form.querySelector("#sessionEditorStartMonth").value;
+    const day = form.querySelector("#sessionEditorStartDay").value;
+    return year && month && day ? `${year}-${month}-${day}` : "";
+}
+
+function setSessionStartDateControls(form, date) {
+    const [year, month, day] = date.split("-");
+    ensureSelectOption(form.querySelector("#sessionEditorStartYear"), year);
+    form.querySelector("#sessionEditorStartYear").value = year;
+    form.querySelector("#sessionEditorStartMonth").value = month;
+    refreshSessionStartDayOptions(form, day);
+    form.querySelector("#sessionEditorStartDay").value = day;
+}
+
+function ensureSelectOption(select, value) {
+    if (!value || Array.from(select.options).some(option => option.value === value)) return;
+
+    const option = document.createElement("option");
+    option.value = value;
+    option.textContent = value;
+    select.appendChild(option);
+}
+
+function refreshSessionStartDayOptions(form, preferredDay = form.querySelector("#sessionEditorStartDay").value) {
+    const year = Number(form.querySelector("#sessionEditorStartYear").value);
+    const month = Number(form.querySelector("#sessionEditorStartMonth").value);
+    const daySelect = form.querySelector("#sessionEditorStartDay");
+    const daysInMonth = Number.isInteger(year) && Number.isInteger(month)
+        ? new Date(year, month, 0).getDate()
+        : 31;
+    const selectedDay = Math.min(Number(preferredDay) || 1, daysInMonth);
+
+    cleanUpContainer(daySelect);
+    for (let day = 1; day <= daysInMonth; day += 1) {
+        const option = document.createElement("option");
+        option.value = String(day).padStart(2, "0");
+        option.textContent = String(day).padStart(2, "0");
+        daySelect.appendChild(option);
+    }
+    daySelect.value = String(selectedDay).padStart(2, "0");
+}
+
+function isOriginalPastSessionStart(modal, startDate) {
+    const original = modal.dataset.session ? JSON.parse(modal.dataset.session) : null;
+    const originalStart = dateFromSessionValue(original?.startTime);
+    return originalStart
+        && originalStart < new Date()
+        && Math.abs(originalStart.getTime() - startDate.getTime()) < 1000;
+}
+
+function sessionDurationSeconds(form) {
+    return normalizeDurationSeconds(Number(form.querySelector("#sessionEditorDuration").value));
+}
+
+function normalizeDurationSeconds(value) {
+    const bounded = Math.min(
+        SESSION_DURATION_MAX_SECONDS,
+        Math.max(SESSION_DURATION_MIN_SECONDS, Number.isFinite(value) ? value : SESSION_DURATION_DEFAULT_SECONDS)
+    );
+    return Math.round(bounded / SESSION_DURATION_STEP_SECONDS) * SESSION_DURATION_STEP_SECONDS;
+}
+
+function addSeconds(date, seconds) {
+    return new Date(date.getTime() + seconds * 1000);
+}
+
+function updateSessionDurationDisplay(form) {
+    const duration = sessionDurationSeconds(form);
+    form.querySelector("#sessionEditorDuration").value = String(duration);
+    form.querySelector("#sessionEditorDurationLabel").textContent = formatDuration(duration);
+}
+
+function updateSessionEndPreview(form) {
+    const start = sessionStartDateValue(form);
+    const duration = sessionDurationSeconds(form);
+    form.querySelector("#sessionEditorEndDisplay").value = start
+        ? formatDateTimeForSessionDisplay(addSeconds(start, duration))
+        : "";
+}
+
+function formatDuration(seconds) {
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const remainingSeconds = seconds % 60;
+    const parts = [];
+    if (hours) parts.push(`${hours}h`);
+    if (minutes) parts.push(`${minutes}m`);
+    if (remainingSeconds || parts.length === 0) parts.push(`${remainingSeconds}s`);
+    return parts.join(" ");
+}
+
+function formatDateTimeForSessionDisplay(date) {
+    return formatDateTime(date).slice(0, 16);
 }
 
 function setupEventMetadata(eventId) {
     let modal = document.getElementById("modalSetupEventMetadata");
-    let jsonEditorContainer = modal.querySelector("#jsonEditor");
+    let metadataRows = modal.querySelector("#metadataEditorRows");
 
-    cleanUpContainer(jsonEditorContainer);
+    cleanUpContainer(metadataRows);
     apiFetch(`/api/events/${eventId}`, {
         method: 'GET',
         headers: {
@@ -729,12 +1187,7 @@ function setupEventMetadata(eventId) {
             let metadata = data.metadata;
 
             modal.querySelector("#modalSetupEventMetadataTitle").textContent = 'Metadata of Event ' + eventName;
-            const options = {
-                "mode": "text",
-                "indentation": 2
-            };
-
-            jsonEditorContainer.editor = new JSONEditor(jsonEditorContainer, options, metadata);
+            renderMetadataRows(modal, metadata || {});
             modal.dataset.event = JSON.stringify(data);
             modal.style.display = "block";
 
@@ -743,6 +1196,95 @@ function setupEventMetadata(eventId) {
             console.error('Error updating event:', error);
             // Error handling for network issues
         });
+}
+
+function renderMetadataRows(modal, metadata) {
+    const entries = Object.entries(metadata);
+    if (entries.length === 0) {
+        addMetadataRow(modal);
+        return;
+    }
+    entries.forEach(([key, value]) => addMetadataRow(modal, key, value));
+}
+
+function addMetadataRow(modal, key = "", value = "") {
+    const tbody = modal.querySelector("#metadataEditorRows");
+    const row = tbody.appendChild(document.createElement("tr"));
+    const type = metadataValueType(value);
+    row.innerHTML = `
+        <td><input type="checkbox" class="metadata-row-selected"></td>
+        <td><input type="text" class="metadata-key-input"></td>
+        <td><input type="text" class="metadata-value-input"></td>
+        <td>
+            <select class="metadata-type-select">
+                <option value="string">Text</option>
+                <option value="number">Number</option>
+                <option value="boolean">Boolean</option>
+                <option value="json">JSON</option>
+            </select>
+        </td>
+    `;
+    row.querySelector(".metadata-key-input").value = key;
+    row.querySelector(".metadata-value-input").value = metadataValueText(value, type);
+    row.querySelector(".metadata-type-select").value = type;
+}
+
+function deleteSelectedMetadataRows(modal) {
+    modal.querySelectorAll("#metadataEditorRows tr").forEach(row => {
+        if (row.querySelector(".metadata-row-selected")?.checked)
+            row.remove();
+    });
+    if (modal.querySelectorAll("#metadataEditorRows tr").length === 0)
+        addMetadataRow(modal);
+}
+
+function collectEventMetadata(modal) {
+    const metadata = {};
+    for (const row of modal.querySelectorAll("#metadataEditorRows tr")) {
+        const key = row.querySelector(".metadata-key-input").value.trim();
+        if (!key) continue;
+
+        const valueText = row.querySelector(".metadata-value-input").value;
+        const type = row.querySelector(".metadata-type-select").value;
+        metadata[key] = metadataValueFromText(valueText, type);
+    }
+    return metadata;
+}
+
+function metadataValueType(value) {
+    if (typeof value === "number") return "number";
+    if (typeof value === "boolean") return "boolean";
+    if (value !== null && typeof value === "object") return "json";
+    return "string";
+}
+
+function metadataValueText(value, type) {
+    if (type === "json") return JSON.stringify(value);
+    if (value === null || value === undefined) return "";
+    return String(value);
+}
+
+function metadataValueFromText(value, type) {
+    if (type === "number") {
+        const number = Number(value);
+        if (!Number.isFinite(number))
+            throw new Error("Invalid number metadata value");
+        return number;
+    }
+    if (type === "boolean")
+        return value === "true";
+    if (type === "json")
+        return JSON.parse(value || "null");
+    return value;
+}
+
+function saveEventMetadata(modal, closeModal) {
+    try {
+        submitEventMetadata(collectEventMetadata(modal), modal, closeModal);
+    } catch (error) {
+        console.error('Error parsing metadata:', error);
+        alert("Please check metadata values. JSON values must be valid JSON and number values must be numeric.");
+    }
 }
 
 export function submitEventMetadata(metadata, modal, closeModal = false) {
@@ -856,37 +1398,6 @@ function deleteEvent(eventId) {
     }
 }
 
-function addNewSession(form) {
-    const modal = form.closest("#modalSetupEventSessions");
-    const eventId = modal.dataset.eventId;
-    const sessionName = form.querySelector("#newSessionName").value;
-    const sessionStartTime = formatDateTime(new Date(form.querySelector("#newSessionStartTime").value));
-    const sessionEndTime = formatDateTime(new Date(form.querySelector("#newSessionEndTime").value));
-
-    const sessionPayload = {
-        name: sessionName,
-        eventId: eventId,
-        startTime: sessionStartTime,
-        endTime: sessionEndTime
-    };
-
-    apiFetch(`/api/events/${eventId}/sessions`, {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify(sessionPayload)
-    })
-        .then(response => {
-            if (response.status === 201) {
-                refreshEventSessions(modal, eventId);
-            } else {
-                console.error('Error creating session. Status:', response.status);
-            }
-        })
-        .catch(error => {
-            console.error('Error creating session:', error);
-        });
-}
-
 function showAddEventModal() {
     const modal = document.getElementById("modalAddEvent");
     modal.querySelector("#eventName").value = "";
@@ -928,6 +1439,21 @@ function formatDateTime(date) {
     const seconds = String(date.getSeconds()).padStart(2, '0');
 
     return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+}
+
+function toDateTimeLocalValue(value) {
+    const date = value instanceof Date ? value : new Date(String(value).replace(" ", "T"));
+    if (Number.isNaN(date.getTime())) {
+        return "";
+    }
+
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
 }
 // Function to submit a new event to the API
 function submitEvent(eventData, copyEventFrom) {

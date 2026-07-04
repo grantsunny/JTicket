@@ -305,6 +305,209 @@ button:hover {
     text-align: left; /* Align form elements to the left */
 }
 
+.event-list-row {
+    vertical-align: top;
+}
+
+.event-table .event-name-cell,
+.event-table .event-poster-cell,
+.event-table .event-venue-cell,
+.event-table .event-actions-column {
+    vertical-align: middle;
+}
+
+.event-name-cell,
+.event-poster-cell,
+.event-venue-cell,
+.event-actions-cell {
+    white-space: nowrap;
+}
+
+.event-name-link {
+    cursor: pointer;
+}
+
+.event-name-editor {
+    box-sizing: border-box;
+    min-width: 160px;
+}
+
+.event-poster-panel {
+    display: grid;
+    gap: 4px;
+    justify-items: center;
+}
+
+.event-poster-thumbnail {
+    display: none;
+    width: 52px;
+    height: 72px;
+    object-fit: cover;
+    border: 1px solid #ccc;
+    cursor: pointer;
+}
+
+.event-poster-empty {
+    color: #666;
+    font-style: italic;
+}
+
+.poster-preview-modal-content {
+    max-width: 760px;
+    width: min(760px, calc(100% - 40px));
+}
+
+#posterPreviewImage {
+    display: block;
+    max-width: 100%;
+    max-height: 75vh;
+    margin: 0 auto;
+    object-fit: contain;
+}
+
+.metadata-modal-content {
+    max-width: 720px;
+    width: min(720px, calc(100% - 40px));
+}
+
+.metadata-editor-table {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: left;
+}
+
+.metadata-editor-table th,
+.metadata-editor-table td {
+    border: 1px solid #ccc;
+    padding: 6px;
+}
+
+.metadata-editor-table th {
+    background-color: #e8eef5;
+}
+
+.metadata-key-input,
+.metadata-value-input,
+.metadata-type-select {
+    box-sizing: border-box;
+    width: 100%;
+}
+
+.metadata-editor-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 6px;
+    margin-top: 8px;
+}
+
+.event-actions-cell {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+}
+
+.event-sessions-cell {
+    min-width: 320px;
+}
+
+.event-sessions-panel {
+    display: grid;
+    grid-template-rows: 1fr auto;
+    gap: 8px;
+    min-height: 100%;
+}
+
+.event-session-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.event-session-item {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    white-space: nowrap;
+}
+
+.event-session-link {
+    cursor: pointer;
+}
+
+.event-session-actions {
+    display: flex;
+    gap: 6px;
+    justify-content: flex-end;
+    align-self: end;
+}
+
+.event-session-empty {
+    color: #666;
+    font-style: italic;
+    padding: 4px 0;
+}
+
+#sessionEditorForm,
+#sessionEditorForm table,
+#sessionEditorForm td {
+    text-align: left;
+}
+
+.session-editor-modal-content {
+    max-width: 720px;
+    width: min(720px, calc(100% - 40px));
+}
+
+#sessionEditorForm table {
+    width: 100%;
+}
+
+#sessionEditorForm td:first-child {
+    vertical-align: middle;
+    white-space: nowrap;
+}
+
+#sessionEditorName {
+    box-sizing: border-box;
+    width: 100%;
+}
+
+.session-start-duration-fields {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+}
+
+.session-date-time-fields {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 8px;
+}
+
+.session-date-time-fields input,
+.session-date-time-fields select {
+    box-sizing: border-box;
+}
+
+.session-duration-fields {
+    display: grid;
+    grid-template-columns: minmax(180px, 1fr) 70px;
+    gap: 8px;
+    align-items: center;
+    flex: 1 1 260px;
+    min-width: 260px;
+}
+
+.session-duration-fields input {
+    width: 100%;
+}
+
+#sessionEditorEndDisplay {
+    box-sizing: border-box;
+    width: 100%;
+}
+
 #orderSummary {
     margin: 0 0 10px;
     font-weight: bold;

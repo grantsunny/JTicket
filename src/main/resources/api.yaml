@@ -148,6 +148,88 @@ paths:
           description: Event deleted successfully
         '409':
           description: Event failed due to constraints
+  /events/{eventId}/poster:
+    get:
+      summary: Download event poster
+      operationId: getEventPoster
+      parameters:
+        - name: eventId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Event poster image
+          content:
+            image/png:
+              schema:
+                type: string
+                format: binary
+            image/jpeg:
+              schema:
+                type: string
+                format: binary
+            image/webp:
+              schema:
+                type: string
+                format: binary
+        '404':
+          description: Poster not found
+    post:
+      summary: Upload or replace event poster
+      operationId: uploadEventPoster
+      parameters:
+        - name: eventId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          image/png:
+            schema:
+              type: string
+              format: binary
+          image/jpeg:
+            schema:
+              type: string
+              format: binary
+          image/webp:
+            schema:
+              type: string
+              format: binary
+          application/octet-stream:
+            schema:
+              type: string
+              format: binary
+      responses:
+        '204':
+          description: Poster uploaded successfully
+        '400':
+          description: Invalid input
+        '404':
+          description: Event not found
+        '413':
+          description: Poster image is too large
+        '415':
+          description: Unsupported media type
+    delete:
+      summary: Clear event poster
+      operationId: deleteEventPoster
+      parameters:
+        - name: eventId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Poster deleted successfully
         '404':
           description: Event not found
 
