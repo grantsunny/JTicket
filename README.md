@@ -1,4 +1,6 @@
-# JTicket - A Java based open source ticketing system
+![JTicket project icon](src/main/resources/static/img/jticket.png)
+
+# JTicket - A Java-based open source ticketing system
 
 ## Overview
 Many ticketing businesses still run on quite out-of-date technology stacks, but ticketing can be built with emerging
@@ -11,7 +13,7 @@ stay tied to old-fashioned technology choices: it can be cloud-native, API-first
 run locally.
 
 Highlights:
-* Back-office UI for venue, event, session, pricing, and order management
+* Back-office UI for venue, event, session, pricing, poster, and order management
 * OpenAPI-described REST APIs for integration and automation
 * Spring Boot and Spring Security with OAuth2/OIDC support
 * Derby-backed development mode for fast local testing
@@ -21,45 +23,55 @@ Highlights:
 This project is open-sourced under the Apache 2.0 license (https://www.apache.org/licenses/). Contributions, issues,
 testing feedback, and architecture discussions are welcome.
 
-## Usages
-This project can be built directly with command as simple as follows
-```
+## Usage
+Build the project with Maven Daemon:
+
+```bash
 mvnd clean package
 ```
-If `mvnd` is not available, use `mvn clean package`.
 
-or if we wanted to build via Docker
-```
-docker build
-```
-Using `java -jar` or `docker run` to start the ticketing system.
+If `mvnd` is not available, use Maven:
 
-The back office UI will be listening at port of %HOST%/8080 and APIs will be available at %HOST/api. 
-Back-office pages include venue management, event/session/pricing management, and operator order management.
-Specified to API, you can download the swagger spec (OpenAPI v3) via endpoint of /api/swagger.
-There are two profiles for development and production, the development profile uses Apache Derby as persistence layer,
-whereas the production profile uses CockroachDB (compliance with PostgreSQL).
-
-Development mode (Derby as in memory database, swagger enabled, security disabled)
+```bash
+mvn clean package
 ```
+
+To build a container image:
+
+```bash
+docker build .
+```
+
+Start the ticketing system with `java -jar` or `docker run`. The back-office UI is available at
+`http://HOST:8080/`, and APIs are available under `http://HOST:8080/api/`.
+Back-office pages include venue management, event/session/pricing management, and operator order management. In the
+development profile, Swagger UI is available at `/api-doc`, and the OpenAPI document is available at `/api/doc`.
+There are two profiles for development and production. The development profile uses Apache Derby for local persistence,
+whereas the production profile uses CockroachDB/PostgreSQL-compatible persistence.
+
+Development mode (Derby file-backed database, Swagger enabled, security disabled):
+
+```bash
 java -Dspring.profiles.active=dev -jar jticket-VERSION.jar
 ```
-Production mode (CockroachDB as in memory database, swagger disabled, security enabled)
-```
+
+Production mode (CockroachDB/PostgreSQL database, Swagger disabled, security enabled):
+
+```bash
 java -Dspring.profiles.active=production -jar jticket-VERSION.jar
 ```
-As they are both in-memory SQL database, we could feel the power 
-of database without adding too much redundant cache and way to keep consistence in application logic. This is the right 
-way to use technologies I believe! 
 
 ## How it works (API flow)
 
-### Roles 
-We assume following roles in the context of JTicket. 
-* **Operator**: On behalf the event organizer, maintain and design the venue and seat layout, supply the metadata of event and session, define the pricing of a given seat at venue, area or seat level, and monitor event/session orders and check-in status.
-* **Customer**: The audience of the event, will check the overview and make seat selection and then place order to buy a ticket for one or more seats. 
-* **Attendant**: Could be a human or a gateway equipment. Check the evidence of attendance (mostly a QR code) on a ticket before approving the ticket holder to enter the venue for a event.  
-* **PaymentAgent**: A system handles the payment and cash-in from customer, expect to trigger API of JTicket upon a successful payment for a given order. Out of the scope of JTicket. 
+### Roles
+JTicket uses the following roles:
+
+* **Operator**: Maintains venue layouts, event and session metadata, pricing at venue, area, or seat level, and
+  event/session order and check-in status.
+* **Customer**: Reviews event information, selects seats, and places orders for one or more tickets.
+* **Attendant**: Checks attendance evidence, usually a QR code, before admitting a ticket holder to an event.
+* **PaymentAgent**: External payment system that calls JTicket after a successful payment. This role is out of scope
+  for the built-in back office.
 
 #### Permissions mapping with OAuth2 scope
 
@@ -71,7 +83,7 @@ We assume following roles in the context of JTicket.
 | PaymentAgent  | order:pay                                          |
 
 ### Ticket provision
-![Provision of event](https://www.plantuml.com/plantuml/proxy?cache=no&src=https://raw.githubusercontent.com/grantsunny/JTicket/refs/heads/main/uml/provision.plantuml)
+![Ticket provision flow](https://www.plantuml.com/plantuml/proxy?cache=no&src=https://raw.githubusercontent.com/grantsunny/JTicket/refs/heads/main/uml/provision.plantuml)
 
 Event pricing can be managed at default, area, and seat level. Seat-level pricing overrides area pricing, and area
 pricing overrides the event default. Pricing lookup APIs return both the direct price assignment, when one exists, and
@@ -80,14 +92,14 @@ pricing, but they remain selectable in the pricing UI so pricing can be restored
 assigned to any default, area, or seat pricing rule, and pricing cannot be changed for seats that already have orders.
 
 ### Ticket purchase
-![Provision of event](https://www.plantuml.com/plantuml/proxy?cache=no&src=https://raw.githubusercontent.com/grantsunny/JTicket/refs/heads/main/uml/order.plantuml)
+![Ticket purchase flow](https://www.plantuml.com/plantuml/proxy?cache=no&src=https://raw.githubusercontent.com/grantsunny/JTicket/refs/heads/main/uml/order.plantuml)
 
 Orders are associated with an event session. Create at least one session for an event before placing orders. Operators
 with `order:read:all` can use the Order Management UI to select an event and session, view matching orders, inspect paid
 totals, and drill into area seat occupation and check-in state.
 
-### Ticket checkin
-![Provision of event](https://www.plantuml.com/plantuml/proxy?cache=no&src=https://raw.githubusercontent.com/grantsunny/JTicket/refs/heads/main/uml/checkin.plantuml)
+### Ticket check-in
+![Ticket check-in flow](https://www.plantuml.com/plantuml/proxy?cache=no&src=https://raw.githubusercontent.com/grantsunny/JTicket/refs/heads/main/uml/checkin.plantuml)
 
 ## Authentication
 Production uses standard OAuth 2.0 and OpenID Connect. Any compatible OIDC provider can be used; Auth0 is the
@@ -160,11 +172,11 @@ The `dev` profile remains unauthenticated. Production requires authentication an
 on individual endpoints.
 
 ## Scaling
-JTicket run as a replicated deployment with CockroachDB in a hybrid mode. Durable StatefulSet DB nodes provide 
-persistent storage, while JTicket deployment starts with memory-backed DB nodes as side-car. 
+JTicket can run as a replicated deployment with CockroachDB in a hybrid mode. Durable StatefulSet DB nodes provide
+persistent storage, while each JTicket deployment starts with memory-backed DB nodes as sidecars.
 
-By such configuration, JTicket can scale horizontally and work with completely in-memory database! 
+This configuration lets JTicket scale horizontally while keeping database access close to the application.
 
 ## What's next
 1. Customer-facing purchase portal
-2. The Attendance UI - will it be something like a Android application or SDK? 
+2. Attendance UI, Android application, or SDK

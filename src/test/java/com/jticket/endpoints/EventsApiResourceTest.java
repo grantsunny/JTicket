@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import java.lang.reflect.Field;
 import java.lang.reflect.Proxy;
 import java.io.File;
+import java.io.InputStream;
 import java.nio.file.Files;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
@@ -277,7 +278,19 @@ class EventsApiResourceTest {
     }
 
     @Test
-    void posterDownloadReturnsNotFoundWhenMissing() {
+    void posterDownloadReturnsDefaultPosterWhenMissing() throws Exception {
+        UUID eventId = UUID.randomUUID();
+        loadedEvent = new Event().id(eventId);
+
+        Response response = resource.getEventPoster(eventId);
+
+        assertEquals(200, response.getStatus());
+        assertEquals("image/png", response.getMediaType().toString());
+        assertArrayEquals(defaultPosterBytes(), (byte[]) response.getEntity());
+    }
+
+    @Test
+    void posterDownloadReturnsNotFoundWhenEventDoesNotExist() {
         Response response = resource.getEventPoster(UUID.randomUUID());
 
         assertEquals(404, response.getStatus());
@@ -392,5 +405,12 @@ class EventsApiResourceTest {
                 0x0d, 0x0a, 0x1a, 0x0a,
                 0x00
         };
+    }
+
+    private static byte[] defaultPosterBytes() throws Exception {
+        try (InputStream stream = EventsApiResourceTest.class.getResourceAsStream("/static/img/jticket.png")) {
+            assertNotNull(stream);
+            return stream.readAllBytes();
+        }
     }
 }
