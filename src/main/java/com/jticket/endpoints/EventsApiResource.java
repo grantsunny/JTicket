@@ -6,6 +6,7 @@ import static com.jticket.security.OAuth2Scopes.ORDER_READ_ALL;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.Files;
 import java.security.KeyFactory;
 import java.security.NoSuchAlgorithmException;
@@ -77,6 +78,8 @@ public class EventsApiResource implements EventsApi {
 
 	@Value("${ticket.event.poster.max-bytes:5242880}")
 	private long maxEventPosterBytes = 5L * 1024L * 1024L;
+
+	private static final String DEFAULT_POSTER_PATH = "/static/img/jticket.png";
 
 	private PublicKey publicKey;
 
@@ -655,8 +658,11 @@ public class EventsApiResource implements EventsApi {
 	public Response getEventPoster(UUID eventId) {
 		try {
 			EventPoster poster = repository.loadEventPoster(eventId);
-			if (poster == null)
-				return Response.status(Response.Status.NOT_FOUND).build();
+			if (poster == null) {
+				if (repository.loadEvent(eventId) == null)
+					return Response.status(Response.Status.NOT_FOUND).build();
+				poster = defaultEventPoster();
+			}
 
 			return Response.ok(poster.content(), poster.contentType()).build();
 		} catch (SQLException e) {
@@ -767,6 +773,16 @@ public class EventsApiResource implements EventsApi {
 			return "image/webp";
 
 		return null;
+	}
+
+	private EventPoster defaultEventPoster() {
+		try (InputStream stream = getClass().getResourceAsStream(DEFAULT_POSTER_PATH)) {
+			if (stream == null)
+				throw new IllegalStateException("Default event poster is missing: " + DEFAULT_POSTER_PATH);
+			return new EventPoster("image/png", stream.readAllBytes());
+		} catch (IOException e) {
+			throw new IllegalStateException("Default event poster could not be loaded", e);
+		}
 	}
 
 	@Override
