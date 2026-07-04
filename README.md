@@ -1,4 +1,6 @@
-![JTicket project icon](src/main/resources/static/img/jticket.png)
+<img src="src/main/resources/static/img/jticket.png"
+     alt="JTicket project icon"
+     width="128">
 
 # JTicket - A Java-based open source ticketing system
 
