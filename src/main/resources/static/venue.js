@@ -6,7 +6,7 @@ window.jticket = {
     fetchVenues
 }
 
-let areaNames = {}; // This object will store the mapping of areaId to area names
+let areaNames = {};
 
 function uploadTemplate(form) {
     const formData = new FormData(form);
@@ -18,7 +18,7 @@ function uploadTemplate(form) {
         .then(response => {
             if (response.ok) {
                 alert('Upload successful!');
-                window.location.href = '/'; // Redirect to the main page
+                window.location.href = '/';
             } else {
                 throw new Error(`Server returned status code ${response.status}`);
             }
@@ -30,21 +30,17 @@ function uploadTemplate(form) {
 }
 
 function fetchVenues() {
-    // Replace with your actual API endpoint
     const dropdownContainer = document.querySelector('.venue-dropdown-list-container');
-    dropdownContainer.innerHTML = ''; // Clear previous content
+    dropdownContainer.innerHTML = '';
 
-    // Create an initially empty dropdown menu
-    let dropdown = document.createElement('select');
+    const dropdown = document.createElement('select');
     dropdown.name = 'venue';
 
-    // Default option
-    let defaultOption = document.createElement('option');
+    const defaultOption = document.createElement('option');
     defaultOption.textContent = '--- choose one venue ---';
     defaultOption.value = '';
     dropdown.appendChild(defaultOption);
 
-    // Event listener for venue selection
     dropdown.addEventListener('change', function() {
         const selectedVenueId = this.value;
         if (selectedVenueId) {
@@ -55,15 +51,13 @@ function fetchVenues() {
         }
     });
 
-    // Append the empty dropdown to the container
     dropdownContainer.appendChild(dropdown);
 
-    // Fetch venues and populate the dropdown
     apiFetch('/api/venues')
         .then(response => response.json())
         .then(data => {
             data.forEach(venue => {
-                let option = document.createElement('option');
+                const option = document.createElement('option');
                 option.value = venue.id;
                 option.textContent = venue.name;
                 dropdown.appendChild(option);
@@ -72,19 +66,17 @@ function fetchVenues() {
 }
 
 function fetchAreaNames(venueId) {
-    // Replace with your actual API endpoint, use the venueId to fetch areas
     return apiFetch(`/api/venues/${venueId}/areas`)
         .then(response => response.json())
         .then(areas => {
-            areaNames = {}; // Reset the areaNames object
+            areaNames = {};
             areas.forEach(area => {
-                areaNames[area.id] = area.name; // Map 'id' from JSON to 'areaId'
+                areaNames[area.id] = area.name;
             });
         });
 }
 
 function attachEventListeners(venueId) {
-    // Event delegation for mouseover on SVG rect elements
     document.querySelector('.svg-container').addEventListener('mouseover', function(event) {
         if (event.target.tagName === 'rect' && event.target.getAttribute('areaid')) {
             const areaId = event.target.getAttribute('areaid');
@@ -92,14 +84,12 @@ function attachEventListeners(venueId) {
         }
     });
 
-    // Event delegation for mouseout on SVG rect elements
     document.querySelector('.svg-container').addEventListener('mouseout', function(event) {
         if (event.target.tagName === 'rect' && event.target.getAttribute('areaid')) {
             hideAreaName();
         }
     });
 
-    // Event delegation for click on SVG rect elements
     document.querySelector('.svg-container').addEventListener('click', function(event) {
         if (event.target.tagName === 'rect' && event.target.getAttribute('areaid')) {
             const areaId = event.target.getAttribute('areaid');
@@ -119,20 +109,17 @@ function fetchSeatsForArea(venueId, areaId) {
 
 function displaySeats(seats) {
     const seatsContainer = document.getElementById('seatsContainer');
-    seatsContainer.innerHTML = ''; // Clear previous content
+    seatsContainer.innerHTML = '';
 
-    // Create a table
     const table = document.createElement('table');
-    table.className = 'seats-table'; // Add class for styling
+    table.className = 'seats-table';
 
-    // Organize seats by rows
     const seatRows = seats.reduce((rows, seat) => {
         if (!rows[seat.row]) rows[seat.row] = [];
         rows[seat.row].push(seat);
         return rows;
     }, {});
 
-    // Create table rows and cells
     Object.keys(seatRows).sort((a, b) => a - b).forEach(row => {
         const tr = table.insertRow();
         seatRows[row].sort((a, b) => a.col - b.col).forEach(seat => {
@@ -144,10 +131,8 @@ function displaySeats(seats) {
             td.dataset.selected = "false";
             td.className = seat.available ? 'available-seat' : 'unavailable-seat';
 
-            // Store the original border for restoration later
             const originalBorder = td.style.border;
 
-            // Add click event listener for seat selection
             if (seat.available) {
                 td.addEventListener('click', function () {
                     this.dataset.selected = this.dataset.selected === "false" ? "true" : "false";
@@ -159,11 +144,10 @@ function displaySeats(seats) {
     });
 
     seatsContainer.appendChild(table);
-    // Create and append the button
     const orderSeatsButton = document.createElement('button');
     orderSeatsButton.id = 'orderSeatsButton';
     orderSeatsButton.textContent = 'View Seat Details';
-    orderSeatsButton.disabled = true; // Initially disabled
+    orderSeatsButton.disabled = true;
     orderSeatsButton.addEventListener('click', handleOrderButtonClick);
     seatsContainer.appendChild(orderSeatsButton);
 }

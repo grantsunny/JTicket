@@ -1,6 +1,6 @@
 FROM maven:3.9.16-eclipse-temurin-21 AS service-build
 WORKDIR /
-ADD . .
+COPY . .
 RUN mvn clean package
 
 FROM eclipse-temurin:21-jre-noble

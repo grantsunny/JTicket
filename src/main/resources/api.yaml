@@ -281,7 +281,7 @@ paths:
           description: Duplicated session (name) found
   /events/{eventId}/sessions/{sessionId}:
     post:
-      summary: Call the API prior to enter the gateway and redempt the ticket. 
+      summary: Redeem a ticket token for event-session check-in.
       operationId: _checkIn
       parameters:
         - name: token
@@ -303,15 +303,13 @@ paths:
       responses:
         '200':
           description: > 
-            this endpoint will make seat check-in via ticket token. 
-            system will do the validation of the ticket and update seat check-in status
-            accordingly. useful for use case case of redemption or check-in.
+            Validates a ticket JWT for the event and session, then updates the seat check-in status.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/TicketingSeat'
         '400':
-          description: check-in fail for any reason, this could be caused by invalid ticket token, etc.    
+          description: Check-in failed because the ticket token or requested event/session/seat is invalid.
     
     get:
       operationId: getSession
@@ -1273,7 +1271,7 @@ paths:
           description: Order not found
 
     patch:
-      summary: Accomplish a payment to a order
+      summary: Mark an order as paid
       operationId: payOrder
       description: Mark an order as paid. Intended for payment agents with order:pay; no customer owner check is required.
       parameters:

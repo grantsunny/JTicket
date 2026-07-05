@@ -19,27 +19,28 @@ import java.util.Map;
 @MappedJdbcTypes(JdbcType.CLOB)
 public class MetadataHandler extends BaseTypeHandler<Map<String, Object>> {
 
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+
     private String metadataMapToJsonString(Map<String, Object> metadataMap) {
-        String metadataJson;
         try {
-            metadataJson = new ObjectMapper().writeValueAsString(metadataMap);
+            return OBJECT_MAPPER.writeValueAsString(metadataMap);
         } catch (JsonProcessingException e) {
-            metadataJson = "{}";
+            return "{}";
         }
-        return metadataJson;
     }
 
     @SuppressWarnings("unchecked")
-	private Map<String, Object> parseMetadata(String rawMetadata) {
-        Map<String, Object> metadata;
+    private Map<String, Object> parseMetadata(String rawMetadata) {
+        if (rawMetadata == null || rawMetadata.isBlank())
+            return new HashMap<>();
+
         try {
-            metadata = new ObjectMapper().readValue(
+            return OBJECT_MAPPER.readValue(
                     rawMetadata,
                     Map.class);
         } catch (JsonProcessingException ex) {
-            metadata = new HashMap<>();
+            return new HashMap<>();
         }
-        return metadata;
     }
 
     @Override
@@ -51,7 +52,7 @@ public class MetadataHandler extends BaseTypeHandler<Map<String, Object>> {
     @Override
     public Map<String, Object> getNullableResult(ResultSet rs, String columnName) throws SQLException {
         if (!columnName.equalsIgnoreCase("metadata"))
-            throw new SQLException("FIXME: Unexpected mapping handling here for column " + columnName);
+            throw new SQLException("Unexpected metadata mapping for column " + columnName);
 
         String jsonString = rs.getString(columnName);
         return parseMetadata(jsonString);
@@ -60,7 +61,7 @@ public class MetadataHandler extends BaseTypeHandler<Map<String, Object>> {
     @Override
     public Map<String, Object> getNullableResult(ResultSet rs, int columnIndex) throws SQLException {
         if (!rs.getMetaData().getColumnName(columnIndex).equalsIgnoreCase("metadata"))
-            throw new SQLException("FIXME: Unexpected mapping handling here for column " + rs.getMetaData().getColumnName(columnIndex));
+            throw new SQLException("Unexpected metadata mapping for column " + rs.getMetaData().getColumnName(columnIndex));
 
         String jsonString = rs.getString(columnIndex);
         return parseMetadata(jsonString);
@@ -69,7 +70,7 @@ public class MetadataHandler extends BaseTypeHandler<Map<String, Object>> {
     @Override
     public Map<String, Object> getNullableResult(CallableStatement cs, int columnIndex) throws SQLException {
         if (!cs.getMetaData().getColumnName(columnIndex).equalsIgnoreCase("metadata"))
-            throw new SQLException("FIXME: Unexpected mapping handling here for column " + cs.getMetaData().getColumnName(columnIndex));
+            throw new SQLException("Unexpected metadata mapping for column " + cs.getMetaData().getColumnName(columnIndex));
 
         String jsonString = cs.getString(columnIndex);
         return parseMetadata(jsonString);

@@ -10,6 +10,6 @@ import org.springframework.stereotype.Service;
 public class DerbyDatabaseSchemaInitializer implements ApplicationRunner {
     @Override
     public void run(ApplicationArguments args)  {
-        System.out.println("OpenTicket: Verifying Derby DatabaseSchema... ");
+        System.out.println("JTicket: Verifying Derby DatabaseSchema... ");
     }
 }

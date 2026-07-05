@@ -1,16 +1,16 @@
 @startuml
-mainframe Provision of event for ticketing 
+mainframe Provision event ticketing
 
 actor Operator
-Participant templateEndpoint
-Participant venueEndpoint
-Participant eventEndpoint
+participant templateEndpoint
+participant venueEndpoint
+participant eventEndpoint
 
-
+group create venue from spreadsheet template
 Operator --> templateEndpoint: GET /template
 note over Operator, templateEndpoint
-Edit the excel template to setup event, 
-design venue and seat layout
+Download and edit the spreadsheet template
+to define venue areas and seats.
 end note
 Operator --> templateEndpoint: POST /template
 Operator --> venueEndpoint: GET /venues
@@ -19,26 +19,42 @@ Operator --> venueEndpoint: GET /venues/{venueId}/svg
 Operator --> venueEndpoint: GET /venues/{venueId}/areas
 Operator --> venueEndpoint: GET /venues/{venueId}/areas/{areaId}
 Operator --> venueEndpoint: GET /venues/{venueId}/areas/{areaId}/seats
-Operator --> venueEndpoint: GET /venues/{venueId}/seats
 Operator --> venueEndpoint: GET /venues/{venueId}/seats?areaId={areaId}
 Operator --> venueEndpoint: GET /venues/{venueId}/seats/{seatId}
-
-group create event w/ venue [copy pricing from existing event via X-Copy-From-Id]
-Operator --> eventEndpoint: POST /events
-Operator --> eventEndpoint: GET /events/{eventId}
 end
 
-group configure pricing at global, area or seat level
+group create and maintain event
+Operator --> eventEndpoint: POST /events
+note over Operator, eventEndpoint
+Use X-Copy-From-Id to copy pricing
+from an existing event when needed.
+end note
+Operator --> eventEndpoint: GET /events/{eventId}
+Operator --> eventEndpoint: PUT /events/{eventId}
+Operator --> eventEndpoint: PATCH /events/{eventId}
+Operator --> eventEndpoint: POST /events/{eventId}/poster
+Operator --> eventEndpoint: DELETE /events/{eventId}/poster
+end
+
+group configure pricing
 Operator --> eventEndpoint: POST /events/{eventId}/prices
+Operator --> eventEndpoint: GET /events/{eventId}/prices
+Operator --> eventEndpoint: GET /events/{eventId}/prices/{priceId}
+Operator --> eventEndpoint: DELETE /events/{eventId}/prices/{priceId}
 Operator --> eventEndpoint: PATCH /events/{eventId}/pricing
 Operator --> eventEndpoint: PATCH /events/{eventId}/areas/{areaId}/pricing
 Operator --> eventEndpoint: PATCH /events/{eventId}/seats/{seatId}/pricing
-end 
+end
 
-group add a session with timeframe to given event
+group manage sessions and monitor operations
 Operator --> eventEndpoint: POST /events/{eventId}/sessions
+Operator --> eventEndpoint: GET /events/{eventId}/sessions
 Operator --> eventEndpoint: GET /events/{eventId}/sessions/{sessionId}
+Operator --> eventEndpoint: PUT /events/{eventId}/sessions/{sessionId}
+Operator --> eventEndpoint: DELETE /events/{eventId}/sessions/{sessionId}
+Operator --> eventEndpoint: GET /events/{eventId}/statistics
+Operator --> eventEndpoint: GET /events/{eventId}/sessions/{sessionId}/statistics
+Operator --> eventEndpoint: GET /events/{eventId}/orders
 end
 
 @enduml
-

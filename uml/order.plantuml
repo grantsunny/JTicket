@@ -1,31 +1,43 @@
 @startuml
-mainframe Purchasing of event ticket
+mainframe Purchase event tickets
 
-actor customer
+actor Customer
 boundary paymentAgent
 participant eventEndpoint
 participant orderEndpoint
 
-group get information of event with sellable seats + price
-customer --> eventEndpoint: GET /events
-customer --> eventEndpoint: GET /events/{eventId}
-customer --> eventEndpoint: GET /events/{eventId}/sessions
-customer --> eventEndpoint: GET /events/{eventId}/venue
-customer --> eventEndpoint: GET /events/{eventId}/venue/svg
-
-customer --> eventEndpoint: GET /events/{eventId}/areas
-customer --> eventEndpoint: GET /events/{eventId}/areas/{areaId}
-customer --> eventEndpoint: GET /events/{eventId}/areas/{areaId}/seats
-customer --> eventEndpoint: GET /events/{eventId}/seats/{seatId}
-customer --> eventEndpoint: GET /events/{eventId}/seats/{seatId}/pricing
+group browse event inventory and pricing
+Customer --> eventEndpoint: GET /events
+Customer --> eventEndpoint: GET /events/{eventId}
+Customer --> eventEndpoint: GET /events/{eventId}/sessions
+Customer --> eventEndpoint: GET /events/{eventId}/venue
+Customer --> eventEndpoint: GET /events/{eventId}/venue/svg
+Customer --> eventEndpoint: GET /events/{eventId}/areas
+Customer --> eventEndpoint: GET /events/{eventId}/areas/{areaId}
+Customer --> eventEndpoint: GET /events/{eventId}/areas/{areaId}/seats
+Customer --> eventEndpoint: GET /events/{eventId}/sessions/{sessionId}/areas/{areaId}/seats
+Customer --> eventEndpoint: GET /events/{eventId}/seats/{seatId}
+Customer --> eventEndpoint: GET /events/{eventId}/seats/{seatId}/pricing
 end
 
-group create order and accomplish payment [OAuth2 subject owns customer orders]
-customer --> orderEndpoint: GET /orders
-customer --> orderEndpoint: POST /orders
-customer --> orderEndpoint: GET /orders/{orderId}
-customer --> paymentAgent: Initialize Customer Payment
+group create and pay order
+Customer --> orderEndpoint: GET /orders
+Customer --> orderEndpoint: POST /orders
+Customer --> orderEndpoint: GET /orders/{orderId}
 paymentAgent --> orderEndpoint: PATCH /orders/{orderId}
+note over paymentAgent, orderEndpoint
+Payment requests are idempotent by
+payment channel, transaction id, and amount.
+end note
+end
+
+group post-purchase customer actions
+Customer --> orderEndpoint: DELETE /orders/{orderId}
+Customer --> orderEndpoint: POST /orders/{orderId}/token
+note over Customer, orderEndpoint
+The token request supplies one seatId because
+an order can contain multiple seats.
+end note
 end
 
 @enduml

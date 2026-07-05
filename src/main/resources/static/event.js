@@ -41,14 +41,13 @@ window.jticket = {
 
 function refreshFormEventCopyFromList(selectContainer, venueId) {
     if (venueId) {
-        const apiUrl = `/api/events?venueId=${venueId}`; // Replace with the actual endpoint URL
-        // Make a GET request to the API
+        const apiUrl = `/api/events?venueId=${venueId}`;
         apiFetch(apiUrl, {
             method: 'GET'
         })
             .then(response => response.json())
             .then(data => {
-                selectContainer.innerHTML = '<option value="">Select Event</option>'; // Add an empty option
+                selectContainer.innerHTML = '<option value="">Select Event</option>';
                 data.forEach(event => {
                     const option = document.createElement("option");
                     option.value = event.id;
@@ -64,22 +63,16 @@ function refreshFormEventCopyFromList(selectContainer, venueId) {
 
 
 function fetchEvents() {
-    // Define the API endpoint URL for getting events
-    const apiUrl = '/api/events'; // Replace with the actual endpoint URL
+    const apiUrl = '/api/events';
 
-    // Make a GET request to the API
     apiFetch(apiUrl)
         .then(response => response.json())
         .then(data => {
-            // Display existing events with venue information in the table
             const eventList = document.getElementById("eventList");
             eventList.innerHTML = "";
 
             data.forEach(event => {
-                // Access the venueId from the event
                 const venueId = event.venueId;
-
-                // Get the name of the venue associated with the event's venueId
                 const selectedVenueOption = document.querySelector(`#venueId option[value="${venueId}"]`);
                 const venueName = selectedVenueOption ? selectedVenueOption.textContent : 'Unknown Venue';
 
@@ -172,7 +165,6 @@ function submitNewPricingForm(eventId, newPricingForm) {
         })
         .catch(error => {
             console.error('Error creating event price:', error);
-            // Error handling for network issues
         });
 }
 
@@ -220,7 +212,7 @@ function deleteSelectedPricing(eventId) {
 
 function reloadEventPricing(eventId, container, selectedAreaId, selectedPriceId = container.dataset.selectedPriceId || "") {
 
-    const apiUrl = `/api/events/${eventId}/prices`; // Replace with the actual endpoint URL
+    const apiUrl = `/api/events/${eventId}/prices`;
     Promise.all([
         apiFetch(apiUrl).then(response => response.ok ? response.json() : []),
         apiFetch(`/api/events/${eventId}/areas`).then(response => response.ok ? response.json() : [])
@@ -228,10 +220,10 @@ function reloadEventPricing(eventId, container, selectedAreaId, selectedPriceId 
         .then(([data, areas]) => {
             const selectedPricingId = selectedPriceId || data[0]?.id || "";
             const selectedPricingAreaId = selectedAreaId || areas[0]?.id || null;
-            container.innerHTML = ''; // Clear existing content
+            container.innerHTML = '';
             container.dataset.selectedPriceId = selectedPricingId;
 
-            let tablePriceList = document.createElement("table");
+            const tablePriceList = document.createElement("table");
             tablePriceList.className = "pricing-price-list";
             data.forEach(price => {
                 const row = document.createElement("tr");
@@ -276,7 +268,7 @@ function reloadEventPricing(eventId, container, selectedAreaId, selectedPriceId 
             const venuePanel = document.createElement("div");
             venuePanel.className = "pricing-venue-panel pricing-side-panel";
             workspace.appendChild(venuePanel);
-            let containerArea = document.createElement("div");
+            const containerArea = document.createElement("div");
             containerArea.id = "containerPricingArea";
             containerArea.selectedAreaId = selectedPricingAreaId;
             venuePanel.appendChild(containerArea);
@@ -285,7 +277,7 @@ function reloadEventPricing(eventId, container, selectedAreaId, selectedPriceId 
             seatPanel.className = "pricing-seat-panel";
             workspace.appendChild(seatPanel);
 
-            let containerSeats = document.createElement("div");
+            const containerSeats = document.createElement("div");
             containerSeats.id = "containerPricingSeats";
             seatPanel.appendChild(containerSeats);
 
@@ -828,8 +820,8 @@ function populateSessionStartTimeOptions(select) {
 
 
 function setupEventPricing(eventName, eventId) {
-    var modal = document.getElementById("modelSetupEventPricing");
-    var modalEventPricingList = modal.querySelector("#modalEventPricingList");
+    const modal = document.getElementById("modelSetupEventPricing");
+    const modalEventPricingList = modal.querySelector("#modalEventPricingList");
 
     modal.eventId = eventId;
     modal.querySelector("#modelSetupEventPricingTitle").textContent = "Event Pricing for " + eventName;
@@ -845,7 +837,7 @@ function setupEventPricing(eventName, eventId) {
 
 function refreshEventSessions(container, eventId) {
     container = getSessionPanel(container);
-    let sessionList = container.querySelector(".event-session-list");
+    const sessionList = container.querySelector(".event-session-list");
     cleanUpContainer(sessionList);
 
     apiFetch(`/api/events/${eventId}/sessions`, {
@@ -898,7 +890,6 @@ function refreshEventSessions(container, eventId) {
         })
         .catch(error => {
             console.error('Error updating sessions:', error);
-            // Error handling for network issues
         });
 
 }
@@ -1171,8 +1162,8 @@ function formatDateTimeForSessionDisplay(date) {
 }
 
 function setupEventMetadata(eventId) {
-    let modal = document.getElementById("modalSetupEventMetadata");
-    let metadataRows = modal.querySelector("#metadataEditorRows");
+    const modal = document.getElementById("modalSetupEventMetadata");
+    const metadataRows = modal.querySelector("#metadataEditorRows");
 
     cleanUpContainer(metadataRows);
     apiFetch(`/api/events/${eventId}`, {
@@ -1183,8 +1174,8 @@ function setupEventMetadata(eventId) {
     })
         .then(response => response.json())
         .then(data => {
-            let eventName = data.name;
-            let metadata = data.metadata;
+            const eventName = data.name;
+            const metadata = data.metadata;
 
             modal.querySelector("#modalSetupEventMetadataTitle").textContent = 'Metadata of Event ' + eventName;
             renderMetadataRows(modal, metadata || {});
@@ -1194,7 +1185,6 @@ function setupEventMetadata(eventId) {
         })
         .catch(error => {
             console.error('Error updating event:', error);
-            // Error handling for network issues
         });
 }
 
@@ -1288,12 +1278,10 @@ function saveEventMetadata(modal, closeModal) {
 }
 
 export function submitEventMetadata(metadata, modal, closeModal = false) {
-    // Make a POST request to the API
-
-    let eventData = JSON.parse(modal.dataset.event);
+    const eventData = JSON.parse(modal.dataset.event);
     eventData.metadata = metadata;
 
-    let eventId = eventData.id;
+    const eventId = eventData.id;
 
     apiFetch(`/api/events/${eventId}`, {
         method: 'PUT',
@@ -1312,39 +1300,36 @@ export function submitEventMetadata(metadata, modal, closeModal = false) {
         })
         .catch(error => {
             console.error('Error updating event:', error);
-            // Error handling for network issues
         });
 }
 
 function changeEventVenue(eventName, eventId, currentVenueId) {
-    var modal = document.getElementById("modalChangeEventVenue");
+    const modal = document.getElementById("modalChangeEventVenue");
     modal.dataset.eventId = eventId;
     modal.querySelector("#modalChangeEventVenueTitle").textContent = 'Change Venue for Event ' + eventName;
 
-    const apiUrl = '/api/venues'; // Replace with the actual endpoint URL
+    const apiUrl = '/api/venues';
 
     apiFetch(apiUrl)
         .then(response => response.json())
         .then(data => {
-            var venueOptions = modal.querySelector('#modalVenueOptions');
-            venueOptions.innerHTML = ''; // Clear existing content
+            const venueOptions = modal.querySelector('#modalVenueOptions');
+            venueOptions.innerHTML = '';
             data.forEach(venue => {
-                var radioInput = document.createElement('input');
+                const radioInput = document.createElement('input');
                 radioInput.type = 'radio';
                 radioInput.id = venue.id;
                 radioInput.name = 'venue';
                 radioInput.value = venue.id;
                 radioInput.checked = venue.id === currentVenueId;
 
-                // Create label for the radio input
-                var label = document.createElement('label');
+                const label = document.createElement('label');
                 label.htmlFor = venue.id;
                 label.textContent = venue.name;
 
-                // Append radio input and label to the container
                 venueOptions.appendChild(radioInput);
                 venueOptions.appendChild(label);
-                venueOptions.appendChild(document.createElement('br')); // Line break for readability
+                venueOptions.appendChild(document.createElement('br'));
             });
 
         })
@@ -1372,21 +1357,18 @@ function updateEventVenue(eventId, selectedVenueId, modal) {
         })
         .catch(error => {
             console.error('Error updating event:', error);
-            // Error handling for network issues
         });
 }
 
 function deleteEvent(eventId) {
     if (confirm("Please confirm: delete event will clean up all price settings. And removing will be denied for event with orders placed.")) {
-        const apiUrl = `/api/events/${eventId}`; // Replace with the actual endpoint URL
+        const apiUrl = `/api/events/${eventId}`;
 
-        // Make a POST request to the API
         apiFetch(apiUrl, {
             method: 'DELETE',
         })
             .then(response => {
                 if (response.status === 204) {
-                    // Event deleted successfully, refresh the event list
                     fetchEvents();
                 } else {
                     console.error('Error deleting event. Status:', response.status);
@@ -1406,15 +1388,12 @@ function showAddEventModal() {
     modal.style.display = "block";
 }
 
-// Function to handle the form submission
 function addNewEvent(form) {
 
-    // Get input values
     const eventName = form.querySelector("#eventName").value;
     const venueId = form.querySelector("#venueId").value;
     const copyEventFrom = form.querySelector("#copyEventFromVenue").value;
 
-    // Create event data object
     const eventData = {
         name: eventName,
         venueId: venueId,
@@ -1432,7 +1411,7 @@ function addNewEvent(form) {
 
 function formatDateTime(date) {
     const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0'); // Adding 1 to month because months are zero-based
+    const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
     const hours = String(date.getHours()).padStart(2, '0');
     const minutes = String(date.getMinutes()).padStart(2, '0');
@@ -1455,14 +1434,11 @@ function toDateTimeLocalValue(value) {
 
     return `${year}-${month}-${day}T${hours}:${minutes}`;
 }
-// Function to submit a new event to the API
 function submitEvent(eventData, copyEventFrom) {
-    // Define the API endpoint URL for creating events
-    const apiUrl = '/api/events'; // Replace with the actual endpoint URL
-    let headers = new Headers({'Content-Type': 'application/json'});
+    const apiUrl = '/api/events';
+    const headers = new Headers({'Content-Type': 'application/json'});
     if (copyEventFrom) headers.append('X-Copy-From-Id', copyEventFrom);
 
-    // Make a POST request to the API
     return apiFetch(apiUrl, {
         method: 'POST',
         headers: headers,
@@ -1470,7 +1446,6 @@ function submitEvent(eventData, copyEventFrom) {
     })
         .then(response => {
             if (response.status === 201) {
-                // Event created successfully, refresh the event list
                 fetchEvents();
                 return true;
             } else {
@@ -1484,19 +1459,14 @@ function submitEvent(eventData, copyEventFrom) {
         });
 }
 
-// Function to fetch venues from the API
 function refreshFormEventVenueList() {
-    // Define the API endpoint URL for getting venues
-    const apiUrl = '/api/venues'; // Replace with the actual endpoint URL
+    const apiUrl = '/api/venues';
 
-    // Make a GET request to the API
     apiFetch(apiUrl)
         .then(response => response.json())
         .then(data => {
-
-            // Populate the venue select dropdown
             const venueSelect = document.getElementById("venueId");
-            venueSelect.innerHTML = '<option value="">Select Venue</option>'; // Add an empty option
+            venueSelect.innerHTML = '<option value="">Select Venue</option>';
 
             data.forEach(venue => {
                 const option = document.createElement("option");

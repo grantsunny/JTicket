@@ -8,6 +8,7 @@ import org.springframework.stereotype.Component;
 
 import java.sql.SQLException;
 import java.util.List;
+import java.util.Map;
 
 
 @Component
@@ -25,12 +26,12 @@ public class OrderPluginHelper {
     public Order beforePlaceOrder(String userId, Order order) throws SQLException {
 
         if (orderPlugins.isEmpty()) return order;
+        Map<String, Object> eventMetadata = eventsRepository.loadEvent(order.getEventId()).getMetadata();
+        String eventId = order.getEventId().toString();
+
         for (OrderPlugin plugin: orderPlugins) {
             try {
-                if (plugin.matches(
-                        order.getEventId().toString(),
-                        userId,
-                        eventsRepository.loadEvent(order.getEventId()).getMetadata()))
+                if (plugin.matches(eventId, userId, eventMetadata))
                     return plugin.beforePlaceOrder(order);
             } catch (OrderPluginException e) {
                 throw new SQLException(e);
@@ -43,12 +44,12 @@ public class OrderPluginHelper {
     public void beforePayOrder(Order order, Integer payAmount) throws SQLException {
         if (orderPlugins.isEmpty()) return;
 
+        Map<String, Object> eventMetadata = eventsRepository.loadEvent(order.getEventId()).getMetadata();
+        String eventId = order.getEventId().toString();
+
         for (OrderPlugin plugin: orderPlugins) {
             try {
-                if (plugin.matches(
-                        order.getEventId().toString(),
-                        order.getUserId(),
-                        eventsRepository.loadEvent(order.getEventId()).getMetadata())) {
+                if (plugin.matches(eventId, order.getUserId(), eventMetadata)) {
                     ordersRepository.updateOrderMetadata(plugin.beforePayOrder(order, payAmount));
                     return;
                 }
@@ -61,12 +62,12 @@ public class OrderPluginHelper {
     public void beforeCancelOrder(Order order) throws SQLException {
         if (orderPlugins.isEmpty()) return;
 
+        Map<String, Object> eventMetadata = eventsRepository.loadEvent(order.getEventId()).getMetadata();
+        String eventId = order.getEventId().toString();
+
         for (OrderPlugin plugin: orderPlugins) {
             try {
-                if (plugin.matches(
-                        order.getEventId().toString(),
-                        order.getUserId(),
-                        eventsRepository.loadEvent(order.getEventId()).getMetadata())) {
+                if (plugin.matches(eventId, order.getUserId(), eventMetadata)) {
                     plugin.beforeCancelOrder(order);
                     return;
                 }

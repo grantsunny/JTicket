@@ -16,7 +16,7 @@ pipeline {
                 script {
                     docker.withRegistry("", "") {
 
-                        def dockerImage = docker.build("jticket/ticket-service:latest", ".")
+                        def dockerImage = docker.build("jticket/jticket-service:latest", ".")
                         dockerImage.tag("${BUILD_NUMBER}")
                         dockerImage.push("latest")
                         dockerImage.push("${BUILD_NUMBER}")
