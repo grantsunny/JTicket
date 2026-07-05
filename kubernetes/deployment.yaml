@@ -18,7 +18,7 @@ spec:
     spec:
       initContainers:
         - name: cockroachdb
-          image: cockroachdb/cockroach:v24.3.33
+          image: cockroachdb/cockroach:v26.2.3
           restartPolicy: Always
           env:
             - name: POD_IP
@@ -59,7 +59,7 @@ spec:
             periodSeconds: 5
             failureThreshold: 6
         - name: init-database
-          image: cockroachdb/cockroach:v24.3.33
+          image: cockroachdb/cockroach:v26.2.3
           command:
             - /bin/bash
             - -ec
