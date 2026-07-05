@@ -12,7 +12,7 @@ spec:
     - hosts:
         - "intra.jticket.io"
         - "*.intra.jticket.io"
-    - secretName: intra.jticket.io
+      secretName: intra.jticket.io
   rules:
     - host: service.intra.jticket.io
       http:

@@ -81,7 +81,6 @@ public class JdbcPersistConfiguration {
                 rollbackClass.addAll(Arrays.asList(transactional.rollbackFor()));
             }
 
-            // Attempt to call the method on the target object
             if (isTransactional) {
                 TransactionStatus status = transactionManager.getTransaction(new DefaultTransactionDefinition());
                 try {

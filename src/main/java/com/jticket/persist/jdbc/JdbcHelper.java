@@ -47,33 +47,31 @@ import jakarta.inject.Inject;
 @Profile("jdbc")
 public class JdbcHelper {
 
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+
     @Inject
     private DataSource dataSource;
 
     private String metadataMapToJsonString(Map<String, Object> metadataMap) {
-        String metadataJson;
         try {
-            metadataJson = new ObjectMapper().writeValueAsString(metadataMap);
+            return OBJECT_MAPPER.writeValueAsString(metadataMap);
         } catch (JsonProcessingException e) {
-            metadataJson = "{}";
+            return "{}";
         }
-        return metadataJson;
     }
 
-	@SuppressWarnings("unchecked")
-	private Map<String, Object> parseMetadata(String rawMetadata) {
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> parseMetadata(String rawMetadata) {
         if (rawMetadata == null || rawMetadata.isBlank()) {
             return new HashMap<>();
         }
-        Map<String, Object> metadata;
         try {
-            metadata = new ObjectMapper().readValue(
+            return OBJECT_MAPPER.readValue(
                     rawMetadata,
                     Map.class);
         } catch (JsonProcessingException ex) {
-            metadata = new HashMap<>();
+            return new HashMap<>();
         }
-        return metadata;
     }
 
     public List<Venue> loadAllVenues() throws SQLException {
@@ -213,13 +211,7 @@ public class JdbcHelper {
 
             pstmt.setString(1, venue.getId().toString());
             pstmt.setString(2, venue.getName());
-            String metadataJson;
-            try {
-                metadataJson = new ObjectMapper().writeValueAsString(venue.getMetadata());
-            } catch (JsonProcessingException e) {
-                metadataJson = "{}";
-            }
-            pstmt.setString(3, metadataJson);
+            pstmt.setString(3, metadataMapToJsonString(venue.getMetadata()));
             pstmt.setString(4, svg);
             pstmt.executeUpdate();
         }
@@ -281,14 +273,7 @@ public class JdbcHelper {
                 pstmt.setString(1, area.getId().toString());
                 pstmt.setString(2, area.getVenueId().toString());
                 pstmt.setString(3, area.getName());
-
-                String metadataJson;
-                try {
-                    metadataJson = new ObjectMapper().writeValueAsString(area.getMetadata());
-                } catch (JsonProcessingException e) {
-                    metadataJson = "{}";
-                }
-                pstmt.setString(4, metadataJson);
+                pstmt.setString(4, metadataMapToJsonString(area.getMetadata()));
                 pstmt.executeUpdate();
             }
         }
@@ -307,14 +292,7 @@ public class JdbcHelper {
                 pstmt.setInt(3, seat.getRow());
                 pstmt.setInt(4, seat.getCol());
                 pstmt.setBoolean(5, seat.getAvailable());
-
-                String metadataJson;
-                try {
-                    metadataJson = new ObjectMapper().writeValueAsString(seat.getMetadata());
-                } catch (JsonProcessingException e) {
-                    metadataJson = "{}";
-                }
-                pstmt.setString(6, metadataJson);
+                pstmt.setString(6, metadataMapToJsonString(seat.getMetadata()));
                 pstmt.executeUpdate();
             }
         }
@@ -533,13 +511,7 @@ public class JdbcHelper {
             else
                 stmt.setNull(3, Types.VARCHAR);
 
-            String metadataJson;
-            try {
-                metadataJson = new ObjectMapper().writeValueAsString(event.getMetadata());
-            } catch (JsonProcessingException e) {
-                metadataJson = "{}";
-            }
-            stmt.setString(6, metadataJson);
+            stmt.setString(4, metadataMapToJsonString(event.getMetadata()));
             stmt.executeUpdate();
         }
     }
@@ -627,7 +599,6 @@ public class JdbcHelper {
     }
 
     public void updateEvent(UUID eventId, Event event) throws SQLException {
-        //id, venueId, name, startTime, endTime, metadata
         String sql = "UPDATE TKT.Events SET " +
                 "venueId = ?, " +
                 "name = ?, " +
@@ -644,15 +615,8 @@ public class JdbcHelper {
                 pstmt.setNull(1, Types.VARCHAR);
 
             pstmt.setString(2, event.getName());
-
-            String metadataJson;
-            try {
-                metadataJson = new ObjectMapper().writeValueAsString(event.getMetadata());
-            } catch (JsonProcessingException e) {
-                metadataJson = "{}";
-            }
-            pstmt.setString(5, metadataJson);
-            pstmt.setString(6, eventId.toString());
+            pstmt.setString(3, metadataMapToJsonString(event.getMetadata()));
+            pstmt.setString(4, eventId.toString());
             pstmt.executeUpdate();
 
             if (pstmt.getUpdateCount() < 1)

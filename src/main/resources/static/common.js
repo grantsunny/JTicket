@@ -86,11 +86,10 @@ export function drawSeats(eventId, areaId, seatsContainer, options = {}) {
                 return rows;
             }, {});
 
-            // Create table rows and cells
             Object.keys(seatRows).sort((a, b) => a - b).forEach(row => {
                 const tr = table.insertRow();
                 seatRows[row].sort((a, b) => a.col - b.col).forEach(seat => {
-                    const td= tr.insertCell();
+                    const td = tr.insertCell();
                     const rowColText = `${seat.row}-${seat.col}`;
                     td.dataset.seatid = seat.id;
                     td.dataset.selected = selectedSeatIds.has(seat.id) ? "true" : "false";
@@ -102,7 +101,6 @@ export function drawSeats(eventId, areaId, seatsContainer, options = {}) {
                     td.className = pricingSeatClass(seat);
                     renderSeatText(td, seatsContainer.dataset.displayMode);
 
-                    // Add click event listener for seat selection
                     if (isPricingSeatSelectable(seat)) {
                         td.addEventListener('click', function () {
                             this.dataset.selected = this.dataset.selected === "false" ? "true" : "false";
@@ -213,7 +211,6 @@ function enableSeatToolTips(seatContainer) {
         }
     };
 
-    // Event delegation for mouseout on SVG rect elements
     seatContainer.onmouseout = function(event) {
         if (event.target.tagName.toLowerCase() === 'td' && event.target.getAttribute('data-pricing')) {
             const tooltip = seatContainer.querySelector('#seatToolTip');
@@ -231,24 +228,20 @@ function seatTooltipText(td, displayMode) {
 }
 
 function markSelectedSeats(seatsContainer) {
-    let selectedSeatIds = [];
     const selectedSeats = Array.from(seatsContainer.querySelectorAll('td[data-selected="true"]'));
-    const selectedSeatsInfo = selectedSeats.map(seat => {
-        selectedSeatIds.push(seat.dataset.seatid);
-    });
-    seatsContainer.selectedSeats = selectedSeatIds;
+    seatsContainer.selectedSeats = selectedSeats.map(seat => seat.dataset.seatid);
 }
 
 export function drawEventVenueEx(eventId, svgContainer, onAreaClick) {
 
-     let areaNames = {};
-     let areaPrices = {};
+     const areaNames = {};
+     const areaPrices = {};
 
      apiFetch(`/api/events/${eventId}/areas`)
         .then(response => response.json())
         .then(areas => {
             areas.forEach(area => {
-                areaNames[area.id] = area.name; // Map 'id' from JSON to 'areaId'
+                areaNames[area.id] = area.name;
                 apiFetch(`/api/events/${eventId}/areas/${area.id}/pricing`)
                     .then(response => {
                         if (response.ok)
@@ -284,7 +277,6 @@ export function drawEventVenueEx(eventId, svgContainer, onAreaClick) {
         }
     });
 
-    // Event delegation for mouseout on SVG rect elements
     svgContainer.addEventListener('mouseout', function(event) {
         if (event.target.tagName === 'rect' && event.target.getAttribute('areaid')) {
             const tooltip = svgContainer.querySelector('#areaToolTip');
@@ -325,34 +317,22 @@ function clearSelectedAreas(svgContainer) {
     });
 }
 
-function applySelectedAreaColor(svgContainer, areaId) {
-    svgContainer.querySelectorAll(`rect[areaid="${areaId}"]`).forEach(rect => {
-        let overlay = rect.cloneNode(true);
-        overlay.style.setProperty('fill', 'rgba(255, 0, 0, 0.2)');
-        overlay.style.pointerEvents = 'none';
-        overlay.setAttribute('filter', 'url(#shadow)'); // Apply the shadow filter
-        overlay.setAttribute('class', 'overlay');
-        rect.parentNode.insertBefore(overlay, rect.nextSibling);
-    });
-}
-
 function drawSelectedAreaBorder(svgContainer, areaId) {
-    let edgeCounts = new Map();
+    const edgeCounts = new Map();
     svgContainer.querySelectorAll(`rect[areaid="${areaId}"]`).forEach(rect => {
         const x = parseFloat(rect.getAttribute('x'));
         const y = parseFloat(rect.getAttribute('y'));
         const width = parseFloat(rect.getAttribute('width'));
         const height = parseFloat(rect.getAttribute('height'));
 
-        addEdge(edgeCounts, x, y, x + width, y); // Top edge
-        addEdge(edgeCounts,x + width, y, x + width, y + height); // Right edge
-        addEdge(edgeCounts,x + width, y + height, x, y + height); // Bottom edge
-        addEdge(edgeCounts, x, y + height, x, y); // Left edge
+        addEdge(edgeCounts, x, y, x + width, y);
+        addEdge(edgeCounts, x + width, y, x + width, y + height);
+        addEdge(edgeCounts, x + width, y + height, x, y + height);
+        addEdge(edgeCounts, x, y + height, x, y);
     });
 
-    // Draw edges that are not shared, i.e., count is 1
     edgeCounts.forEach((count, edgeKey) => {
-        if (count === 1) { // Edge is not shared
+        if (count === 1) {
             const [x1, y1, x2, y2] = edgeKey.split('-').map(Number);
             const svg = svgContainer.querySelector('svg');
 
@@ -362,11 +342,9 @@ function drawSelectedAreaBorder(svgContainer, areaId) {
             line.setAttribute("x2", x2);
             line.setAttribute("y2", y2);
 
-            // Set line style (customize as needed)
-            line.setAttribute("stroke", "red"); // Line color
-            line.setAttribute("stroke-width", "3"); // Line thickness
+            line.setAttribute("stroke", "red");
+            line.setAttribute("stroke-width", "3");
 
-            // Append the line to the SVG container
             svg.appendChild(line);
         }
     });
@@ -374,18 +352,10 @@ function drawSelectedAreaBorder(svgContainer, areaId) {
 
 function addEdge(edgeCounts, x1, y1, x2, y2) {
     const edgeKey = `${Math.min(x1, x2)}-${Math.min(y1, y2)}-${Math.max(x1, x2)}-${Math.max(y1, y2)}`;
-    // Update edge count
-    if (edgeCounts.has(edgeKey)) {
-        // Edge is shared, increase its count
-        edgeCounts.set(edgeKey, edgeCounts.get(edgeKey) + 1);
-    } else {
-        // First time seeing this edge, set its count to 1
-        edgeCounts.set(edgeKey, 1);
-    }
+    edgeCounts.set(edgeKey, (edgeCounts.get(edgeKey) || 0) + 1);
 }
 
 function applySelectedAreaShadow(svgContainer, areaId) {
-    // Calculate the bounding box of all rectangles with the given areaId
     let minX = Infinity, minY = Infinity, maxX = 0, maxY = 0;
     svgContainer.querySelectorAll(`rect[areaid="${areaId}"]`).forEach(rect => {
         const x = parseFloat(rect.getAttribute('x'));
@@ -398,22 +368,20 @@ function applySelectedAreaShadow(svgContainer, areaId) {
         maxY = Math.max(maxY, y + height);
     });
 
-    // Create a transparent overlay
     const overlay = document.createElementNS("http://www.w3.org/2000/svg", "rect");
     overlay.setAttribute('x', minX);
     overlay.setAttribute('y', minY);
     overlay.setAttribute('width', maxX - minX);
     overlay.setAttribute('height', maxY - minY);
-    overlay.setAttribute('fill', 'none'); // Make the fill transparent
-    overlay.setAttribute('stroke', 'none'); // No stroke needed, just the shadow
-    overlay.setAttribute('filter', 'url(#shadow)'); // Apply the shadow filter
+    overlay.setAttribute('fill', 'none');
+    overlay.setAttribute('stroke', 'none');
+    overlay.setAttribute('filter', 'url(#shadow)');
 
     overlay.setAttribute('class', 'overlay');
 
     overlay.style.setProperty('fill', 'rgba(255, 0, 0, 0.2)');
-    overlay.style.pointerEvents = 'none'; // Ensure it doesn't capture mouse events
+    overlay.style.pointerEvents = 'none';
 
-    // Append the overlay to the SVG
     const svg = svgContainer.querySelector('svg');
     svg.insertBefore(overlay, svg.firstChild);
 }
@@ -425,14 +393,13 @@ export function drawEventVenue(eventId, svgContainer, onAreaClick) {
         .then(svgHtml => {
             svgContainer.innerHTML = svgHtml;
 
-            //Enable shadow filter to the SVG.
             const svgNs = "http://www.w3.org/2000/svg";
             const svg = svgContainer.querySelector('svg');
             if (!svg) return;
 
-            let defs = svg.querySelector('defs') || document.createElementNS(svgNs, 'defs');
+            const defs = svg.querySelector('defs') || document.createElementNS(svgNs, 'defs');
             if (!svg.querySelector('defs')) {
-                svg.prepend(defs); // Only append if it was newly created
+                svg.prepend(defs);
                 defs.innerHTML =
                     `<defs>
                         <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">

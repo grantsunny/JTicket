@@ -16,9 +16,6 @@ public class DatabaseReadinessInitializer implements ApplicationContextInitializ
 
 		System.out.print("JTicket: Verifying database for readiness ...");
 		
-		//FIXME: to suppress strange warning during startup: 
-		//Registered driver with driverClassName=org.apache.derby.jdbc.EmbeddedDriver was not found, trying direct instantiation.
-		//DriverManager.registerDriver(new org.apache.derby.jdbc.EmbeddedDriver());
 		try {
 			if (!Arrays.asList(context.getEnvironment().getActiveProfiles()).contains("production")) 
 				DriverManager.registerDriver(new org.apache.derby.jdbc.EmbeddedDriver());
@@ -33,12 +30,12 @@ public class DatabaseReadinessInitializer implements ApplicationContextInitializ
 		String dbPassword = context.getEnvironment().getProperty("spring.datasource.password");
 
 		int retry = 0;
-		int maxRetries = 30; // Adjust retry limit
+		int maxRetries = 30;
 		
 		for (; retry < maxRetries; retry++) {
 			try (Connection connection = DriverManager.getConnection(dbUrl, dbUsername, dbPassword)) {
 				System.out.println(" done");
-				return; // Exit once the database is ready
+				return;
 			} catch (SQLException ex) {
 				System.out.print(".");
 				try {

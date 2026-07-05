@@ -12,6 +12,7 @@ public class EndpointsConfig extends ResourceConfig {
 
     public EndpointsConfig(Environment environment) {
         property(ServerProperties.RESPONSE_SET_STATUS_OVER_SEND_ERROR, "true");
+        property(ServerProperties.WADL_FEATURE_DISABLE, true);
         if (environment.acceptsProfiles(Profiles.of("production"))) {
             register(RolesAllowedDynamicFeature.class);
         }

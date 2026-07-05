@@ -55,6 +55,7 @@ import org.springframework.web.util.UriComponentsBuilder;
 
 import org.mybatis.spring.boot.autoconfigure.MybatisAutoConfiguration;
 import org.glassfish.jersey.server.ResourceConfig;
+import org.glassfish.jersey.server.ServerProperties;
 import org.glassfish.jersey.server.filter.RolesAllowedDynamicFeature;
 
 import jakarta.annotation.security.RolesAllowed;
@@ -309,6 +310,7 @@ class OAuth2HttpIntegrationTest {
         @Bean
         ResourceConfig resourceConfig() {
             return new ResourceConfig()
+                    .property(ServerProperties.WADL_FEATURE_DISABLE, true)
                     .register(RolesAllowedDynamicFeature.class)
                     .register(TestJaxRsEndpoints.class);
         }
