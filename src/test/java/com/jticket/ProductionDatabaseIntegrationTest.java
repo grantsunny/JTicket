@@ -202,7 +202,7 @@ class ProductionDatabaseIntegrationTest {
         if (cockroach != null) {
             return cockroach;
         }
-        GenericContainer<?> container = new GenericContainer<>(DockerImageName.parse("cockroachdb/cockroach:v26.2.3"))
+        GenericContainer<?> container = new GenericContainer<>(DockerImageName.parse("cockroachdb/cockroach:v26.2.4"))
                 .withCommand(
                         "start-single-node",
                         "--insecure",

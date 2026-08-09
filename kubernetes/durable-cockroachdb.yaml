@@ -21,7 +21,7 @@ spec:
         fsGroup: 1000
       initContainers:
         - name: prepare-cockroach-data
-          image: cockroachdb/cockroach:v26.2.3
+          image: cockroachdb/cockroach:v26.2.4
           securityContext:
             runAsUser: 0
           command:
@@ -35,7 +35,7 @@ spec:
               mountPath: /cockroach/cockroach-data
       containers:
         - name: cockroachdb
-          image: cockroachdb/cockroach:v26.2.3
+          image: cockroachdb/cockroach:v26.2.4
           env:
             - name: POD_IP
               valueFrom:
