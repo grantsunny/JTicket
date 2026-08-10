@@ -1,16 +1,12 @@
-CREATE SCHEMA TKT;
-SET search_path TO TKT;
+CREATE SCHEMA TKT;;
+SET search_path TO TKT;;
 
-DROP VIEW IF EXISTS TKT.TicketingSeatStatus;
-DROP VIEW IF EXISTS TKT.SessionStatistics;
-DROP VIEW IF EXISTS TKT.EventStatistics;
-DROP VIEW IF EXISTS TKT.SKU;
-DROP VIEW IF EXISTS TKT.SeatsInEvent;
-DROP VIEW IF EXISTS TKT.SeatDetails;
-DROP TRIGGER IF EXISTS prevent_paid_order_removal_trigger ON TKT.Orders;
-DROP TRIGGER IF EXISTS prevent_event_time_overlap_trigger ON TKT.Sessions;
-DROP FUNCTION IF EXISTS prevent_paid_order_removal();
-DROP FUNCTION IF EXISTS prevent_event_time_overlap();
+DROP VIEW IF EXISTS TKT.TicketingSeatStatus;;
+DROP VIEW IF EXISTS TKT.SessionStatistics;;
+DROP VIEW IF EXISTS TKT.EventStatistics;;
+DROP VIEW IF EXISTS TKT.SKU;;
+DROP VIEW IF EXISTS TKT.SeatsInEvent;;
+DROP VIEW IF EXISTS TKT.SeatDetails;;
 
 -- Create the Venue table
 CREATE TABLE TKT.Venues (
@@ -19,7 +15,7 @@ CREATE TABLE TKT.Venues (
                     metadata TEXT,
                     svg TEXT,
                     UNIQUE (name)
-);
+);;
 
 -- Create the Area table
 CREATE TABLE TKT.Areas (
@@ -29,7 +25,7 @@ CREATE TABLE TKT.Areas (
                     metadata TEXT,
                     FOREIGN KEY (venueId) REFERENCES TKT.Venues(id),
                     UNIQUE (venueId, name)
-);
+);;
 
 -- Create the Seat table
 CREATE TABLE TKT.Seats (
@@ -41,7 +37,7 @@ CREATE TABLE TKT.Seats (
                     metadata TEXT,
                     FOREIGN KEY (areaId) REFERENCES TKT.Areas(id),
                     UNIQUE (areaId, row, col)
-);
+);;
 
 CREATE TABLE TKT.Events (
                     id VARCHAR(36) PRIMARY KEY NOT NULL,
@@ -50,7 +46,7 @@ CREATE TABLE TKT.Events (
                     metadata TEXT,
                     FOREIGN KEY (venueId) REFERENCES TKT.Venues(id),
                     UNIQUE(name)
-);
+);;
 
 CREATE TABLE TKT.EventPosters (
                     id VARCHAR(36) PRIMARY KEY NOT NULL,
@@ -59,7 +55,7 @@ CREATE TABLE TKT.EventPosters (
                     content BYTEA NOT NULL,
                     FOREIGN KEY (eventId) REFERENCES TKT.Events(id) ON DELETE CASCADE,
                     UNIQUE(eventId)
-);
+);;
 
 CREATE TABLE TKT.Sessions (
                     id VARCHAR(36) PRIMARY KEY NOT NULL,
@@ -70,40 +66,26 @@ CREATE TABLE TKT.Sessions (
                     metadata TEXT,
                     FOREIGN KEY (eventId) REFERENCES TKT.Events(id),
                     UNIQUE(name, eventId)
-);
+);;
 
-
-CREATE FUNCTION prevent_event_time_overlap()
+CREATE OR REPLACE FUNCTION TKT.prevent_event_time_overlap()
 RETURNS TRIGGER AS $$
 BEGIN
     IF EXISTS (
-        SELECT * FROM Sessions INNER JOIN Events ON Sessions.eventId = Events.id
-            AND Events.venueId IN (SELECT venueId FROM Events WHERE id = NEW.eventid)
-            AND NOT (startTime >= NEW.endTime OR endTime <= NEW.startTime)
+        SELECT * FROM TKT.Sessions INNER JOIN TKT.Events ON TKT.Sessions.eventId = TKT.Events.id
+            AND TKT.Events.venueId IN (SELECT venueId FROM TKT.Events WHERE id = (NEW).eventid)
+            AND NOT (startTime >= (NEW).endtime OR endTime <= (NEW).starttime)
     ) THEN
         RAISE EXCEPTION 'Session time overlapping encountered within a given event';
     END IF;
-    RETURN NEW; -- Allow the insert/update
+    RETURN NEW;
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql;;
 
-CREATE TRIGGER prevent_event_time_overlap_trigger
+CREATE OR REPLACE TRIGGER prevent_event_time_overlap_trigger
 BEFORE INSERT ON TKT.Sessions
 FOR EACH ROW
-EXECUTE FUNCTION prevent_event_time_overlap()
-;
-
---Trigger to prevent removal of paymentAmount > 0 (paid order)
-CREATE FUNCTION prevent_paid_order_removal()
-RETURNS TRIGGER AS $$
-BEGIN
-    -- Check if the paymentAmount is greater than 0
-    IF OLD.paymentAmount > 0 THEN
-        RAISE EXCEPTION 'Paid order cannot be deleted';
-    END IF;
-    RETURN OLD;
-END;
-$$ LANGUAGE plpgsql;
+EXECUTE FUNCTION TKT.prevent_event_time_overlap();;
 
 CREATE TABLE TKT.Orders (
                     id VARCHAR(36) PRIMARY KEY NOT NULL,
@@ -119,13 +101,22 @@ CREATE TABLE TKT.Orders (
                     FOREIGN KEY (eventId) REFERENCES TKT.Events(id),
                     FOREIGN KEY (sessionId) REFERENCES TKT.Sessions(id),
                     UNIQUE (paymentTransactionId)
-);
+);;
 
-CREATE TRIGGER prevent_paid_order_removal_trigger
+CREATE OR REPLACE FUNCTION TKT.prevent_paid_order_removal()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF (OLD).paymentamount > 0 THEN
+        RAISE EXCEPTION 'Paid order cannot be deleted';
+    END IF;
+    RETURN OLD;
+END;
+$$ LANGUAGE plpgsql;;
+
+CREATE OR REPLACE TRIGGER prevent_paid_order_removal_trigger
 BEFORE DELETE ON TKT.Orders
 FOR EACH ROW
-EXECUTE FUNCTION prevent_paid_order_removal()
-;
+EXECUTE FUNCTION TKT.prevent_paid_order_removal();;
 
 CREATE TABLE TKT.OrderSeats (
                     orderId VARCHAR(36) NOT NULL,
@@ -139,7 +130,7 @@ CREATE TABLE TKT.OrderSeats (
                     FOREIGN KEY (eventId) REFERENCES TKT.Events(id),
                     FOREIGN KEY (sessionId) REFERENCES TKT.Sessions(id),
                     FOREIGN KEY (seatId) REFERENCES TKT.Seats(id)
-);
+);;
 
 CREATE TABLE TKT.Prices (
                     id VARCHAR(36) PRIMARY KEY NOT NULL,
@@ -148,7 +139,7 @@ CREATE TABLE TKT.Prices (
                     price DECIMAL(10, 2),
                     FOREIGN KEY (eventId) REFERENCES TKT.Events(id),
                     UNIQUE(eventId, name)
-);
+);;
 
 CREATE TABLE TKT.PricesDistribution (
                     id VARCHAR(36) PRIMARY KEY NOT NULL,
@@ -163,13 +154,13 @@ CREATE TABLE TKT.PricesDistribution (
                     UNIQUE(priceId, seatId),
                     UNIQUE(priceId, areaId),
                     UNIQUE(priceId, venueId)
-);
+);;
 
 CREATE VIEW TKT.SeatDetails AS
     SELECT TKT.Seats.id, areaId, TKT.Areas.venueId, row, col, available, TKT.Seats.metadata
     FROM TKT.Seats
     INNER JOIN TKT.Areas ON TKT.Areas.id = TKT.Seats.areaId
-;
+;;
 
 CREATE VIEW TKT.SeatsInEvent AS
 SELECT
@@ -221,7 +212,7 @@ FROM (SELECT
             INNER JOIN SEATS ON SEATS.AREAID = AREAS.ID) T
 INNER JOIN SEATS ON SEATS.ID = T.seatId
 LEFT JOIN PRICES ON PRICES.ID = T.priceId
-;
+;;
 
 CREATE VIEW TKT.SKU AS
 SELECT
@@ -277,7 +268,7 @@ LEFT JOIN ORDERSEATS ON
     ORDERSEATS.EVENTID = T.eventId
     AND OrderSeats.sessionId = T.sessionId
     AND ORDERSEATS.SEATID = T.seatId
-;
+;;
 
 CREATE VIEW TKT.EventStatistics AS
 SELECT
@@ -294,7 +285,7 @@ SELECT
         WHERE TKT.OrderSeats.eventId = TKT.Events.id
         AND TKT.OrderSeats.checkedInTimestamp IS NULL) AS uncheckedInSeats
 FROM TKT.Events
-;
+;;
 
 CREATE VIEW TKT.SessionStatistics AS
 SELECT
@@ -315,7 +306,7 @@ SELECT
         AND TKT.OrderSeats.sessionId = TKT.Sessions.id
         AND TKT.OrderSeats.checkedInTimestamp IS NULL) AS uncheckedInSeats
 FROM TKT.Sessions
-;
+;;
 
 CREATE VIEW TKT.TicketingSeatStatus AS
 SELECT
@@ -344,4 +335,4 @@ LEFT JOIN TKT.OrderSeats ON
     TKT.OrderSeats.eventId = TKT.SKU.eventId
     AND TKT.OrderSeats.sessionId = TKT.SKU.sessionId
     AND TKT.OrderSeats.seatId = TKT.SKU.seatId
-;
+;;

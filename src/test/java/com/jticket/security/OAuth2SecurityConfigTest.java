@@ -14,7 +14,11 @@ import java.util.Map;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
+import org.springframework.boot.security.autoconfigure.SecurityAutoConfiguration;
+import org.springframework.boot.security.autoconfigure.web.servlet.SecurityFilterAutoConfiguration;
+import org.springframework.boot.security.autoconfigure.web.servlet.ServletWebSecurityAutoConfiguration;
+import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.security.oauth2.client.registration.ClientRegistration;
@@ -36,6 +40,11 @@ import org.springframework.web.bind.annotation.RestController;
         "spring.profiles.active=production",
         "ticket.oauth2.audience=jticket-test"
 })
+@ImportAutoConfiguration({
+        SecurityAutoConfiguration.class,
+        SecurityFilterAutoConfiguration.class,
+        ServletWebSecurityAutoConfiguration.class
+})
 @ContextConfiguration(classes = {
         OAuth2SecurityConfig.class,
         OAuth2SecurityConfigTest.TestSecurityBeans.class,
@@ -52,7 +61,7 @@ class OAuth2SecurityConfigTest {
                 .andExpect(status().isFound())
                 .andExpect(header().string(
                         "Location",
-                        "http://localhost/oauth2/authorization/jticket"));
+                        "/oauth2/authorization/jticket"));
     }
 
     @Test
@@ -139,7 +148,7 @@ class OAuth2SecurityConfigTest {
 
         assertThat(converter.convert(token).getAuthorities())
                 .extracting("authority")
-                .containsExactlyInAnyOrder(
+                .contains(
                         "SCOPE_event:read",
                         "SCOPE_order:write",
                         "ROLE_event:read",

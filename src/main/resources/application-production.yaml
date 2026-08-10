@@ -22,7 +22,7 @@ spring:
     console:
       enabled: false
   datasource:
-    url: jdbc:postgresql://localhost:26257/TKT
+    url: jdbc:postgresql://localhost:26257/tkt
     driver-class-name: org.postgresql.Driver
     username: root
     hikari:
@@ -35,6 +35,8 @@ spring:
     init:
       mode: always
       schema-locations: classpath:postgresql.sql
+      # PL/pgSQL trigger bodies use semicolons internally, so split schema statements on a distinct separator.
+      separator: ";;"
       continue-on-error: true
 ticket:
   oauth2:

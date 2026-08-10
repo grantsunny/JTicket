@@ -8,7 +8,11 @@ import com.jticket.endpoints.EndpointsConfig;
 import org.glassfish.jersey.server.filter.RolesAllowedDynamicFeature;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
+import org.springframework.boot.security.autoconfigure.SecurityAutoConfiguration;
+import org.springframework.boot.security.autoconfigure.web.servlet.SecurityFilterAutoConfiguration;
+import org.springframework.boot.security.autoconfigure.web.servlet.ServletWebSecurityAutoConfiguration;
+import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.mock.env.MockEnvironment;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.web.servlet.MockMvc;
@@ -16,6 +20,11 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @WebMvcTest(properties = "spring.profiles.active=dev")
+@ImportAutoConfiguration({
+        SecurityAutoConfiguration.class,
+        SecurityFilterAutoConfiguration.class,
+        ServletWebSecurityAutoConfiguration.class
+})
 @ContextConfiguration(classes = {
         DevelopmentSecurityConfig.class,
         DevelopmentSecurityConfigTest.TestEndpoint.class
