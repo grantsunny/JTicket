@@ -1,0 +1,17 @@
+.DS_Store
+.classpath
+.factorypath
+.git
+.openapi-generator
+.project
+.settings
+AGENTS.md
+derby.log
+jticketdb
+src/.DS_Store
+src/gen
+src/main/.DS_Store
+src/main/java/.DS_Store
+src/main/java/com/.DS_Store
+src/main/openapi
+target
