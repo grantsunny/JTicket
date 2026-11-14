@@ -38,6 +38,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+import org.testcontainers.containers.Container.ExecResult;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.utility.DockerImageName;
@@ -49,6 +50,7 @@ import org.testcontainers.utility.DockerImageName;
 class ProductionDatabaseIntegrationTest {
 
     private static final String AUDIENCE = "jticket-test-api";
+    private static final int COCKROACH_SQL_PORT = 26258;
     private static LocalJwksProvider jwksProvider;
     private static GenericContainer<?> cockroach;
 
@@ -142,15 +144,71 @@ class ProductionDatabaseIntegrationTest {
                 .isEqualTo(204);
         assertThat(send("DELETE", "/api/events/" + eventId, token, null).statusCode()).isEqualTo(204);
         assertThat(send("GET", "/api/events/" + eventId, token, null).statusCode()).isEqualTo(404);
+        assertPaidOrderTriggerIsActive();
+        assertSessionOverlapTriggerIsActive();
+    }
+
+    private static void assertPaidOrderTriggerIsActive() throws Exception {
+        ExecResult result = cockroach().execInContainer(
+                "cockroach",
+                "sql",
+                "--insecure",
+                "--host=localhost:" + COCKROACH_SQL_PORT,
+                "--database=tkt",
+                "--execute="
+                        + "INSERT INTO TKT.Events (id, name, metadata) "
+                        + "VALUES ('00000000-0000-0000-0000-000000000001', 'Trigger Event', '{}');"
+                        + "INSERT INTO TKT.Sessions (id, name, eventId, startTime, endTime, metadata) "
+                        + "VALUES ('00000000-0000-0000-0000-000000000002', 'Trigger Session', "
+                        + "'00000000-0000-0000-0000-000000000001', "
+                        + "'2026-07-01 14:00:00', '2026-07-01 16:00:00', '{}');"
+                        + "INSERT INTO TKT.Orders (id, eventId, sessionId, userId, paymentAmount, metadata) "
+                        + "VALUES ('00000000-0000-0000-0000-000000000003', "
+                        + "'00000000-0000-0000-0000-000000000001', "
+                        + "'00000000-0000-0000-0000-000000000002', 'trigger-user', 1, '{}');"
+                        + "DELETE FROM TKT.Orders WHERE id = '00000000-0000-0000-0000-000000000003';");
+
+        assertThat(result.getExitCode()).isNotZero();
+        assertThat(result.getStderr()).contains("Paid order cannot be deleted");
+    }
+
+    private static void assertSessionOverlapTriggerIsActive() throws Exception {
+        ExecResult result = cockroach().execInContainer(
+                "cockroach",
+                "sql",
+                "--insecure",
+                "--host=localhost:" + COCKROACH_SQL_PORT,
+                "--database=tkt",
+                "--execute="
+                        + "INSERT INTO TKT.Venues (id, name, metadata) "
+                        + "VALUES ('00000000-0000-0000-0000-000000000011', 'Trigger Venue', '{}');"
+                        + "INSERT INTO TKT.Events (id, name, venueId, metadata) "
+                        + "VALUES ('00000000-0000-0000-0000-000000000012', 'Overlap Event', "
+                        + "'00000000-0000-0000-0000-000000000011', '{}');"
+                        + "INSERT INTO TKT.Sessions (id, name, eventId, startTime, endTime, metadata) "
+                        + "VALUES ('00000000-0000-0000-0000-000000000013', 'First Session', "
+                        + "'00000000-0000-0000-0000-000000000012', "
+                        + "'2026-07-02 10:00:00', '2026-07-02 12:00:00', '{}');"
+                        + "INSERT INTO TKT.Sessions (id, name, eventId, startTime, endTime, metadata) "
+                        + "VALUES ('00000000-0000-0000-0000-000000000014', 'Overlapping Session', "
+                        + "'00000000-0000-0000-0000-000000000012', "
+                        + "'2026-07-02 11:00:00', '2026-07-02 13:00:00', '{}');");
+
+        assertThat(result.getExitCode()).isNotZero();
+        assertThat(result.getStderr()).contains("Session time overlapping encountered within a given event");
     }
 
     private static GenericContainer<?> cockroach() {
         if (cockroach != null) {
             return cockroach;
         }
-        GenericContainer<?> container = new GenericContainer<>(DockerImageName.parse("cockroachdb/cockroach:v24.3.33"))
-                .withCommand("start-single-node", "--insecure", "--listen-addr=0.0.0.0:26257")
-                .withExposedPorts(26257)
+        GenericContainer<?> container = new GenericContainer<>(DockerImageName.parse("cockroachdb/cockroach:v26.2.4"))
+                .withCommand(
+                        "start-single-node",
+                        "--insecure",
+                        "--listen-addr=localhost:26257",
+                        "--sql-addr=0.0.0.0:" + COCKROACH_SQL_PORT)
+                .withExposedPorts(COCKROACH_SQL_PORT)
                 .waitingFor(Wait.forListeningPort().withStartupTimeout(Duration.ofMinutes(2)));
         container.start();
         try {
@@ -158,8 +216,8 @@ class ProductionDatabaseIntegrationTest {
                     "cockroach",
                     "sql",
                     "--insecure",
-                    "--host=localhost:26257",
-                    "--execute=CREATE DATABASE IF NOT EXISTS TKT;");
+                    "--host=localhost:" + COCKROACH_SQL_PORT,
+                    "--execute=CREATE DATABASE IF NOT EXISTS tkt;");
         } catch (Exception e) {
             container.stop();
             throw new IllegalStateException("Unable to initialize CockroachDB test database", e);
@@ -172,8 +230,8 @@ class ProductionDatabaseIntegrationTest {
         return "jdbc:postgresql://"
                 + cockroach().getHost()
                 + ":"
-                + cockroach().getMappedPort(26257)
-                + "/TKT?sslmode=disable";
+                + cockroach().getMappedPort(COCKROACH_SQL_PORT)
+                + "/tkt?sslmode=disable";
     }
 
     private static LocalJwksProvider jwksProvider() {

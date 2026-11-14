@@ -1,12 +1,10 @@
-FROM node:26-bookworm-slim AS javascript-runtime
-
 FROM maven:3.10.0-eclipse-temurin-27 AS service-build
-COPY --from=javascript-runtime /usr/local/bin/node /usr/local/bin/node
-COPY --from=javascript-runtime /usr/lib/*-linux-gnu/libatomic.so.1 /usr/local/lib/
-RUN ldconfig
-WORKDIR /
+ARG MAVEN_ARGS=""
+WORKDIR /workspace
 COPY . .
-RUN mvn clean package
+RUN mkdir -p .m2/repository .m2/tmp && \
+    MAVEN_OPTS="-Djava.io.tmpdir=$PWD/.m2/tmp -Djansi.tmpdir=$PWD/.m2/tmp" \
+    mvn ${MAVEN_ARGS} -DskipTests -DskipJavaScriptTests=true -Dmaven.repo.local=.m2/repository package
 
 FROM eclipse-temurin:27-jre-resolute
 LABEL authors="Grant Yang"
@@ -17,7 +15,7 @@ ENV JAVA_OPTS="-XX:MinRAMPercentage=50 \
 -XX:+UseG1GC \
 -XX:+UseContainerSupport "
 WORKDIR /
-COPY --from=service-build /target/*.jar service.jar
+COPY --from=service-build /workspace/target/*.jar service.jar
 ENV SPRING_PROFILES_ACTIVE=production
 EXPOSE 8080
-ENTRYPOINT java $JAVA_OPTS -jar /service.jar
+ENTRYPOINT ["sh", "-c", "exec java $JAVA_OPTS -jar /service.jar"]

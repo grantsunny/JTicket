@@ -142,8 +142,8 @@
     }
   ],
   "verification": {
-    "fullMavenVerify": "71 Java tests, 0 failures, 0 errors, 2 opt-in skips; JavaScript test passes",
-    "performanceEvaluation": "Opt-in HTTP benchmark run separately and passed twice after fixes",
+    "fullMavenVerify": "75 Java tests, 0 failures, 0 errors, 2 opt-in skips; JavaScript test passes after integrating origin/main",
+    "performanceEvaluation": "Opt-in HTTP benchmark passed twice after fixes and once more after integrating origin/main",
     "compiler": "-Xlint:all -Werror passes",
     "suppressionAnnotations": 0,
     "packagedDevelopmentStartupWarnings": 0
@@ -178,5 +178,59 @@
       "after": "626d67fffdf3be4b07e562555df08e775ea8af1a5e26e5d7b28ab552e2af1df4"
     }
   },
-  "reproduce": "source ~/.zprofile && mkdir -p .m2/repository .m2/tmp && MAVEN_OPTS=\"-Djava.io.tmpdir=$PWD/.m2/tmp -Djansi.tmpdir=$PWD/.m2/tmp\" /opt/apache-maven-3.9.16/bin/mvn -B -o -Dmaven.repo.local=$PWD/.m2/repository -Dtest=PerformanceEvaluationTest -Djticket.performance=true -Djticket.performance.output=.m2/performance.json test"
+  "reproduce": "source ~/.zprofile && mkdir -p .m2/repository .m2/tmp && MAVEN_OPTS=\"-Djava.io.tmpdir=$PWD/.m2/tmp -Djansi.tmpdir=$PWD/.m2/tmp\" /opt/apache-maven-3.9.16/bin/mvn -B -o -Dmaven.repo.local=$PWD/.m2/repository -Dtest=PerformanceEvaluationTest -Djticket.performance=true -Djticket.performance.output=.m2/performance.json test",
+  "postUpstreamIntegration": {
+    "upstreamCommit": "78d30390a5ec5956a266e8bbf366203e876a9070",
+    "performance": {
+      "java": "27.0.1.0.3",
+      "database": "embedded Derby, in-memory",
+      "fixture": {
+        "svgBytes": 300046,
+        "seatsPerOrder": 2,
+        "seats": 1200,
+        "orders": 160
+      },
+      "workloads": {
+        "eventOrders": {
+          "latencySamples": 20,
+          "warmupRequests": 5,
+          "throughputRps4Clients": 110.5311171884865,
+          "p95Ms": 25.789042,
+          "medianMs": 22.3365,
+          "throughputRequests": 40
+        },
+        "sessionStatistics": {
+          "latencySamples": 20,
+          "warmupRequests": 5,
+          "throughputRps4Clients": 912.4521339016208,
+          "p95Ms": 4.259667,
+          "medianMs": 2.900375,
+          "throughputRequests": 40
+        },
+        "sessionSeats": {
+          "latencySamples": 20,
+          "warmupRequests": 5,
+          "throughputRps4Clients": 150.82913604128194,
+          "p95Ms": 15.092084,
+          "medianMs": 13.634375,
+          "throughputRequests": 40
+        },
+        "venueSvg": {
+          "latencySamples": 20,
+          "warmupRequests": 5,
+          "throughputRps4Clients": 874.7192342602857,
+          "p95Ms": 3.5425,
+          "medianMs": 3.19675,
+          "throughputRequests": 40
+        }
+      }
+    },
+    "sourceSha256": {
+      "src/main/java/com/jticket/persist/mybatis/OrdersMapper.java": "1d0456fae7b4ae9d6a0f18b32d1cbfdd6cbb4e3fecfff751d4ff8be0a4bd5b5a",
+      "src/main/java/com/jticket/persist/jdbc/JdbcHelper.java": "640ca9c5391edf27433bada3f7ae12d134b668bfc9e704190f56819dc6237ab5",
+      "src/main/resources/derby.sql": "e1ea9aa50a3cf96b65dfba38375163bbf1bc82290be7b38abedf35c0272481a3",
+      "src/main/resources/postgresql.sql": "c641484a34a9e44d30d54410e632e8bf9ddd8a8fb3a505cb9e0562cbb85f413c",
+      "src/test/java/com/jticket/performance/PerformanceEvaluationTest.java": "626d67fffdf3be4b07e562555df08e775ea8af1a5e26e5d7b28ab552e2af1df4"
+    }
+  }
 }
