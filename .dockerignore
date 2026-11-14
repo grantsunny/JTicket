@@ -15,3 +15,6 @@ src/main/java/.DS_Store
 src/main/java/com/.DS_Store
 src/main/openapi
 target
+.m2/tmp
+.m2/*.log
+.m2/*.json

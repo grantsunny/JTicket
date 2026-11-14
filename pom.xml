@@ -4,7 +4,7 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>4.1.0</version>
+        <version>4.1.2</version>
         <relativePath/> <!-- lookup parent from repository -->
     </parent>
     <groupId>com.jticket</groupId>
@@ -13,9 +13,10 @@
     <name>Java-Open-Source-Ticketing</name>
     <description>A Java based open source ticketing system</description>
     <properties>
-        <java.version>21</java.version>
+        <java.version>25</java.version>
         <skipJavaScriptTests>false</skipJavaScriptTests>
         <surefire.argLine></surefire.argLine>
+        <surefire.finalFieldMutationArgs></surefire.finalFieldMutationArgs>
     </properties>
     <dependencies>
         <dependency>
@@ -99,19 +100,19 @@
         <dependency>
             <groupId>org.apache.poi</groupId>
             <artifactId>poi-ooxml</artifactId>
-            <version>5.5.1</version>
+            <version>6.0.0</version>
         </dependency>
 
         <dependency>
             <groupId>io.swagger.core.v3</groupId>
             <artifactId>swagger-jaxrs2-jakarta</artifactId>
-            <version>2.2.53</version>
+            <version>2.2.55</version>
         </dependency>
 
         <dependency>
             <groupId>org.openapitools</groupId>
             <artifactId>jackson-databind-nullable</artifactId>
-            <version>0.2.11</version>
+            <version>0.2.13</version>
         </dependency>
 
         <dependency>
@@ -134,19 +135,13 @@
 
         <dependency>
             <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-restclient</artifactId>
+            <artifactId>spring-boot-starter-webmvc-test</artifactId>
             <scope>test</scope>
         </dependency>
 
         <dependency>
             <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-resttestclient</artifactId>
-            <scope>test</scope>
-        </dependency>
-
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-webmvc-test</artifactId>
+            <artifactId>spring-boot-starter-restclient</artifactId>
             <scope>test</scope>
         </dependency>
 
@@ -165,15 +160,50 @@
     <build>
         <plugins>
             <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-enforcer-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>require-java</id>
+                        <phase>validate</phase>
+                        <goals>
+                            <goal>enforce</goal>
+                        </goals>
+                        <configuration>
+                            <rules>
+                                <requireJavaVersion>
+                                    <version>[${java.version},)</version>
+                                    <message>JTicket requires JDK ${java.version} or newer. Check mvnd --version or mvn --version and JAVA_HOME.</message>
+                                </requireJavaVersion>
+                            </rules>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
             </plugin>
 
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <configuration>
+                    <showWarnings>true</showWarnings>
+                    <showDeprecation>true</showDeprecation>
+                    <compilerArgs>
+                        <arg>-Xlint:all</arg>
+                        <arg>-Werror</arg>
+                    </compilerArgs>
+                </configuration>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <configuration>
-                    <argLine>${surefire.argLine} -Djava.io.tmpdir=${project.build.directory} -Djansi.tmpdir=${project.build.directory} -Dserver.tomcat.basedir=${project.build.directory}</argLine>
+                    <argLine>${surefire.argLine} -javaagent:${settings.localRepository}/org/mockito/mockito-core/${mockito.version}/mockito-core-${mockito.version}.jar ${surefire.finalFieldMutationArgs} -Djava.io.tmpdir=${project.build.directory} -Djansi.tmpdir=${project.build.directory} -Dserver.tomcat.basedir=${project.build.directory}</argLine>
                 </configuration>
             </plugin>
 
@@ -226,7 +256,7 @@
             <plugin>
                 <groupId>org.openapitools</groupId>
                 <artifactId>openapi-generator-maven-plugin</artifactId>
-                <version>7.24.0</version>
+                <version>7.27.0</version>
                 <executions>
                     <execution>
                         <goals>
@@ -257,7 +287,7 @@
             <plugin>
                 <groupId>com.github.blutorange</groupId>
                 <artifactId>closure-compiler-maven-plugin</artifactId>
-                <version>3.0.1</version>
+                <version>3.1.0</version>
                 <executions>
                     <execution>
                         <goals>
@@ -285,7 +315,7 @@
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>exec-maven-plugin</artifactId>
-                <version>3.6.3</version>
+                <version>3.7.0</version>
                 <executions>
                     <execution>
                         <id>javascript-tests</id>
@@ -306,6 +336,18 @@
             </plugin>
          </plugins>
     </build>
+
+    <profiles>
+        <profile>
+            <id>jdk-26-or-newer</id>
+            <activation>
+                <jdk>[26,)</jdk>
+            </activation>
+            <properties>
+                <surefire.finalFieldMutationArgs>--enable-final-field-mutation=ALL-UNNAMED</surefire.finalFieldMutationArgs>
+            </properties>
+        </profile>
+    </profiles>
 
     <repositories>
         <repository>

@@ -14,7 +14,6 @@ import com.jticket.api.model.Venue;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
-import org.springframework.test.util.ReflectionTestUtils;
 
 class JdbcHelperEventMetadataTest {
 
@@ -29,8 +28,7 @@ class JdbcHelperEventMetadataTest {
                 "");
         createSchema(dataSource);
 
-        helper = new JdbcHelper();
-        ReflectionTestUtils.setField(helper, "dataSource", dataSource);
+        helper = new JdbcHelper(dataSource);
 
         venueId = UUID.randomUUID();
         helper.saveVenue(new Venue()
@@ -63,6 +61,20 @@ class JdbcHelperEventMetadataTest {
         assertThat(updated.getMetadata())
                 .containsEntry("campaign", "encore")
                 .containsEntry("vip", true);
+    }
+
+    @Test
+    void loadsEventsBeforeAVenueIsAssigned() throws Exception {
+        UUID eventId = UUID.randomUUID();
+        helper.saveEvent(new Event().id(eventId).name("Unassigned Event").metadata(Map.of("draft", true)));
+
+        Event saved = helper.loadEvent(eventId);
+        assertThat(saved.getVenueId()).isNull();
+        assertThat(saved.getMetadata()).containsEntry("draft", true);
+        assertThat(helper.loadAllEvents()).filteredOn(Event::getId, eventId).singleElement().satisfies(event -> {
+            assertThat(event.getVenueId()).isNull();
+            assertThat(event.getName()).isEqualTo("Unassigned Event");
+        });
     }
 
     private void createSchema(DataSource dataSource) throws Exception {

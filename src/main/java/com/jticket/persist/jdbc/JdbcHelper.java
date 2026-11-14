@@ -12,6 +12,8 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.sql.Types;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.LinkedList;
@@ -22,11 +24,12 @@ import java.util.UUID;
 import javax.sql.DataSource;
 
 import org.springframework.context.annotation.Profile;
-import org.springframework.jdbc.datasource.DataSourceUtils;
+import org.springframework.jdbc.datasource.TransactionAwareDataSourceProxy;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jticket.api.model.Area;
 import com.jticket.api.model.Event;
@@ -41,16 +44,17 @@ import com.jticket.api.model.Venue;
 import com.jticket.persist.EventPoster;
 import com.jticket.persist.OrdersRepository.PaymentResult;
 
-import jakarta.inject.Inject;
-
 @Component
 @Profile("jdbc")
 public class JdbcHelper {
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
-    @Inject
-    private DataSource dataSource;
+    private final DataSource dataSource;
+
+    public JdbcHelper(DataSource dataSource) {
+        this.dataSource = new TransactionAwareDataSourceProxy(dataSource);
+    }
 
     private String metadataMapToJsonString(Map<String, Object> metadataMap) {
         try {
@@ -60,7 +64,6 @@ public class JdbcHelper {
         }
     }
 
-    @SuppressWarnings("unchecked")
     private Map<String, Object> parseMetadata(String rawMetadata) {
         if (rawMetadata == null || rawMetadata.isBlank()) {
             return new HashMap<>();
@@ -68,7 +71,7 @@ public class JdbcHelper {
         try {
             return OBJECT_MAPPER.readValue(
                     rawMetadata,
-                    Map.class);
+                    new TypeReference<Map<String, Object>>() {});
         } catch (JsonProcessingException ex) {
             return new HashMap<>();
         }
@@ -264,6 +267,7 @@ public class JdbcHelper {
     }
 
 
+    @Transactional(rollbackFor = SQLException.class)
     public void saveAreas(List<Area> areas) throws SQLException {
         String sql = "INSERT INTO TKT.Areas (id, venueId, name, metadata) VALUES (?, ?, ?, ?)";
         try (Connection conn = dataSource.getConnection();
@@ -279,6 +283,7 @@ public class JdbcHelper {
         }
     }
 
+    @Transactional(rollbackFor = SQLException.class)
     public void saveSeats(List<Seat> seats) throws SQLException {
         String sql = "INSERT INTO TKT.Seats (id, areaId, row, col, available, metadata) " +
                 "VALUES (?, ?, ?, ?, ?, ?)";
@@ -314,7 +319,6 @@ public class JdbcHelper {
                     String id = rs.getString("id");
                     int row = rs.getInt("row");
                     int col = rs.getInt("col");
-                    boolean available = rs.getBoolean("available");
                     String areaId = rs.getString("areaId");
 
                     Map<String, Object> metadata = parseMetadata(rs.getString("metadata"));
@@ -324,7 +328,7 @@ public class JdbcHelper {
                             .areaId(UUID.fromString(areaId))
                             .row(row)
                             .col(col)
-                            .available(available)
+                            .available(rs.getBoolean("available"))
                             .metadata(metadata));
                 }
             }
@@ -354,7 +358,6 @@ public class JdbcHelper {
                     String id = rs.getString("id");
                     int row = rs.getInt("row");
                     int col = rs.getInt("col");
-                    boolean available = rs.getBoolean("available");
 
                     Map<String, Object> metadata = parseMetadata(rs.getString("metadata"));
 
@@ -363,7 +366,7 @@ public class JdbcHelper {
                                     .areaId(areaId)
                                     .row(row)
                                     .col(col)
-                                    .available(available)
+                                    .available(rs.getBoolean("available"))
                                     .metadata(metadata));
                 }
             }
@@ -381,15 +384,14 @@ public class JdbcHelper {
         try (Connection conn = dataSource.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
 
-            pstmt.setString(1, venueId.toString());
-            pstmt.setString(2, seatId.toString());
+            pstmt.setString(1, seatId.toString());
+            pstmt.setString(2, venueId.toString());
             
             try (ResultSet rs = pstmt.executeQuery()) {
                 if (rs.next()) {
                     String areaId = rs.getString("areaId");
                     int row = rs.getInt("row");
                     int col = rs.getInt("col");
-                    boolean available = rs.getBoolean("available");
 
                     Map<String, Object> metadata = parseMetadata(rs.getString("metadata"));
 
@@ -398,7 +400,7 @@ public class JdbcHelper {
                             .venueId(venueId)
                             .row(row)
                             .col(col)
-                            .available(available)
+                            .available(rs.getBoolean("available"))
                             .metadata(metadata);
                 }
             }
@@ -421,7 +423,6 @@ public class JdbcHelper {
                     String venueId = rs.getString("venueId");
                     int row = rs.getInt("row");
                     int col = rs.getInt("col");
-                    boolean available = rs.getBoolean("available");
 
                     Map<String, Object> metadata = parseMetadata(rs.getString("metadata"));
 
@@ -430,7 +431,7 @@ public class JdbcHelper {
                             .venueId(UUID.fromString(venueId))
                             .row(row)
                             .col(col)
-                            .available(available)
+                            .available(rs.getBoolean("available"))
                             .metadata(metadata);
                 }
             }
@@ -534,7 +535,7 @@ public class JdbcHelper {
 
                     return new Event()
                             .id(eventId)
-                            .venueId(UUID.fromString(venueId))
+                            .venueId(venueId == null ? null : UUID.fromString(venueId))
                             .name(name)
                             .metadata(metadata);
                 }
@@ -555,7 +556,7 @@ public class JdbcHelper {
 
                 events.add(new Event()
                         .id(id == null ? null : UUID.fromString(id))
-                        .venueId(UUID.fromString(venueId))
+                        .venueId(venueId == null ? null : UUID.fromString(venueId))
                         .name(name)
                         .metadata(metadata));
             }
@@ -639,13 +640,11 @@ public class JdbcHelper {
         return null;
     }
 
-    @Transactional
+    @Transactional(rollbackFor = SQLException.class)
     public void saveEventPoster(UUID eventId, EventPoster poster) throws SQLException {
         String deleteSql = "DELETE FROM TKT.EventPosters WHERE eventId = ?";
         String insertSql = "INSERT INTO TKT.EventPosters (id, eventId, contentType, content) VALUES (?, ?, ?, ?)";
-        Connection conn = DataSourceUtils.getConnection(dataSource);
-
-        try {
+        try (Connection conn = dataSource.getConnection()) {
             try (PreparedStatement pstmt = conn.prepareStatement(deleteSql)) {
                 pstmt.setString(1, eventId.toString());
                 pstmt.executeUpdate();
@@ -660,8 +659,6 @@ public class JdbcHelper {
                 if (pstmt.getUpdateCount() < 1)
                     throw new SQLException("Not successfully modified", "304");
             }
-        } finally {
-            DataSourceUtils.releaseConnection(conn, dataSource);
         }
     }
 
@@ -868,24 +865,22 @@ public class JdbcHelper {
         String venueId = rs.getString("venueId");
 
 
-        boolean available = rs.getBoolean("available");
         String priceName = rs.getString("priceName");
         BigDecimal price = rs.getBigDecimal("price");
         Integer priceInCents = (price == null) ? null : price.intValue();
 
         Map<String, Object> metadata = parseMetadata(rs.getString("metadata"));
 
-        TicketingSeat seat = new TicketingSeat().id(UUID.fromString(id))
+        return new TicketingSeat().id(UUID.fromString(id))
                 .areaId(UUID.fromString(areaId))
                 .venueId(UUID.fromString(venueId))
                 .row(row)
                 .col(col)
-                .available(available)
+                .available(rs.getBoolean("available"))
                 .price(priceInCents)
                 .priceName(priceName)
                 .sold(rs.getBoolean("sold"))
                 .metadata(metadata);
-        return seat;
     }
 
     public TicketingSeat loadSeatInEvent(UUID eventId, UUID seatId) throws SQLException {
@@ -1355,7 +1350,7 @@ public class JdbcHelper {
     }
 
     private List<Order> loadOrders(Connection conn, ResultSet rsOrders) throws SQLException {
-        List<Order> loadOrders = new LinkedList<>();
+        List<Order> loadOrders = new ArrayList<>();
         while (rsOrders.next()) {
             Order order = new Order()
                     .id(UUID.fromString(rsOrders.getString("id")))
@@ -1369,18 +1364,28 @@ public class JdbcHelper {
                     .paymentAmount(rsOrders.getInt("paymentAmount"))
                     .metadata(parseMetadata(rsOrders.getString("metadata")));
 
+            loadOrders.add(order);
+        }
+        for (int offset = 0; offset < loadOrders.size(); offset += 200) {
+            List<Order> batch = loadOrders.subList(offset, Math.min(offset + 200, loadOrders.size()));
+            Map<UUID, Order> byId = new HashMap<>();
             String sqlSeats = "SELECT seatId, sessionId, areaId, venueId, row, col, available, metadata, price, priceName, " +
-                    "orderId, userId, checkedInTimestamp, status FROM TKT.TicketingSeatStatus WHERE orderId = ? ORDER BY row, col";
-            
+                    "orderId, userId, checkedInTimestamp, status FROM TKT.TicketingSeatStatus WHERE orderId IN (" +
+                    String.join(",", Collections.nCopies(batch.size(), "?")) + ") ORDER BY orderId, row, col";
             try (PreparedStatement stmtSeat = conn.prepareStatement(sqlSeats)) {
-                stmtSeat.setString(1, order.getId().toString());
-                ResultSet rsSeats = stmtSeat.executeQuery();
-
-                while (rsSeats.next()) {
-                    order.getSeats().add(readSeatFromTicketingSeatStatus(rsSeats));
+                for (int i = 0; i < batch.size(); i++) {
+                    Order order = batch.get(i);
+                    order.setSeats(new ArrayList<>());
+                    byId.put(order.getId(), order);
+                    stmtSeat.setString(i + 1, order.getId().toString());
+                }
+                try (ResultSet rsSeats = stmtSeat.executeQuery()) {
+                    while (rsSeats.next()) {
+                        TicketingSeat seat = readSeatFromTicketingSeatStatus(rsSeats);
+                        byId.get(seat.getOrderId()).getSeats().add(seat);
+                    }
                 }
             }
-            loadOrders.add(order);
         }
         return loadOrders;
     }
@@ -1507,7 +1512,7 @@ public class JdbcHelper {
         }
     }
 
-    @Transactional
+    @Transactional(rollbackFor = SQLException.class)
     public void updateOrderMetadata(Order order) throws SQLException {
         try (Connection conn = dataSource.getConnection()) {
             String sqlUpdateOrder = "UPDATE TKT.ORDERS SET METADATA = ? WHERE ID = ?";

@@ -148,6 +148,18 @@ class ProductionDatabaseIntegrationTest {
         assertSessionOverlapTriggerIsActive();
     }
 
+    @Test
+    void existingCockroachDatabaseReceivesUpdatedViewsWithoutLosingData() throws Exception {
+        ExecResult result = cockroach().execInContainer(
+                "cockroach", "sql", "--insecure", "--host=localhost:" + COCKROACH_SQL_PORT,
+                "--execute=CREATE DATABASE jticket_upgrade;");
+        assertThat(result.getExitCode()).isZero();
+        new DatabaseSchemaUpgradeSupport(
+                jdbcUrl().replace("/tkt?", "/jticket_upgrade?"),
+                "org.postgresql.Driver", "root", "postgresql.sql", ";;")
+                .verifyUpgrade();
+    }
+
     private static void assertPaidOrderTriggerIsActive() throws Exception {
         ExecResult result = cockroach().execInContainer(
                 "cockroach",

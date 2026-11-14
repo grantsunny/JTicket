@@ -291,9 +291,10 @@ CREATE VIEW TKT.SessionStatistics AS
 SELECT
     TKT.Sessions.eventId,
     TKT.Sessions.id AS sessionId,
-    (SELECT COUNT(*) FROM TKT.SKU
-        WHERE TKT.SKU.eventId = TKT.Sessions.eventId
-        AND TKT.SKU.sessionId = TKT.Sessions.id) AS totalSeats,
+    (SELECT COUNT(*) FROM TKT.Seats
+        INNER JOIN TKT.Areas ON TKT.Seats.areaId = TKT.Areas.id
+        INNER JOIN TKT.Events ON TKT.Events.venueId = TKT.Areas.venueId
+        WHERE TKT.Events.id = TKT.Sessions.eventId) AS totalSeats,
     (SELECT COUNT(*) FROM TKT.OrderSeats
         WHERE TKT.OrderSeats.eventId = TKT.Sessions.eventId
         AND TKT.OrderSeats.sessionId = TKT.Sessions.id) AS orderedSeats,
@@ -323,16 +324,12 @@ SELECT
     TKT.SKU.price,
     TKT.SKU.orderId,
     TKT.Orders.userId,
-    TKT.OrderSeats.checkedInTimestamp,
+    TKT.SKU.checkedInTimestamp,
     CASE
         WHEN TKT.SKU.orderId IS NULL THEN 'open'
-        WHEN TKT.OrderSeats.checkedInTimestamp IS NOT NULL THEN 'checkedIn'
+        WHEN TKT.SKU.checkedInTimestamp IS NOT NULL THEN 'checkedIn'
         ELSE 'booked'
     END AS status
 FROM TKT.SKU
 LEFT JOIN TKT.Orders ON TKT.Orders.id = TKT.SKU.orderId
-LEFT JOIN TKT.OrderSeats ON
-    TKT.OrderSeats.eventId = TKT.SKU.eventId
-    AND TKT.OrderSeats.sessionId = TKT.SKU.sessionId
-    AND TKT.OrderSeats.seatId = TKT.SKU.seatId
 ;;

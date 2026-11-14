@@ -1,0 +1,236 @@
+{
+  "evaluatedAt": "2026-11-15T01:03:41.202468+08:00",
+  "scope": "Top three among four measured HTTP read workflows, ranked by baseline median latency",
+  "method": {
+    "transport": "real loopback HTTP, full responses consumed; persistent Java HttpClient; dev security profile",
+    "database": "embedded Derby, in-memory",
+    "java": "27.0.1.0.3",
+    "bytecodeTarget": 25,
+    "fixture": {
+      "orders": 160,
+      "seats": 1200,
+      "seatsPerOrder": 2,
+      "svgBytes": 300046
+    },
+    "latency": "5 warmup requests then 20 serial measurements; p95 uses nearest rank",
+    "throughput": "40 successful requests from four clients; 10-connection pool",
+    "failuresInAcceptedRuns": 0
+  },
+  "baseline": {
+    "eventOrders": {
+      "medianMs": 1717.488458,
+      "p95Ms": 1732.057709,
+      "throughputRps4Clients": 1.4158196905132308,
+      "warmupRequests": 5,
+      "latencySamples": 20,
+      "throughputRequests": 40
+    },
+    "sessionStatistics": {
+      "medianMs": 12.583375,
+      "p95Ms": 13.832417,
+      "throughputRps4Clients": 183.9557975189523,
+      "warmupRequests": 5,
+      "latencySamples": 20,
+      "throughputRequests": 40
+    },
+    "sessionSeats": {
+      "medianMs": 14.182667,
+      "p95Ms": 16.336709,
+      "throughputRps4Clients": 134.60222084174933,
+      "warmupRequests": 5,
+      "latencySamples": 20,
+      "throughputRequests": 40
+    },
+    "venueSvg": {
+      "medianMs": 2.566709,
+      "p95Ms": 3.037,
+      "throughputRps4Clients": 935.8321424089462,
+      "warmupRequests": 5,
+      "latencySamples": 20,
+      "throughputRequests": 40
+    }
+  },
+  "after": {
+    "eventOrders": {
+      "p95Ms": 25.501666,
+      "medianMs": 21.033666,
+      "throughputRequests": 40,
+      "latencySamples": 20,
+      "warmupRequests": 5,
+      "throughputRps4Clients": 119.73301035353789
+    },
+    "sessionStatistics": {
+      "p95Ms": 3.554417,
+      "medianMs": 2.795334,
+      "throughputRequests": 40,
+      "latencySamples": 20,
+      "warmupRequests": 5,
+      "throughputRps4Clients": 943.736594811506
+    },
+    "sessionSeats": {
+      "p95Ms": 13.820334,
+      "medianMs": 12.528,
+      "throughputRequests": 40,
+      "latencySamples": 20,
+      "warmupRequests": 5,
+      "throughputRps4Clients": 181.70313730272196
+    },
+    "venueSvg": {
+      "p95Ms": 3.135167,
+      "medianMs": 2.768708,
+      "throughputRequests": 40,
+      "latencySamples": 20,
+      "warmupRequests": 5,
+      "throughputRps4Clients": 918.9504749331331
+    }
+  },
+  "firstAfterRun": {
+    "eventOrders": {
+      "throughputRequests": 40,
+      "medianMs": 20.909916,
+      "p95Ms": 26.375375,
+      "throughputRps4Clients": 116.72300195359871,
+      "warmupRequests": 5,
+      "latencySamples": 20
+    },
+    "sessionStatistics": {
+      "throughputRequests": 40,
+      "medianMs": 2.628042,
+      "p95Ms": 3.175584,
+      "throughputRps4Clients": 1032.6222404009632,
+      "warmupRequests": 5,
+      "latencySamples": 20
+    },
+    "sessionSeats": {
+      "throughputRequests": 40,
+      "medianMs": 12.456375,
+      "p95Ms": 13.955167,
+      "throughputRps4Clients": 188.0186674145924,
+      "warmupRequests": 5,
+      "latencySamples": 20
+    },
+    "venueSvg": {
+      "throughputRequests": 40,
+      "medianMs": 2.705083,
+      "p95Ms": 2.932292,
+      "throughputRps4Clients": 959.1137712024987,
+      "warmupRequests": 5,
+      "latencySamples": 20
+    }
+  },
+  "findings": [
+    {
+      "workload": "eventOrders",
+      "finding": "N+1 seat reads for order lists",
+      "fix": "Batch seat reads in groups of at most 200 in MyBatis and JDBC; 160 orders need 2 hydration queries instead of 161.",
+      "medianSpeedup": 81.65426122103489,
+      "throughputSpeedup": 84.56797935204236
+    },
+    {
+      "workload": "sessionSeats",
+      "finding": "Repeated booking lookup for every seat",
+      "fix": "Reuse SKU.checkedInTimestamp in TicketingSeatStatus instead of joining OrderSeats a second time.",
+      "medianSpeedup": 1.132077506385696,
+      "throughputSpeedup": 1.3499267409291023
+    },
+    {
+      "workload": "sessionStatistics",
+      "finding": "Counting physical seats through the pricing/booking view",
+      "fix": "Count Seats joined to Areas and Events directly; include unpriced and physically unavailable seats.",
+      "medianSpeedup": 4.501564034923913,
+      "throughputSpeedup": 5.130235673677403
+    }
+  ],
+  "verification": {
+    "fullMavenVerify": "75 Java tests, 0 failures, 0 errors, 2 opt-in skips; JavaScript test passes after integrating origin/main",
+    "performanceEvaluation": "Opt-in HTTP benchmark passed twice after fixes and once more after integrating origin/main",
+    "compiler": "-Xlint:all -Werror passes",
+    "suppressionAnnotations": 0,
+    "packagedDevelopmentStartupWarnings": 0
+  },
+  "limitations": [
+    "Short local in-memory Derby run; production PostgreSQL/CockroachDB throughput and tail latency were not measured.",
+    "Both SQL dialects were updated; only Derby database execution was tested.",
+    "Performance gains are for the combined fixes, not isolated single-change experiments.",
+    "Unchanged SVG workflow provides a comparison for run-to-run noise.",
+    "Existing databases must recreate SessionStatistics and TicketingSeatStatus from the updated SQL definitions.",
+    "Closure compiler bundled Protobuf still emits a deprecated Unsafe runtime warning during JavaScript minification; latest Closure v20261109 was also tried and did not remove it. No warning suppression was introduced.",
+    "Expected payment validation warnings and Maven opt-in test skip summaries remain; neither is a compiler/startup warning."
+  ],
+  "sourceSha256": {
+    "src/main/java/com/jticket/persist/mybatis/OrdersMapper.java": {
+      "after": "1d0456fae7b4ae9d6a0f18b32d1cbfdd6cbb4e3fecfff751d4ff8be0a4bd5b5a",
+      "baseline": "5e2c6fe24e35f2c1dc0383eaf817b9128311ddecc622ab90468f0a3ef91b2978"
+    },
+    "src/main/java/com/jticket/persist/jdbc/JdbcHelper.java": {
+      "after": "640ca9c5391edf27433bada3f7ae12d134b668bfc9e704190f56819dc6237ab5",
+      "baseline": "7207562befed56724ed8f3b94cd532c70df7498e8cc41b0cca2e15cb6a928510"
+    },
+    "src/main/resources/derby.sql": {
+      "after": "e1ea9aa50a3cf96b65dfba38375163bbf1bc82290be7b38abedf35c0272481a3",
+      "baseline": "c55849cd5097caba415f86edda16fa97a81793cb17dfd0b493e296ebc4396071"
+    },
+    "src/main/resources/postgresql.sql": {
+      "after": "b748d8eae44cc77b53d9c711357985a32df3468d101f0d0855fb4b8b5f2406e5",
+      "baseline": "472749043bd95b91e0d6bbb7efaecf42a5ee2b03792654116ace1a870b5434de"
+    },
+    "src/test/java/com/jticket/performance/PerformanceEvaluationTest.java": {
+      "after": "626d67fffdf3be4b07e562555df08e775ea8af1a5e26e5d7b28ab552e2af1df4"
+    }
+  },
+  "reproduce": "source ~/.zprofile && mkdir -p .m2/repository .m2/tmp && MAVEN_OPTS=\"-Djava.io.tmpdir=$PWD/.m2/tmp -Djansi.tmpdir=$PWD/.m2/tmp\" /opt/apache-maven-3.9.16/bin/mvn -B -o -Dmaven.repo.local=$PWD/.m2/repository -Dtest=PerformanceEvaluationTest -Djticket.performance=true -Djticket.performance.output=.m2/performance.json test",
+  "postUpstreamIntegration": {
+    "upstreamCommit": "78d30390a5ec5956a266e8bbf366203e876a9070",
+    "performance": {
+      "java": "27.0.1.0.3",
+      "database": "embedded Derby, in-memory",
+      "fixture": {
+        "svgBytes": 300046,
+        "seatsPerOrder": 2,
+        "seats": 1200,
+        "orders": 160
+      },
+      "workloads": {
+        "eventOrders": {
+          "latencySamples": 20,
+          "warmupRequests": 5,
+          "throughputRps4Clients": 110.5311171884865,
+          "p95Ms": 25.789042,
+          "medianMs": 22.3365,
+          "throughputRequests": 40
+        },
+        "sessionStatistics": {
+          "latencySamples": 20,
+          "warmupRequests": 5,
+          "throughputRps4Clients": 912.4521339016208,
+          "p95Ms": 4.259667,
+          "medianMs": 2.900375,
+          "throughputRequests": 40
+        },
+        "sessionSeats": {
+          "latencySamples": 20,
+          "warmupRequests": 5,
+          "throughputRps4Clients": 150.82913604128194,
+          "p95Ms": 15.092084,
+          "medianMs": 13.634375,
+          "throughputRequests": 40
+        },
+        "venueSvg": {
+          "latencySamples": 20,
+          "warmupRequests": 5,
+          "throughputRps4Clients": 874.7192342602857,
+          "p95Ms": 3.5425,
+          "medianMs": 3.19675,
+          "throughputRequests": 40
+        }
+      }
+    },
+    "sourceSha256": {
+      "src/main/java/com/jticket/persist/mybatis/OrdersMapper.java": "1d0456fae7b4ae9d6a0f18b32d1cbfdd6cbb4e3fecfff751d4ff8be0a4bd5b5a",
+      "src/main/java/com/jticket/persist/jdbc/JdbcHelper.java": "640ca9c5391edf27433bada3f7ae12d134b668bfc9e704190f56819dc6237ab5",
+      "src/main/resources/derby.sql": "e1ea9aa50a3cf96b65dfba38375163bbf1bc82290be7b38abedf35c0272481a3",
+      "src/main/resources/postgresql.sql": "c641484a34a9e44d30d54410e632e8bf9ddd8a8fb3a505cb9e0562cbb85f413c",
+      "src/test/java/com/jticket/performance/PerformanceEvaluationTest.java": "626d67fffdf3be4b07e562555df08e775ea8af1a5e26e5d7b28ab552e2af1df4"
+    }
+  }
+}

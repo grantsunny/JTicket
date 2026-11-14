@@ -1,5 +1,6 @@
 package com.jticket.persist.mybatis;
 
+import java.util.HashMap;
 import java.util.Map;
 
 import org.apache.ibatis.executor.Executor;
@@ -22,20 +23,25 @@ public class ExternalParamInterceptor implements Interceptor {
 
     private Map<String, String> sqlParams;
 
-    public void setSqlParams(Map<String, String> setSqlParams) {
-        this.sqlParams = setSqlParams;
+    public void setSqlParams(Map<String, String> sqlParams) {
+        this.sqlParams = sqlParams;
     }
-    
 
     @Override
     public Object intercept(Invocation invocation) throws Throwable {
-        Object paramsRaw = invocation.getArgs()[1];
-        if (paramsRaw != null)
-            if (paramsRaw instanceof Map) {
-                @SuppressWarnings("unchecked")
-				Map<String, Object> params = (Map<String, Object>) paramsRaw;
-                params.putAll(sqlParams);
+        if (invocation.getArgs()[1] instanceof Map<?, ?> params) {
+            Map<String, Object> sqlParameters = new HashMap<>();
+            for (var entry : params.entrySet()) {
+                if (!(entry.getKey() instanceof String key)) {
+                    throw new IllegalArgumentException("MyBatis parameter names must be strings");
+                }
+                sqlParameters.put(key, entry.getValue());
             }
+            if (sqlParams != null) {
+                sqlParameters.putAll(sqlParams);
+            }
+            invocation.getArgs()[1] = sqlParameters;
+        }
 
         return invocation.proceed();
     }

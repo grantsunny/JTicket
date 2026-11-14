@@ -8,7 +8,7 @@ import org.springframework.core.env.Profiles;
 import org.springframework.stereotype.Component;
 
 @Component
-public class EndpointsConfig extends ResourceConfig {
+public final class EndpointsConfig extends ResourceConfig {
 
     public EndpointsConfig(Environment environment) {
         property(ServerProperties.RESPONSE_SET_STATUS_OVER_SEND_ERROR, "true");
