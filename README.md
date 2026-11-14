@@ -43,6 +43,11 @@ If `mvnd` is not available, use Maven:
 mvn clean package
 ```
 
+Known build issue: Closure Compiler’s bundled Protobuf uses deprecated `sun.misc.Unsafe` memory APIs,
+which emit a warning on recent JDKs. This also occurs with Closure `v20261109`, the latest release
+checked on November 15, 2026. Builds and tests pass; the warning remains visible pending an
+[upstream Protobuf fix](https://github.com/protocolbuffers/protobuf/issues/20760).
+
 To build a container image:
 
 ```bash

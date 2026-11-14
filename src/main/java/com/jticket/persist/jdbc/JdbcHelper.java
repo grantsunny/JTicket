@@ -12,6 +12,8 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.sql.Types;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.LinkedList;
@@ -27,6 +29,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jticket.api.model.Area;
 import com.jticket.api.model.Event;
@@ -60,7 +63,6 @@ public class JdbcHelper {
         }
     }
 
-    @SuppressWarnings("unchecked")
     private Map<String, Object> parseMetadata(String rawMetadata) {
         if (rawMetadata == null || rawMetadata.isBlank()) {
             return new HashMap<>();
@@ -68,7 +70,7 @@ public class JdbcHelper {
         try {
             return OBJECT_MAPPER.readValue(
                     rawMetadata,
-                    Map.class);
+                    new TypeReference<Map<String, Object>>() {});
         } catch (JsonProcessingException ex) {
             return new HashMap<>();
         }
@@ -1369,18 +1371,28 @@ public class JdbcHelper {
                     .paymentAmount(rsOrders.getInt("paymentAmount"))
                     .metadata(parseMetadata(rsOrders.getString("metadata")));
 
+            loadOrders.add(order);
+        }
+        for (int offset = 0; offset < loadOrders.size(); offset += 200) {
+            List<Order> batch = loadOrders.subList(offset, Math.min(offset + 200, loadOrders.size()));
+            Map<UUID, Order> byId = new HashMap<>();
             String sqlSeats = "SELECT seatId, sessionId, areaId, venueId, row, col, available, metadata, price, priceName, " +
-                    "orderId, userId, checkedInTimestamp, status FROM TKT.TicketingSeatStatus WHERE orderId = ? ORDER BY row, col";
-            
+                    "orderId, userId, checkedInTimestamp, status FROM TKT.TicketingSeatStatus WHERE orderId IN (" +
+                    String.join(",", Collections.nCopies(batch.size(), "?")) + ") ORDER BY orderId, row, col";
             try (PreparedStatement stmtSeat = conn.prepareStatement(sqlSeats)) {
-                stmtSeat.setString(1, order.getId().toString());
-                ResultSet rsSeats = stmtSeat.executeQuery();
-
-                while (rsSeats.next()) {
-                    order.getSeats().add(readSeatFromTicketingSeatStatus(rsSeats));
+                for (int i = 0; i < batch.size(); i++) {
+                    Order order = batch.get(i);
+                    order.setSeats(new ArrayList<>());
+                    byId.put(order.getId(), order);
+                    stmtSeat.setString(i + 1, order.getId().toString());
+                }
+                try (ResultSet rsSeats = stmtSeat.executeQuery()) {
+                    while (rsSeats.next()) {
+                        TicketingSeat seat = readSeatFromTicketingSeatStatus(rsSeats);
+                        byId.get(seat.getOrderId()).getSeats().add(seat);
+                    }
                 }
             }
-            loadOrders.add(order);
         }
         return loadOrders;
     }

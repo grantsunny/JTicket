@@ -1,0 +1,9 @@
+.git
+.m2
+target
+src/gen
+src/main/openapi
+.openapi-generator
+derby.log
+jticketdb
+AGENTS.md

@@ -1,7 +1,10 @@
 package com.jticket.persist.mybatis;
 
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.List;
 import java.util.UUID;
 
@@ -45,11 +48,7 @@ public interface OrdersMapper {
     @Transactional
     default List<Order> loadOrders(String userId, Date startTime, Date endTime) {
         List<Order> orders = _loadOrdersByUserIdAndDateRange(userId, startTime, endTime);
-        for (Order order: orders) {
-            UUID orderId = order.getId();
-            order.setSeats(_loadOrderSeats(orderId));
-        }
-        return orders;
+        return attachOrderSeats(orders);
     }
 
     @Select("SELECT ID, EVENTID, SESSIONID, USERID, TIMESTAMP, PAYMENTCHANNEL, PAYMENTTRANSACTIONID, PAYMENTTIMESTAMP, PAYMENTAMOUNT, METADATA FROM ORDERS " +
@@ -60,11 +59,7 @@ public interface OrdersMapper {
     @Transactional
     default List<Order> loadOrders(Date startTime, Date endTime) {
         List<Order> orders = _loadOrdersByDateRange(startTime, endTime);
-        for (Order order: orders) {
-            UUID orderId = order.getId();
-            order.setSeats(_loadOrderSeats(orderId));
-        }
-        return orders;
+        return attachOrderSeats(orders);
     }
 
     @Select("SELECT ID, EVENTID, SESSIONID, USERID, TIMESTAMP, PAYMENTCHANNEL, PAYMENTTRANSACTIONID, PAYMENTTIMESTAMP, PAYMENTAMOUNT, METADATA FROM ORDERS " +
@@ -75,11 +70,7 @@ public interface OrdersMapper {
     @Transactional
     default List<Order> loadOrders(String userId) {
         List<Order> orders = _loadOrdersByUserId(userId);
-        for (Order order: orders) {
-            UUID orderId = order.getId();
-            order.setSeats(_loadOrderSeats(orderId));
-        }
-        return orders;
+        return attachOrderSeats(orders);
     }
 
     @Select("SELECT ID, EVENTID, SESSIONID, USERID, TIMESTAMP, PAYMENTCHANNEL, PAYMENTTRANSACTIONID, PAYMENTTIMESTAMP, PAYMENTAMOUNT, METADATA FROM ORDERS " +
@@ -90,11 +81,7 @@ public interface OrdersMapper {
     @Transactional
     default List<Order> loadOrders(UUID eventId) {
         List<Order> orders = _loadOrdersByEventId(eventId);
-        for (Order order: orders) {
-            UUID orderId = order.getId();
-            order.setSeats(_loadOrderSeats(orderId));
-        }
-        return orders;
+        return attachOrderSeats(orders);
     }
 
     @Select("SELECT ID, EVENTID, SESSIONID, USERID, TIMESTAMP, PAYMENTCHANNEL, PAYMENTTRANSACTIONID, PAYMENTTIMESTAMP, PAYMENTAMOUNT, METADATA FROM ORDERS")
@@ -104,9 +91,34 @@ public interface OrdersMapper {
     @Transactional
     default List<Order> loadOrders() {
         List<Order> orders = _loadOrders();
-        for (Order order: orders) {
-            UUID orderId = order.getId();
-            order.setSeats(_loadOrderSeats(orderId));
+        return attachOrderSeats(orders);
+    }
+
+    // Bound parameter counts while avoiding one seat query per order.
+    int ORDER_SEAT_BATCH_SIZE = 200;
+
+    @Select("<script>SELECT seatId AS id, sessionId, areaId, venueId, row, col, available, " +
+            "checkedInTimestamp, status, orderId, userId, price, priceName, metadata " +
+            "FROM TKT.TicketingSeatStatus WHERE orderId IN " +
+            "<foreach collection='orderIds' item='id' open='(' separator=',' close=')'>#{id}</foreach> " +
+            "ORDER BY orderId, row, col</script>")
+    @Results({
+            @Result(property = "metadata", column = "metadata", typeHandler = MetadataHandler.class),
+            @Result(property = "status", column = "status", typeHandler = TicketingSeatStatusHandler.class)
+    })
+    List<TicketingSeat> _loadOrderSeatsByOrderIds(@Param("orderIds") List<UUID> orderIds);
+
+    default List<Order> attachOrderSeats(List<Order> orders) {
+        for (int offset = 0; offset < orders.size(); offset += ORDER_SEAT_BATCH_SIZE) {
+            List<Order> batch = orders.subList(offset, Math.min(offset + ORDER_SEAT_BATCH_SIZE, orders.size()));
+            Map<UUID, Order> byId = new HashMap<>();
+            for (Order order : batch) {
+                order.setSeats(new ArrayList<>());
+                byId.put(order.getId(), order);
+            }
+            for (TicketingSeat seat : _loadOrderSeatsByOrderIds(batch.stream().map(Order::getId).toList())) {
+                byId.get(seat.getOrderId()).getSeats().add(seat);
+            }
         }
         return orders;
     }

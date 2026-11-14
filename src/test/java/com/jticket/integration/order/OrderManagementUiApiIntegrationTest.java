@@ -20,8 +20,9 @@ import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.resttestclient.TestRestTemplate;
+import org.springframework.boot.resttestclient.autoconfigure.AutoConfigureTestRestTemplate;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.web.client.TestRestTemplate;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -38,9 +39,10 @@ import org.springframework.util.MultiValueMap;
         webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
         properties = {
                 "spring.datasource.url=jdbc:derby:memory:jticket-order-management-ui-api-integration;create=true",
-                "spring.datasource.driver-class-name=org.apache.derby.jdbc.EmbeddedDriver",
+                "spring.datasource.driver-class-name=org.apache.derby.iapi.jdbc.AutoloadedDriver",
                 "ticket.accept-underpayment=false"
         })
+@AutoConfigureTestRestTemplate
 @ActiveProfiles("dev")
 class OrderManagementUiApiIntegrationTest {
 

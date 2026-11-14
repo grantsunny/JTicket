@@ -3,7 +3,6 @@ package com.jticket;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
-import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
 
 import org.springframework.context.ApplicationContextInitializer;
@@ -16,15 +15,6 @@ public class DatabaseReadinessInitializer implements ApplicationContextInitializ
 
 		System.out.print("JTicket: Verifying database for readiness ...");
 		
-		try {
-			if (!Arrays.asList(context.getEnvironment().getActiveProfiles()).contains("production")) 
-				DriverManager.registerDriver(new org.apache.derby.jdbc.EmbeddedDriver());
-			else 
-				DriverManager.registerDriver(new org.postgresql.Driver());
-		} catch (SQLException e) {
-			throw new RuntimeException(e.getMessage(), e);
-		}
-		
 		String dbUrl = context.getEnvironment().getProperty("spring.datasource.url");
 		String dbUsername = context.getEnvironment().getProperty("spring.datasource.username");
 		String dbPassword = context.getEnvironment().getProperty("spring.datasource.password");
@@ -34,6 +24,8 @@ public class DatabaseReadinessInitializer implements ApplicationContextInitializ
 		
 		for (; retry < maxRetries; retry++) {
 			try (Connection connection = DriverManager.getConnection(dbUrl, dbUsername, dbPassword)) {
+				if (!connection.isValid(5))
+					throw new SQLException("Database connection is not valid");
 				System.out.println(" done");
 				return;
 			} catch (SQLException ex) {

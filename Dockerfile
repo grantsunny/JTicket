@@ -1,9 +1,14 @@
-FROM maven:3.9.16-eclipse-temurin-21 AS service-build
+FROM node:26-bookworm-slim AS javascript-runtime
+
+FROM maven:3.10.0-eclipse-temurin-27 AS service-build
+COPY --from=javascript-runtime /usr/local/bin/node /usr/local/bin/node
+COPY --from=javascript-runtime /usr/lib/*-linux-gnu/libatomic.so.1 /usr/local/lib/
+RUN ldconfig
 WORKDIR /
 COPY . .
 RUN mvn clean package
 
-FROM eclipse-temurin:21-jre-noble
+FROM eclipse-temurin:27-jre-resolute
 LABEL authors="Grant Yang"
 LABEL description="JTicket Backend Image"
 ENV JAVA_OPTS="-XX:MinRAMPercentage=50 \

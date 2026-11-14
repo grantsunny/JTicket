@@ -31,7 +31,7 @@ import org.springframework.security.oauth2.server.resource.authentication.JwtGra
 import org.springframework.security.oauth2.server.resource.web.BearerTokenAuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.LoginUrlAuthenticationEntryPoint;
-import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
+import org.springframework.security.web.servlet.util.matcher.PathPatternRequestMatcher;
 import org.springframework.security.web.util.matcher.NegatedRequestMatcher;
 import org.springframework.security.web.util.matcher.RequestMatcher;
 
@@ -39,7 +39,7 @@ import org.springframework.security.web.util.matcher.RequestMatcher;
 @Profile("production")
 public class OAuth2SecurityConfig {
 
-    private static final RequestMatcher API_REQUESTS = new AntPathRequestMatcher("/api/**");
+    private static final RequestMatcher API_REQUESTS = PathPatternRequestMatcher.pathPattern("/api/**");
 
     @Bean
     SecurityFilterChain oauth2SecurityFilterChain(

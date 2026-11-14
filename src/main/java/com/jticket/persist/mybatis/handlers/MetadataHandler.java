@@ -1,6 +1,7 @@
 package com.jticket.persist.mybatis.handlers;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.ibatis.type.BaseTypeHandler;
 import org.apache.ibatis.type.JdbcType;
@@ -29,7 +30,6 @@ public class MetadataHandler extends BaseTypeHandler<Map<String, Object>> {
         }
     }
 
-    @SuppressWarnings("unchecked")
     private Map<String, Object> parseMetadata(String rawMetadata) {
         if (rawMetadata == null || rawMetadata.isBlank())
             return new HashMap<>();
@@ -37,7 +37,7 @@ public class MetadataHandler extends BaseTypeHandler<Map<String, Object>> {
         try {
             return OBJECT_MAPPER.readValue(
                     rawMetadata,
-                    Map.class);
+                    new TypeReference<Map<String, Object>>() {});
         } catch (JsonProcessingException ex) {
             return new HashMap<>();
         }
