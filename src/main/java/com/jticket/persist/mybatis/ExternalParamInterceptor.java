@@ -23,23 +23,23 @@ public class ExternalParamInterceptor implements Interceptor {
 
     private Map<String, String> sqlParams;
 
-    public void setSqlParams(Map<String, String> setSqlParams) {
-        this.sqlParams = setSqlParams;
+    public void setSqlParams(Map<String, String> sqlParams) {
+        this.sqlParams = sqlParams;
     }
-    
 
     @Override
     public Object intercept(Invocation invocation) throws Throwable {
-        Object paramsRaw = invocation.getArgs()[1];
-        if (paramsRaw instanceof Map<?, ?> params) {
+        if (invocation.getArgs()[1] instanceof Map<?, ?> params) {
             Map<String, Object> sqlParameters = new HashMap<>();
             for (var entry : params.entrySet()) {
-                if (!(entry.getKey() instanceof String key))
+                if (!(entry.getKey() instanceof String key)) {
                     throw new IllegalArgumentException("MyBatis parameter names must be strings");
+                }
                 sqlParameters.put(key, entry.getValue());
             }
-            if (sqlParams != null)
+            if (sqlParams != null) {
                 sqlParameters.putAll(sqlParams);
+            }
             invocation.getArgs()[1] = sqlParameters;
         }
 

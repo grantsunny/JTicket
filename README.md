@@ -31,7 +31,7 @@ This project is open-sourced under the Apache 2.0 license (https://www.apache.or
 testing feedback, and architecture discussions are welcome.
 
 ## Usage
-Build the project with Maven Daemon:
+Use JDK 25 or newer. Build the project with Maven Daemon:
 
 ```bash
 mvnd clean package

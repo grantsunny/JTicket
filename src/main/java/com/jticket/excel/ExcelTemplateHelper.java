@@ -120,16 +120,11 @@ public class ExcelTemplateHelper {
         List<Seat> seats = new LinkedList<>();
         for (Row row : sheetSeats) {
             for (Cell cell : row) {
-                int iRow = cell.getRowIndex();
-                int iCol = cell.getColumnIndex();
-                String cellValue = cell.getStringCellValue();
-                boolean available = cellValue.equalsIgnoreCase("Y");
-
                 seats.add(new Seat().id(UUID.randomUUID())
                         .areaId(area.getId())
-                        .row(iRow)
-                        .col(iCol)
-                        .available(available));
+                        .row(cell.getRowIndex())
+                        .col(cell.getColumnIndex())
+                        .available(cell.getStringCellValue().equalsIgnoreCase("Y")));
             }
         }
         return seats;

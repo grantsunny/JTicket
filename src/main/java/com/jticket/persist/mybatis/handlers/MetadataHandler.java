@@ -31,8 +31,9 @@ public class MetadataHandler extends BaseTypeHandler<Map<String, Object>> {
     }
 
     private Map<String, Object> parseMetadata(String rawMetadata) {
-        if (rawMetadata == null || rawMetadata.isBlank())
+        if (rawMetadata == null || rawMetadata.isBlank()) {
             return new HashMap<>();
+        }
 
         try {
             return OBJECT_MAPPER.readValue(
@@ -45,34 +46,35 @@ public class MetadataHandler extends BaseTypeHandler<Map<String, Object>> {
 
     @Override
     public void setNonNullParameter(PreparedStatement ps, int i, Map<String, Object> parameter, JdbcType jdbcType) throws SQLException {
-        String jsonString = metadataMapToJsonString(parameter);
-        ps.setString(i, jsonString);
+        ps.setString(i, metadataMapToJsonString(parameter));
     }
 
     @Override
     public Map<String, Object> getNullableResult(ResultSet rs, String columnName) throws SQLException {
-        if (!columnName.equalsIgnoreCase("metadata"))
+        if (!columnName.equalsIgnoreCase("metadata")) {
             throw new SQLException("Unexpected metadata mapping for column " + columnName);
+        }
 
-        String jsonString = rs.getString(columnName);
-        return parseMetadata(jsonString);
+        return parseMetadata(rs.getString(columnName));
     }
 
     @Override
     public Map<String, Object> getNullableResult(ResultSet rs, int columnIndex) throws SQLException {
-        if (!rs.getMetaData().getColumnName(columnIndex).equalsIgnoreCase("metadata"))
-            throw new SQLException("Unexpected metadata mapping for column " + rs.getMetaData().getColumnName(columnIndex));
+        String columnName = rs.getMetaData().getColumnName(columnIndex);
+        if (!columnName.equalsIgnoreCase("metadata")) {
+            throw new SQLException("Unexpected metadata mapping for column " + columnName);
+        }
 
-        String jsonString = rs.getString(columnIndex);
-        return parseMetadata(jsonString);
+        return parseMetadata(rs.getString(columnIndex));
     }
 
     @Override
     public Map<String, Object> getNullableResult(CallableStatement cs, int columnIndex) throws SQLException {
-        if (!cs.getMetaData().getColumnName(columnIndex).equalsIgnoreCase("metadata"))
-            throw new SQLException("Unexpected metadata mapping for column " + cs.getMetaData().getColumnName(columnIndex));
+        String columnName = cs.getMetaData().getColumnName(columnIndex);
+        if (!columnName.equalsIgnoreCase("metadata")) {
+            throw new SQLException("Unexpected metadata mapping for column " + columnName);
+        }
 
-        String jsonString = cs.getString(columnIndex);
-        return parseMetadata(jsonString);
+        return parseMetadata(cs.getString(columnIndex));
     }
 }

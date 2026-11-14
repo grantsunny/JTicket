@@ -20,26 +20,48 @@ import org.springframework.test.context.ActiveProfiles;
         "spring.datasource.driver-class-name=org.apache.derby.iapi.jdbc.AutoloadedDriver"})
 @ActiveProfiles({"dev", "test"})
 class SeatStatusStatisticsTest {
-    @Autowired private JdbcTemplate jdbc;
-    @Autowired private EventsRepository events;
+    @Autowired
+    private JdbcTemplate jdbc;
+
+    @Autowired
+    private EventsRepository events;
 
     @Test
     void countsAllPhysicalSeatsAndKeepsSessionSpecificCheckInState() throws Exception {
-        UUID venue = UUID.randomUUID(), area = UUID.randomUUID(), event = UUID.randomUUID();
-        UUID first = UUID.randomUUID(), second = UUID.randomUUID(), order = UUID.randomUUID();
-        UUID booked = UUID.randomUUID(), blocked = UUID.randomUUID(), open = UUID.randomUUID();
+        UUID venue = UUID.randomUUID();
+        UUID area = UUID.randomUUID();
+        UUID event = UUID.randomUUID();
+        UUID first = UUID.randomUUID();
+        UUID second = UUID.randomUUID();
+        UUID order = UUID.randomUUID();
+        UUID booked = UUID.randomUUID();
+        UUID blocked = UUID.randomUUID();
+        UUID open = UUID.randomUUID();
         jdbc.update("INSERT INTO TKT.Venues(id,name) VALUES (?,?)", venue.toString(), "Statistics venue");
-        jdbc.update("INSERT INTO TKT.Areas(id,venueId,name) VALUES (?,?,?)", area.toString(), venue.toString(), "Main");
-        jdbc.update("INSERT INTO TKT.Events(id,venueId,name) VALUES (?,?,?)", event.toString(), venue.toString(), "Statistics event");
-        jdbc.update("INSERT INTO TKT.Sessions(id,eventId,name,startTime,endTime) VALUES (?,?,?,TIMESTAMP('2031-01-01 10:00:00'),TIMESTAMP('2031-01-01 12:00:00'))", first.toString(), event.toString(), "First");
-        jdbc.update("INSERT INTO TKT.Sessions(id,eventId,name,startTime,endTime) VALUES (?,?,?,TIMESTAMP('2031-01-02 10:00:00'),TIMESTAMP('2031-01-02 12:00:00'))", second.toString(), event.toString(), "Second");
+        jdbc.update("INSERT INTO TKT.Areas(id,venueId,name) VALUES (?,?,?)",
+                area.toString(), venue.toString(), "Main");
+        jdbc.update("INSERT INTO TKT.Events(id,venueId,name) VALUES (?,?,?)",
+                event.toString(), venue.toString(), "Statistics event");
+        jdbc.update("INSERT INTO TKT.Sessions(id,eventId,name,startTime,endTime) "
+                + "VALUES (?,?,?,TIMESTAMP('2031-01-01 10:00:00'),TIMESTAMP('2031-01-01 12:00:00'))",
+                first.toString(), event.toString(), "First");
+        jdbc.update("INSERT INTO TKT.Sessions(id,eventId,name,startTime,endTime) "
+                + "VALUES (?,?,?,TIMESTAMP('2031-01-02 10:00:00'),TIMESTAMP('2031-01-02 12:00:00'))",
+                second.toString(), event.toString(), "Second");
         UUID[] seats = {booked, blocked, open};
-        for (int i = 0; i < seats.length; i++) jdbc.update("INSERT INTO TKT.Seats(id,areaId,row,col,available) VALUES (?,?,0,?,?)", seats[i].toString(), area.toString(), i, i != 1);
+        for (int i = 0; i < seats.length; i++) {
+            jdbc.update("INSERT INTO TKT.Seats(id,areaId,row,col,available) VALUES (?,?,0,?,?)",
+                    seats[i].toString(), area.toString(), i, i != 1);
+        }
+
         // No prices: statistics must still include unavailable and unpriced seats.
-        jdbc.update("INSERT INTO TKT.Orders(id,eventId,sessionId,userId) VALUES (?,?,?,?)", order.toString(), event.toString(), first.toString(), "customer");
-        jdbc.update("INSERT INTO TKT.OrderSeats(orderId,eventId,sessionId,seatId) VALUES (?,?,?,?)", order.toString(), event.toString(), first.toString(), booked.toString());
-        assertThat(events.loadSessionStatistics(event, first).getTotalSeats()).isEqualTo(3);
-        assertThat(events.loadSessionStatistics(event, first).getUncheckedInSeats()).isEqualTo(1);
+        jdbc.update("INSERT INTO TKT.Orders(id,eventId,sessionId,userId) VALUES (?,?,?,?)",
+                order.toString(), event.toString(), first.toString(), "customer");
+        jdbc.update("INSERT INTO TKT.OrderSeats(orderId,eventId,sessionId,seatId) VALUES (?,?,?,?)",
+                order.toString(), event.toString(), first.toString(), booked.toString());
+        var beforeCheckIn = events.loadSessionStatistics(event, first);
+        assertThat(beforeCheckIn.getTotalSeats()).isEqualTo(3);
+        assertThat(beforeCheckIn.getUncheckedInSeats()).isEqualTo(1);
         assertThat(events.checkInSeat(event, first, booked)).isEqualTo(1);
         assertThat(events.checkInSeat(event, first, booked)).isZero();
         var stats = events.loadSessionStatistics(event, first);

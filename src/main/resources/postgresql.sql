@@ -332,5 +332,4 @@ SELECT
     END AS status
 FROM TKT.SKU
 LEFT JOIN TKT.Orders ON TKT.Orders.id = TKT.SKU.orderId
-
 ;;

@@ -47,8 +47,7 @@ public interface OrdersMapper {
 
     @Transactional
     default List<Order> loadOrders(String userId, Date startTime, Date endTime) {
-        List<Order> orders = _loadOrdersByUserIdAndDateRange(userId, startTime, endTime);
-        return attachOrderSeats(orders);
+        return attachOrderSeats(_loadOrdersByUserIdAndDateRange(userId, startTime, endTime));
     }
 
     @Select("SELECT ID, EVENTID, SESSIONID, USERID, TIMESTAMP, PAYMENTCHANNEL, PAYMENTTRANSACTIONID, PAYMENTTIMESTAMP, PAYMENTAMOUNT, METADATA FROM ORDERS " +
@@ -58,8 +57,7 @@ public interface OrdersMapper {
 
     @Transactional
     default List<Order> loadOrders(Date startTime, Date endTime) {
-        List<Order> orders = _loadOrdersByDateRange(startTime, endTime);
-        return attachOrderSeats(orders);
+        return attachOrderSeats(_loadOrdersByDateRange(startTime, endTime));
     }
 
     @Select("SELECT ID, EVENTID, SESSIONID, USERID, TIMESTAMP, PAYMENTCHANNEL, PAYMENTTRANSACTIONID, PAYMENTTIMESTAMP, PAYMENTAMOUNT, METADATA FROM ORDERS " +
@@ -69,8 +67,7 @@ public interface OrdersMapper {
 
     @Transactional
     default List<Order> loadOrders(String userId) {
-        List<Order> orders = _loadOrdersByUserId(userId);
-        return attachOrderSeats(orders);
+        return attachOrderSeats(_loadOrdersByUserId(userId));
     }
 
     @Select("SELECT ID, EVENTID, SESSIONID, USERID, TIMESTAMP, PAYMENTCHANNEL, PAYMENTTRANSACTIONID, PAYMENTTIMESTAMP, PAYMENTAMOUNT, METADATA FROM ORDERS " +
@@ -80,8 +77,7 @@ public interface OrdersMapper {
 
     @Transactional
     default List<Order> loadOrders(UUID eventId) {
-        List<Order> orders = _loadOrdersByEventId(eventId);
-        return attachOrderSeats(orders);
+        return attachOrderSeats(_loadOrdersByEventId(eventId));
     }
 
     @Select("SELECT ID, EVENTID, SESSIONID, USERID, TIMESTAMP, PAYMENTCHANNEL, PAYMENTTRANSACTIONID, PAYMENTTIMESTAMP, PAYMENTAMOUNT, METADATA FROM ORDERS")
@@ -90,8 +86,7 @@ public interface OrdersMapper {
 
     @Transactional
     default List<Order> loadOrders() {
-        List<Order> orders = _loadOrders();
-        return attachOrderSeats(orders);
+        return attachOrderSeats(_loadOrders());
     }
 
     // Bound parameter counts while avoiding one seat query per order.
@@ -108,7 +103,7 @@ public interface OrdersMapper {
     })
     List<TicketingSeat> _loadOrderSeatsByOrderIds(@Param("orderIds") List<UUID> orderIds);
 
-    default List<Order> attachOrderSeats(List<Order> orders) {
+    private List<Order> attachOrderSeats(List<Order> orders) {
         for (int offset = 0; offset < orders.size(); offset += ORDER_SEAT_BATCH_SIZE) {
             List<Order> batch = orders.subList(offset, Math.min(offset + ORDER_SEAT_BATCH_SIZE, orders.size()));
             Map<UUID, Order> byId = new HashMap<>();

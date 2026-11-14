@@ -19,13 +19,13 @@ public class DatabaseReadinessInitializer implements ApplicationContextInitializ
 		String dbUsername = context.getEnvironment().getProperty("spring.datasource.username");
 		String dbPassword = context.getEnvironment().getProperty("spring.datasource.password");
 
-		int retry = 0;
 		int maxRetries = 30;
 		
-		for (; retry < maxRetries; retry++) {
+		for (int retry = 0; retry < maxRetries; retry++) {
 			try (Connection connection = DriverManager.getConnection(dbUrl, dbUsername, dbPassword)) {
-				if (!connection.isValid(5))
+				if (!connection.isValid(5)) {
 					throw new SQLException("Database connection is not valid");
+				}
 				System.out.println(" done");
 				return;
 			} catch (SQLException ex) {

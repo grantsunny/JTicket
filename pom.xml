@@ -16,6 +16,7 @@
         <java.version>25</java.version>
         <skipJavaScriptTests>false</skipJavaScriptTests>
         <surefire.argLine></surefire.argLine>
+        <surefire.finalFieldMutationArgs></surefire.finalFieldMutationArgs>
     </properties>
     <dependencies>
         <dependency>
@@ -180,7 +181,7 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <configuration>
-                    <argLine>${surefire.argLine} -javaagent:${settings.localRepository}/org/mockito/mockito-core/${mockito.version}/mockito-core-${mockito.version}.jar --enable-final-field-mutation=ALL-UNNAMED -Djava.io.tmpdir=${project.build.directory} -Djansi.tmpdir=${project.build.directory} -Dserver.tomcat.basedir=${project.build.directory}</argLine>
+                    <argLine>${surefire.argLine} -javaagent:${settings.localRepository}/org/mockito/mockito-core/${mockito.version}/mockito-core-${mockito.version}.jar ${surefire.finalFieldMutationArgs} -Djava.io.tmpdir=${project.build.directory} -Djansi.tmpdir=${project.build.directory} -Dserver.tomcat.basedir=${project.build.directory}</argLine>
                 </configuration>
             </plugin>
 
@@ -313,6 +314,18 @@
             </plugin>
          </plugins>
     </build>
+
+    <profiles>
+        <profile>
+            <id>jdk-26-or-newer</id>
+            <activation>
+                <jdk>[26,)</jdk>
+            </activation>
+            <properties>
+                <surefire.finalFieldMutationArgs>--enable-final-field-mutation=ALL-UNNAMED</surefire.finalFieldMutationArgs>
+            </properties>
+        </profile>
+    </profiles>
 
     <repositories>
         <repository>

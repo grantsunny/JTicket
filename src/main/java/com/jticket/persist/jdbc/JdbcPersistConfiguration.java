@@ -70,18 +70,13 @@ public class JdbcPersistConfiguration {
         }
         @Override
         public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
-            boolean isTransactional = false;
             Set<Class<? extends Throwable>> rollbackClass = new HashSet<>();
             rollbackClass.add(SQLException.class);
 
             Method jdbcMethod = JdbcHelper.class.getMethod(method.getName(), method.getParameterTypes());
             Transactional transactional = jdbcMethod.getAnnotation(Transactional.class);
             if (transactional != null) {
-                isTransactional = true;
                 rollbackClass.addAll(Arrays.asList(transactional.rollbackFor()));
-            }
-
-            if (isTransactional) {
                 TransactionStatus status = transactionManager.getTransaction(new DefaultTransactionDefinition());
                 try {
                     Object rc = jdbcMethod.invoke(target, args);
