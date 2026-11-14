@@ -31,7 +31,11 @@ This project is open-sourced under the Apache 2.0 license (https://www.apache.or
 testing feedback, and architecture discussions are welcome.
 
 ## Usage
-Use JDK 25 or newer. Build the project with Maven Daemon:
+Use JDK 25 or newer to build and Java 25 or newer to run the application. Maven validates the build JDK before
+source generation and compilation. Check `mvnd --version` or `mvn --version` as well as `java -version` when configuring
+`JAVA_HOME`; Maven Daemon may use a different JVM from the `java` command. The Dockerfile builds and runs on Java 27.
+
+Build the project with Maven Daemon:
 
 ```bash
 mvnd clean package
@@ -72,6 +76,43 @@ Production mode (CockroachDB/PostgreSQL database, Swagger disabled, security ena
 ```bash
 java -Dspring.profiles.active=production -jar jticket-VERSION.jar
 ```
+
+MyBatis is the default persistence backend. Add the `jdbc` profile to select the JDBC repositories with the same
+database and security settings:
+
+```bash
+java -Dspring.profiles.active=dev,jdbc -jar jticket-VERSION.jar
+java -Dspring.profiles.active=production,jdbc -jar jticket-VERSION.jar
+```
+
+### Upgrading an existing deployment
+
+1. Check the build and deployment JVM versions above. Java 21 cannot run this release; provision Java 25 or newer,
+   or use the Java 27 container image. Keep the previous application artifact and configuration for rollback.
+2. Back up the database and test restoring it. For file-backed Derby, stop the application before copying the complete
+   `jticketdb` directory. For CockroachDB/PostgreSQL, use the database's supported backup and restore procedure.
+3. Restore the backup in staging and start this release with the intended profiles and database settings. Verify that
+   existing orders, seat maps, session totals, payment state, and check-in state are preserved with the selected backend.
+4. Stop traffic and all application instances before upgrading production. Start exactly one upgraded instance with
+   `SPRING_SQL_INIT_MODE=always` and a database account permitted to apply schema DDL. Wait for schema validation and
+   startup to succeed, then stop that instance. Set `SPRING_SQL_INIT_MODE=never` on every serving replica before starting
+   them and restoring traffic. Keep initialization disabled on serving replicas during subsequent restarts.
+
+Default SQL initialization refreshes shared views and triggers, so concurrent initialization or a rolling upgrade with
+initialization enabled can interrupt other instances' queries. Startup validation checks schema compatibility; it does
+not coordinate DDL across instances. The supplied Kubernetes deployment starts three replicas: configure initialization
+as above before bringing those replicas up against an upgraded database.
+
+With the default `spring.sql.init.mode=always`, startup reapplies the dialect's schema script, retaining existing tables
+and their data while recreating views, including `SessionStatistics` and `TicketingSeatStatus`. Startup validates the
+required columns of these two views and fails if they are missing or incompatible, even when SQL initialization tolerates
+other DDL errors. If SQL initialization is disabled, apply the current view definitions and their dependencies from
+`derby.sql` or `postgresql.sql` before starting this release. Keep the configured SQL statement separator when applying
+the production script (`;;`); its trigger bodies contain internal semicolons.
+
+If the upgraded application or schema validation fails, keep traffic stopped, inspect the startup error, and correct the
+schema or restore the tested backup with the previous application. A previous binary alone does not restore database
+objects changed during startup.
 
 ## How it works (API flow)
 

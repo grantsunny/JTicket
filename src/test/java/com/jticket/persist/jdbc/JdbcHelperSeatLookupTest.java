@@ -8,7 +8,6 @@ import com.jticket.api.model.Seat;
 import org.junit.jupiter.api.Test;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
-import org.springframework.test.util.ReflectionTestUtils;
 
 class JdbcHelperSeatLookupTest {
     @Test
@@ -23,8 +22,7 @@ class JdbcHelperSeatLookupTest {
         jdbc.update("INSERT INTO TKT.Areas(id,venueId) VALUES (?,?)", areaId.toString(), venueId.toString());
         jdbc.update("INSERT INTO TKT.Seats(id,areaId,row,col,available,metadata) VALUES (?,?,2,3,FALSE,?)",
                 seatId.toString(), areaId.toString(), "{\"section\":\"balcony\"}");
-        var helper = new JdbcHelper();
-        ReflectionTestUtils.setField(helper, "dataSource", dataSource);
+        var helper = new JdbcHelper(dataSource);
 
         Seat seat = helper.loadSeatInVenue(venueId, seatId);
 

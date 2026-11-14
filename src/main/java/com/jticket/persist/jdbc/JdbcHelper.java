@@ -24,7 +24,7 @@ import java.util.UUID;
 import javax.sql.DataSource;
 
 import org.springframework.context.annotation.Profile;
-import org.springframework.jdbc.datasource.DataSourceUtils;
+import org.springframework.jdbc.datasource.TransactionAwareDataSourceProxy;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -44,16 +44,17 @@ import com.jticket.api.model.Venue;
 import com.jticket.persist.EventPoster;
 import com.jticket.persist.OrdersRepository.PaymentResult;
 
-import jakarta.inject.Inject;
-
 @Component
 @Profile("jdbc")
 public class JdbcHelper {
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
-    @Inject
-    private DataSource dataSource;
+    private final DataSource dataSource;
+
+    public JdbcHelper(DataSource dataSource) {
+        this.dataSource = new TransactionAwareDataSourceProxy(dataSource);
+    }
 
     private String metadataMapToJsonString(Map<String, Object> metadataMap) {
         try {
@@ -266,6 +267,7 @@ public class JdbcHelper {
     }
 
 
+    @Transactional(rollbackFor = SQLException.class)
     public void saveAreas(List<Area> areas) throws SQLException {
         String sql = "INSERT INTO TKT.Areas (id, venueId, name, metadata) VALUES (?, ?, ?, ?)";
         try (Connection conn = dataSource.getConnection();
@@ -281,6 +283,7 @@ public class JdbcHelper {
         }
     }
 
+    @Transactional(rollbackFor = SQLException.class)
     public void saveSeats(List<Seat> seats) throws SQLException {
         String sql = "INSERT INTO TKT.Seats (id, areaId, row, col, available, metadata) " +
                 "VALUES (?, ?, ?, ?, ?, ?)";
@@ -532,7 +535,7 @@ public class JdbcHelper {
 
                     return new Event()
                             .id(eventId)
-                            .venueId(UUID.fromString(venueId))
+                            .venueId(venueId == null ? null : UUID.fromString(venueId))
                             .name(name)
                             .metadata(metadata);
                 }
@@ -553,7 +556,7 @@ public class JdbcHelper {
 
                 events.add(new Event()
                         .id(id == null ? null : UUID.fromString(id))
-                        .venueId(UUID.fromString(venueId))
+                        .venueId(venueId == null ? null : UUID.fromString(venueId))
                         .name(name)
                         .metadata(metadata));
             }
@@ -637,13 +640,11 @@ public class JdbcHelper {
         return null;
     }
 
-    @Transactional
+    @Transactional(rollbackFor = SQLException.class)
     public void saveEventPoster(UUID eventId, EventPoster poster) throws SQLException {
         String deleteSql = "DELETE FROM TKT.EventPosters WHERE eventId = ?";
         String insertSql = "INSERT INTO TKT.EventPosters (id, eventId, contentType, content) VALUES (?, ?, ?, ?)";
-        Connection conn = DataSourceUtils.getConnection(dataSource);
-
-        try {
+        try (Connection conn = dataSource.getConnection()) {
             try (PreparedStatement pstmt = conn.prepareStatement(deleteSql)) {
                 pstmt.setString(1, eventId.toString());
                 pstmt.executeUpdate();
@@ -658,8 +659,6 @@ public class JdbcHelper {
                 if (pstmt.getUpdateCount() < 1)
                     throw new SQLException("Not successfully modified", "304");
             }
-        } finally {
-            DataSourceUtils.releaseConnection(conn, dataSource);
         }
     }
 
@@ -1513,7 +1512,7 @@ public class JdbcHelper {
         }
     }
 
-    @Transactional
+    @Transactional(rollbackFor = SQLException.class)
     public void updateOrderMetadata(Order order) throws SQLException {
         try (Connection conn = dataSource.getConnection()) {
             String sqlUpdateOrder = "UPDATE TKT.ORDERS SET METADATA = ? WHERE ID = ?";
